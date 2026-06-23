@@ -1,5 +1,5 @@
-import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/app")({
@@ -9,14 +9,16 @@ export const Route = createFileRoute("/app")({
     if (!data.user) throw redirect({ to: "/auth" });
     return { user: data.user };
   },
-  component: AppGate,
+  component: AppLayout,
 });
 
-function AppGate() {
+function AppLayout() {
   const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isRoot = pathname === "/app" || pathname === "/app/";
 
   useEffect(() => {
+    if (!isRoot) return;
     let mounted = true;
     (async () => {
       const { data: u } = await supabase.auth.getUser();
@@ -24,25 +26,22 @@ function AppGate() {
         navigate({ to: "/auth" });
         return;
       }
-      // Route by primary role
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", u.user.id);
       const rs = (roles ?? []).map((r) => r.role as string);
-      if (mounted) {
-        if (rs.includes("admin")) navigate({ to: "/app/admin" });
-        else if (rs.includes("driver")) navigate({ to: "/app/driver" });
-        else navigate({ to: "/app/passenger" });
-        setReady(true);
-      }
+      if (!mounted) return;
+      if (rs.includes("admin")) navigate({ to: "/app/admin" });
+      else if (rs.includes("driver")) navigate({ to: "/app/driver" });
+      else navigate({ to: "/app/passenger" });
     })();
     return () => {
       mounted = false;
     };
-  }, [navigate]);
+  }, [isRoot, navigate]);
 
-  if (!ready) {
+  if (isRoot) {
     return (
       <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">
         Loading…
