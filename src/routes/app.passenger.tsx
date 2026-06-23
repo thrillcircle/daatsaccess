@@ -13,7 +13,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { computeRoute } from "@/lib/maps.functions";
 import { estimatePrice, formatZAR } from "@/lib/pricing";
 import type { Database } from "@/integrations/supabase/types";
-import { Car } from "lucide-react";
+import { Car, Radio } from "lucide-react";
+import { useLiveLocation } from "@/hooks/use-live-location";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
@@ -186,10 +187,32 @@ function RideRequest({ userId }: { userId?: string }) {
     }
   }
 
+  // Share pickup position only while driver is en route (before pickup).
+  const sharePickup =
+    !!activeRide &&
+    !!userId &&
+    ["accepted", "driver_arriving", "arrived"].includes(activeRide.status);
+  const passengerLive = useLiveLocation({
+    enabled: sharePickup,
+    userId,
+    role: "passenger",
+    rideId: sharePickup ? activeRide!.id : null,
+  });
+
   if (activeRide) {
     return (
       <>
         <ActiveTripCard ride={activeRide} onCancel={onCancel} />
+        {sharePickup && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground">
+            <Radio className={"h-3.5 w-3.5 " + (passengerLive.status === "watching" ? "text-primary" : "")} />
+            {passengerLive.status === "watching"
+              ? "Sharing your pickup location with the driver"
+              : passengerLive.status === "denied" || passengerLive.status === "unavailable"
+                ? "Location off — driver will navigate to your typed pickup address"
+                : "Starting location sharing…"}
+          </div>
+        )}
         <div className="mt-3 flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm">
           <span className="text-muted-foreground">
             {Number(activeRide.distance_km).toFixed(2)} km

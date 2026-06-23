@@ -12,7 +12,8 @@ import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { formatZAR } from "@/lib/pricing";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
-import { MapPin, Navigation } from "lucide-react";
+import { MapPin, Navigation, AlertTriangle } from "lucide-react";
+import { useLiveLocation } from "@/hooks/use-live-location";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
@@ -130,9 +131,27 @@ function DriverPage() {
     );
   }
 
+  const trackingRideId =
+    activeRide && ["accepted", "driver_arriving", "arrived", "in_progress"].includes(activeRide.status)
+      ? activeRide.id
+      : null;
+  const live = useLiveLocation({
+    enabled: !!profile.is_available,
+    userId: user!.id,
+    role: "driver",
+    rideId: trackingRideId,
+    updateDriverProfile: true,
+  });
+
   return (
     <AppShell title="Driver" nav={nav}>
       <OnlineToggle profile={profile} onChange={setProfile} />
+      {profile.is_available && (live.status === "denied" || live.status === "unavailable") && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <AlertTriangle className="h-4 w-4" />
+          Location unavailable — passengers can't see you. Enable location and try again.
+        </div>
+      )}
       {activeRide ? (
         <ActiveRideCard ride={activeRide} onUpdate={setActiveRide} />
       ) : profile.is_available ? (
