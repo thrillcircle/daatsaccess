@@ -1,0 +1,321 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth, useUserRoles } from "@/hooks/use-auth";
+import { AppShell, NAV_ICONS } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RouteMap } from "@/components/RouteMap";
+import { RideStatusBadge } from "@/components/RideStatusBadge";
+import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { computeRoute, geocodeAddress } from "@/lib/maps.functions";
+import { estimatePrice, formatZAR } from "@/lib/pricing";
+import type { Database } from "@/integrations/supabase/types";
+import { Car, MapPin, Navigation } from "lucide-react";
+
+type Ride = Database["public"]["Tables"]["rides"]["Row"];
+
+export const Route = createFileRoute("/app/passenger")({
+  head: () => ({ meta: [{ title: "Passenger — Access" }] }),
+  component: PassengerPage,
+});
+
+function PassengerPage() {
+  const { user } = useAuth();
+  const { roles } = useUserRoles(user?.id);
+
+  const nav = useMemo(() => {
+    const items = [{ to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger }];
+    if (roles?.includes("driver")) items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
+    if (roles?.includes("admin")) items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
+    return items;
+  }, [roles]);
+
+  return (
+    <AppShell title="Passenger" nav={nav}>
+      <RideRequest userId={user?.id} />
+      <BecomeDriver userId={user?.id} hasDriverRole={!!roles?.includes("driver")} />
+      <RideHistory userId={user?.id} />
+    </AppShell>
+  );
+}
+
+function RideRequest({ userId }: { userId?: string }) {
+  const geocode = useServerFn(geocodeAddress);
+  const route = useServerFn(computeRoute);
+
+  const [pickup, setPickup] = useState("");
+  const [dest, setDest] = useState("");
+  const [pickupPt, setPickupPt] = useState<{ address: string; lat: number; lng: number } | null>(null);
+  const [destPt, setDestPt] = useState<{ address: string; lat: number; lng: number } | null>(null);
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [estimating, setEstimating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [activeRide, setActiveRide] = useState<Ride | null>(null);
+
+  const price = distanceKm != null ? estimatePrice(distanceKm) : null;
+
+  // Load + subscribe to active ride
+  useEffect(() => {
+    if (!userId) return;
+    let unsub: (() => void) | undefined;
+    (async () => {
+      const { data } = await supabase
+        .from("rides")
+        .select("*")
+        .eq("passenger_id", userId)
+        .in("status", ["requested", "accepted", "driver_arriving", "in_progress"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+      setActiveRide(data?.[0] ?? null);
+
+      const ch = supabase
+        .channel("passenger-rides-" + userId)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "rides", filter: `passenger_id=eq.${userId}` },
+          (payload) => {
+            const r = payload.new as Ride;
+            if (!r) return;
+            if (["requested", "accepted", "driver_arriving", "in_progress"].includes(r.status)) {
+              setActiveRide(r);
+            } else {
+              setActiveRide(null);
+            }
+          },
+        )
+        .subscribe();
+      unsub = () => {
+        supabase.removeChannel(ch);
+      };
+    })();
+    return () => unsub?.();
+  }, [userId]);
+
+  async function onEstimate() {
+    if (!pickup.trim() || !dest.trim()) return;
+    setEstimating(true);
+    try {
+      const [p, d] = await Promise.all([
+        geocode({ data: { address: pickup } }),
+        geocode({ data: { address: dest } }),
+      ]);
+      setPickupPt(p);
+      setDestPt(d);
+      setPickup(p.address);
+      setDest(d.address);
+      const r = await route({
+        data: { originLat: p.lat, originLng: p.lng, destLat: d.lat, destLng: d.lng },
+      });
+      setDistanceKm(r.distanceKm);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not estimate route");
+    } finally {
+      setEstimating(false);
+    }
+  }
+
+  async function onRequest() {
+    if (!userId || !pickupPt || !destPt || distanceKm == null || price == null) return;
+    setSubmitting(true);
+    try {
+      const { data, error } = await supabase
+        .from("rides")
+        .insert({
+          passenger_id: userId,
+          pickup_address: pickupPt.address,
+          pickup_lat: pickupPt.lat,
+          pickup_lng: pickupPt.lng,
+          destination_address: destPt.address,
+          destination_lat: destPt.lat,
+          destination_lng: destPt.lng,
+          distance_km: distanceKm,
+          estimated_price: price,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      setActiveRide(data as Ride);
+      toast.success("Ride requested — finding a driver");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to request ride");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onCancel() {
+    if (!activeRide) return;
+    const { error } = await supabase
+      .from("rides")
+      .update({ status: "cancelled" })
+      .eq("id", activeRide.id);
+    if (error) toast.error(error.message);
+    else {
+      setActiveRide(null);
+      toast.success("Ride cancelled");
+    }
+  }
+
+  if (activeRide) {
+    return (
+      <section className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Your ride
+          </h2>
+          <RideStatusBadge status={activeRide.status} />
+        </div>
+        <RouteMap
+          origin={{ lat: activeRide.pickup_lat, lng: activeRide.pickup_lng }}
+          destination={{ lat: activeRide.destination_lat, lng: activeRide.destination_lng }}
+          className="h-56"
+        />
+        <dl className="mt-4 space-y-2 text-sm">
+          <Row icon={<MapPin className="h-4 w-4 text-primary" />} label="From" value={activeRide.pickup_address} />
+          <Row icon={<Navigation className="h-4 w-4 text-primary" />} label="To" value={activeRide.destination_address} />
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-muted-foreground">Distance</span>
+            <span className="font-medium">{Number(activeRide.distance_km).toFixed(2)} km</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Estimated fare</span>
+            <span className="font-semibold">{formatZAR(Number(activeRide.estimated_price))}</span>
+          </div>
+        </dl>
+        {activeRide.status !== "in_progress" && (
+          <Button variant="outline" className="mt-4 w-full" onClick={onCancel}>
+            Cancel ride
+          </Button>
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
+      <h2 className="text-lg font-semibold">Where to?</h2>
+      <p className="text-sm text-muted-foreground">Enter pickup and destination addresses.</p>
+
+      <div className="mt-4 space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="pickup">Pickup</Label>
+          <Input
+            id="pickup"
+            placeholder="e.g. Sandton City, Johannesburg"
+            value={pickup}
+            onChange={(e) => setPickup(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="dest">Destination</Label>
+          <Input
+            id="dest"
+            placeholder="e.g. OR Tambo International Airport"
+            value={dest}
+            onChange={(e) => setDest(e.target.value)}
+          />
+        </div>
+
+        <Button variant="outline" className="w-full" onClick={onEstimate} disabled={estimating}>
+          {estimating ? "Estimating…" : "Estimate price"}
+        </Button>
+      </div>
+
+      {pickupPt && destPt && (
+        <div className="mt-4 space-y-3">
+          <RouteMap origin={pickupPt} destination={destPt} className="h-48" />
+          <div className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm">
+            <span className="text-muted-foreground">Distance · Fare</span>
+            <span className="font-semibold">
+              {distanceKm?.toFixed(2)} km · {price != null ? formatZAR(price) : "—"}
+            </span>
+          </div>
+          <Button className="w-full" size="lg" onClick={onRequest} disabled={submitting}>
+            {submitting ? "Requesting…" : "Request ride"}
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function BecomeDriver({ userId, hasDriverRole }: { userId?: string; hasDriverRole: boolean }) {
+  if (!userId || hasDriverRole) return null;
+  async function onBecome() {
+    const { error } = await supabase.from("user_roles").insert({ user_id: userId!, role: "driver" });
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Driver role added — refresh to access driver mode");
+      setTimeout(() => window.location.reload(), 600);
+    }
+  }
+  return (
+    <section className="mt-4 rounded-2xl border border-dashed bg-card p-4">
+      <div className="flex items-start gap-3">
+        <Car className="mt-0.5 h-5 w-5 text-primary" />
+        <div className="flex-1">
+          <h3 className="font-medium">Drive with Access</h3>
+          <p className="text-sm text-muted-foreground">Earn by accepting rides from passengers.</p>
+        </div>
+      </div>
+      <Button variant="outline" className="mt-3 w-full" onClick={onBecome}>
+        Become a driver
+      </Button>
+    </section>
+  );
+}
+
+function RideHistory({ userId }: { userId?: string }) {
+  const [rides, setRides] = useState<Ride[]>([]);
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("rides")
+      .select("*")
+      .eq("passenger_id", userId)
+      .in("status", ["completed", "cancelled"])
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => setRides((data ?? []) as Ride[]));
+  }, [userId]);
+
+  if (!rides.length) return null;
+  return (
+    <section className="mt-4 rounded-2xl border bg-card p-4">
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Trip history
+      </h3>
+      <ul className="divide-y">
+        {rides.map((r) => (
+          <li key={r.id} className="py-3">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1 pr-2">
+                <p className="truncate text-sm font-medium">{r.destination_address}</p>
+                <p className="truncate text-xs text-muted-foreground">{r.pickup_address}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-semibold">{formatZAR(Number(r.estimated_price))}</p>
+                <RideStatusBadge status={r.status} />
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      {icon}
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="truncate text-sm">{value}</p>
+      </div>
+    </div>
+  );
+}
