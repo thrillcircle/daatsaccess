@@ -401,13 +401,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      driver_avg_rating: {
-        Args: { driver_user_id: string }
-        Returns: {
-          avg: number
-          count: number
-        }[]
-      }
+      [_ in never]: never
     }
     Enums: {
       app_role: "passenger" | "driver" | "admin"
