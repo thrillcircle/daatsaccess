@@ -101,32 +101,36 @@ export function useLiveLocation(opts: Options): LiveLocationState {
           const writes: Promise<unknown>[] = [];
           if (updateDriverProfile && role === "driver") {
             writes.push(
-              supabase
-                .from("driver_profiles")
-                .update({
-                  current_lat: lat,
-                  current_lng: lng,
-                  heading: heading ?? null,
-                  location_accuracy: accuracy ?? null,
-                  location_updated_at: new Date().toISOString(),
-                })
-                .eq("user_id", userId),
+              Promise.resolve(
+                supabase
+                  .from("driver_profiles")
+                  .update({
+                    current_lat: lat,
+                    current_lng: lng,
+                    heading: heading ?? null,
+                    location_accuracy: accuracy ?? null,
+                    location_updated_at: new Date().toISOString(),
+                  })
+                  .eq("user_id", userId),
+              ),
             );
           }
           if (rideId) {
             writes.push(
-              supabase.from("ride_live_locations").upsert(
-                {
-                  ride_id: rideId,
-                  user_id: userId,
-                  user_role: role,
-                  latitude: lat,
-                  longitude: lng,
-                  heading: heading ?? null,
-                  accuracy: accuracy ?? null,
-                  updated_at: new Date().toISOString(),
-                },
-                { onConflict: "ride_id,user_id" },
+              Promise.resolve(
+                supabase.from("ride_live_locations").upsert(
+                  {
+                    ride_id: rideId,
+                    user_id: userId,
+                    user_role: role,
+                    latitude: lat,
+                    longitude: lng,
+                    heading: heading ?? null,
+                    accuracy: accuracy ?? null,
+                    updated_at: new Date().toISOString(),
+                  },
+                  { onConflict: "ride_id,user_id" },
+                ),
               ),
             );
           }
