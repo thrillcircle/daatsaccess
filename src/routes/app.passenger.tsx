@@ -4,13 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AppShell, NAV_ICONS } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { RouteMap } from "@/components/RouteMap";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
+import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { computeRoute, geocodeAddress } from "@/lib/maps.functions";
+import { computeRoute } from "@/lib/maps.functions";
 import { estimatePrice, formatZAR } from "@/lib/pricing";
 import type { Database } from "@/integrations/supabase/types";
 import { Car, MapPin, Navigation } from "lucide-react";
@@ -30,6 +29,7 @@ function PassengerPage() {
     const items = [{ to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger }];
     if (roles?.includes("driver")) items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
     if (roles?.includes("admin")) items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
+    items.push({ to: "/app/profile", label: "Profile", icon: NAV_ICONS.Profile });
     return items;
   }, [roles]);
 
