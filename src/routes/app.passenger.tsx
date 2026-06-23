@@ -13,7 +13,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { computeRoute } from "@/lib/maps.functions";
 import { estimatePrice, formatZAR } from "@/lib/pricing";
 import type { Database } from "@/integrations/supabase/types";
-import { Car } from "lucide-react";
+import { Car, Radio } from "lucide-react";
+import { useLiveLocation } from "@/hooks/use-live-location";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
