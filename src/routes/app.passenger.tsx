@@ -43,19 +43,61 @@ function PassengerPage() {
 }
 
 function RideRequest({ userId }: { userId?: string }) {
-  const geocode = useServerFn(geocodeAddress);
   const route = useServerFn(computeRoute);
 
-  const [pickup, setPickup] = useState("");
-  const [dest, setDest] = useState("");
-  const [pickupPt, setPickupPt] = useState<{ address: string; lat: number; lng: number } | null>(null);
-  const [destPt, setDestPt] = useState<{ address: string; lat: number; lng: number } | null>(null);
+  const [pickupPt, setPickupPt] = useState<AddressPick | null>(null);
+  const [destPt, setDestPt] = useState<AddressPick | null>(null);
+  const [bias, setBias] = useState<{ lat: number; lng: number } | null>(null);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [durationMin, setDurationMin] = useState<number | null>(null);
   const [estimating, setEstimating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeRide, setActiveRide] = useState<Ride | null>(null);
 
   const price = distanceKm != null ? estimatePrice(distanceKm) : null;
+  const canRequest = !!(pickupPt && destPt && distanceKm != null);
+
+  // Soft-bias autocomplete around the passenger's current location (no prompt — only if cached).
+  useEffect(() => {
+    if (!("geolocation" in navigator)) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setBias({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => undefined,
+      { maximumAge: 5 * 60 * 1000, timeout: 4000 },
+    );
+  }, []);
+
+  // Auto-compute route whenever both points are valid.
+  useEffect(() => {
+    if (!pickupPt || !destPt) {
+      setDistanceKm(null);
+      setDurationMin(null);
+      return;
+    }
+    let cancelled = false;
+    setEstimating(true);
+    route({
+      data: {
+        originLat: pickupPt.lat,
+        originLng: pickupPt.lng,
+        destLat: destPt.lat,
+        destLng: destPt.lng,
+      },
+    })
+      .then((r) => {
+        if (cancelled) return;
+        setDistanceKm(r.distanceKm);
+        setDurationMin(r.durationMin);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        toast.error(err instanceof Error ? err.message : "Could not compute route");
+      })
+      .finally(() => !cancelled && setEstimating(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [pickupPt, destPt, route]);
 
   // Load + subscribe to active ride
   useEffect(() => {
@@ -66,7 +108,7 @@ function RideRequest({ userId }: { userId?: string }) {
         .from("rides")
         .select("*")
         .eq("passenger_id", userId)
-        .in("status", ["requested", "accepted", "driver_arriving", "in_progress"])
+        .in("status", ["requested", "accepted", "driver_arriving", "arrived", "in_progress"])
         .order("created_at", { ascending: false })
         .limit(1);
       setActiveRide(data?.[0] ?? null);
@@ -79,7 +121,11 @@ function RideRequest({ userId }: { userId?: string }) {
           (payload) => {
             const r = payload.new as Ride;
             if (!r) return;
-            if (["requested", "accepted", "driver_arriving", "in_progress"].includes(r.status)) {
+            if (
+              ["requested", "accepted", "driver_arriving", "arrived", "in_progress"].includes(
+                r.status,
+              )
+            ) {
               setActiveRide(r);
             } else {
               setActiveRide(null);
@@ -94,29 +140,6 @@ function RideRequest({ userId }: { userId?: string }) {
     return () => unsub?.();
   }, [userId]);
 
-  async function onEstimate() {
-    if (!pickup.trim() || !dest.trim()) return;
-    setEstimating(true);
-    try {
-      const [p, d] = await Promise.all([
-        geocode({ data: { address: pickup } }),
-        geocode({ data: { address: dest } }),
-      ]);
-      setPickupPt(p);
-      setDestPt(d);
-      setPickup(p.address);
-      setDest(d.address);
-      const r = await route({
-        data: { originLat: p.lat, originLng: p.lng, destLat: d.lat, destLng: d.lng },
-      });
-      setDistanceKm(r.distanceKm);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not estimate route");
-    } finally {
-      setEstimating(false);
-    }
-  }
-
   async function onRequest() {
     if (!userId || !pickupPt || !destPt || distanceKm == null || price == null) return;
     setSubmitting(true);
@@ -128,11 +151,14 @@ function RideRequest({ userId }: { userId?: string }) {
           pickup_address: pickupPt.address,
           pickup_lat: pickupPt.lat,
           pickup_lng: pickupPt.lng,
+          pickup_place_id: pickupPt.placeId,
           destination_address: destPt.address,
           destination_lat: destPt.lat,
           destination_lng: destPt.lng,
+          destination_place_id: destPt.placeId,
           distance_km: distanceKm,
           estimated_price: price,
+          estimated_duration_seconds: durationMin != null ? durationMin * 60 : null,
         })
         .select()
         .single();
@@ -197,43 +223,51 @@ function RideRequest({ userId }: { userId?: string }) {
   return (
     <section className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
       <h2 className="text-lg font-semibold">Where to?</h2>
-      <p className="text-sm text-muted-foreground">Enter pickup and destination addresses.</p>
+      <p className="text-sm text-muted-foreground">
+        Search for a pickup and destination to see the fare.
+      </p>
 
       <div className="mt-4 space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="pickup">Pickup</Label>
-          <Input
-            id="pickup"
-            placeholder="e.g. Sandton City, Johannesburg"
-            value={pickup}
-            onChange={(e) => setPickup(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="dest">Destination</Label>
-          <Input
-            id="dest"
-            placeholder="e.g. OR Tambo International Airport"
-            value={dest}
-            onChange={(e) => setDest(e.target.value)}
-          />
-        </div>
-
-        <Button variant="outline" className="w-full" onClick={onEstimate} disabled={estimating}>
-          {estimating ? "Estimating…" : "Estimate price"}
-        </Button>
+        <AddressAutocomplete
+          id="pickup"
+          label="Pickup"
+          value={pickupPt}
+          onChange={setPickupPt}
+          bias={bias}
+          placeholder="e.g. Sandton City, Johannesburg"
+          enableCurrentLocation
+        />
+        <AddressAutocomplete
+          id="dest"
+          label="Destination"
+          value={destPt}
+          onChange={setDestPt}
+          bias={bias ?? (pickupPt ? { lat: pickupPt.lat, lng: pickupPt.lng } : null)}
+          placeholder="e.g. OR Tambo International Airport"
+        />
       </div>
 
       {pickupPt && destPt && (
         <div className="mt-4 space-y-3">
           <RouteMap origin={pickupPt} destination={destPt} className="h-48" />
           <div className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm">
-            <span className="text-muted-foreground">Distance · Fare</span>
+            <span className="text-muted-foreground">
+              {estimating
+                ? "Estimating…"
+                : distanceKm != null
+                  ? `${distanceKm.toFixed(2)} km${durationMin != null ? ` · ~${durationMin} min` : ""}`
+                  : "—"}
+            </span>
             <span className="font-semibold">
-              {distanceKm?.toFixed(2)} km · {price != null ? formatZAR(price) : "—"}
+              {price != null ? formatZAR(price) : "—"}
             </span>
           </div>
-          <Button className="w-full" size="lg" onClick={onRequest} disabled={submitting}>
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={onRequest}
+            disabled={!canRequest || submitting || estimating}
+          >
             {submitting ? "Requesting…" : "Request ride"}
           </Button>
         </div>
