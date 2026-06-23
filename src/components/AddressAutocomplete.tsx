@@ -136,7 +136,14 @@ export function AddressAutocomplete({
         setOpen(true);
       } catch (err) {
         console.warn("Autocomplete failed", err);
-        setError("Couldn't load suggestions. Type a full address.");
+        const msg = err instanceof Error ? err.message : String(err);
+        if (/referer .* blocked/i.test(msg)) {
+          setError(
+            "Address search isn't available on this domain — open the published preview link to test it.",
+          );
+        } else {
+          setError("Couldn't load suggestions. Type a full address.");
+        }
       } finally {
         setLoading(false);
       }
