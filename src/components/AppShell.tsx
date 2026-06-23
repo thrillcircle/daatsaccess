@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Car, User, ShieldCheck, LogOut } from "lucide-react";
+import { Car, User, ShieldCheck, LogOut, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -70,4 +70,5 @@ export const NAV_ICONS = {
   Passenger: <User className="h-5 w-5" />,
   Driver: <Car className="h-5 w-5" />,
   Admin: <ShieldCheck className="h-5 w-5" />,
+  Profile: <UserCog className="h-5 w-5" />,
 };

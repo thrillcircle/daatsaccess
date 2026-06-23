@@ -320,7 +320,8 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
   const nextStatus: Record<RideStatus, RideStatus | null> = {
     requested: "accepted",
     accepted: "driver_arriving",
-    driver_arriving: "in_progress",
+    driver_arriving: "arrived",
+    arrived: "in_progress",
     in_progress: "completed",
     completed: null,
     cancelled: null,
@@ -328,7 +329,8 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
   const nextLabel: Record<RideStatus, string> = {
     requested: "Accept",
     accepted: "I'm arriving",
-    driver_arriving: "Start trip",
+    driver_arriving: "I've arrived",
+    arrived: "Start trip",
     in_progress: "Complete trip",
     completed: "",
     cancelled: "",

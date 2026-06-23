@@ -19,9 +19,12 @@ export type Database = {
           created_at: string
           current_lat: number | null
           current_lng: number | null
+          heading: number | null
           id: string
           is_available: boolean
           license_plate: string | null
+          location_accuracy: number | null
+          location_updated_at: string | null
           user_id: string
           vehicle_model: string | null
           vehicle_type: string | null
@@ -30,9 +33,12 @@ export type Database = {
           created_at?: string
           current_lat?: number | null
           current_lng?: number | null
+          heading?: number | null
           id?: string
           is_available?: boolean
           license_plate?: string | null
+          location_accuracy?: number | null
+          location_updated_at?: string | null
           user_id: string
           vehicle_model?: string | null
           vehicle_type?: string | null
@@ -41,9 +47,12 @@ export type Database = {
           created_at?: string
           current_lat?: number | null
           current_lng?: number | null
+          heading?: number | null
           id?: string
           is_available?: boolean
           license_plate?: string | null
+          location_accuracy?: number | null
+          location_updated_at?: string | null
           user_id?: string
           vehicle_model?: string | null
           vehicle_type?: string | null
@@ -93,6 +102,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           full_name: string | null
           id: string
@@ -101,6 +111,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
@@ -109,6 +120,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
@@ -118,52 +130,246 @@ export type Database = {
         }
         Relationships: []
       }
+      ride_change_log: {
+        Row: {
+          acknowledged_by_driver_at: string | null
+          change_type: string
+          changed_by: string
+          created_at: string
+          id: string
+          new_values: Json | null
+          previous_values: Json | null
+          ride_id: string
+          route_version: number | null
+        }
+        Insert: {
+          acknowledged_by_driver_at?: string | null
+          change_type: string
+          changed_by: string
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          previous_values?: Json | null
+          ride_id: string
+          route_version?: number | null
+        }
+        Update: {
+          acknowledged_by_driver_at?: string | null
+          change_type?: string
+          changed_by?: string
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          previous_values?: Json | null
+          ride_id?: string
+          route_version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_change_log_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ride_live_locations: {
+        Row: {
+          accuracy: number | null
+          heading: number | null
+          id: string
+          latitude: number
+          longitude: number
+          ride_id: string
+          updated_at: string
+          user_id: string
+          user_role: string
+        }
+        Insert: {
+          accuracy?: number | null
+          heading?: number | null
+          id?: string
+          latitude: number
+          longitude: number
+          ride_id: string
+          updated_at?: string
+          user_id: string
+          user_role: string
+        }
+        Update: {
+          accuracy?: number | null
+          heading?: number | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          ride_id?: string
+          updated_at?: string
+          user_id?: string
+          user_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_live_locations_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ride_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          driver_id: string
+          id: string
+          passenger_id: string
+          rating: number
+          ride_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          driver_id: string
+          id?: string
+          passenger_id: string
+          rating: number
+          ride_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          driver_id?: string
+          id?: string
+          passenger_id?: string
+          rating?: number
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_ratings_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ride_status_events: {
+        Row: {
+          changed_by: string
+          created_at: string
+          id: string
+          new_status: string
+          previous_status: string | null
+          ride_id: string
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string
+          id?: string
+          new_status: string
+          previous_status?: string | null
+          ride_id: string
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string
+          id?: string
+          new_status?: string
+          previous_status?: string | null
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_status_events_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rides: {
         Row: {
+          accepted_at: string | null
+          actual_distance_km: number
+          actual_duration_seconds: number | null
+          completed_at: string | null
           created_at: string
           destination_address: string
           destination_lat: number
           destination_lng: number
+          destination_place_id: string | null
           distance_km: number
+          driver_arrived_at: string | null
           driver_id: string | null
+          estimated_duration_seconds: number | null
           estimated_price: number
           id: string
+          last_route_updated_at: string | null
           passenger_id: string
           pickup_address: string
           pickup_lat: number
           pickup_lng: number
+          pickup_place_id: string | null
+          route_version: number
+          started_at: string | null
           status: Database["public"]["Enums"]["ride_status"]
           updated_at: string
         }
         Insert: {
+          accepted_at?: string | null
+          actual_distance_km?: number
+          actual_duration_seconds?: number | null
+          completed_at?: string | null
           created_at?: string
           destination_address: string
           destination_lat: number
           destination_lng: number
+          destination_place_id?: string | null
           distance_km: number
+          driver_arrived_at?: string | null
           driver_id?: string | null
+          estimated_duration_seconds?: number | null
           estimated_price: number
           id?: string
+          last_route_updated_at?: string | null
           passenger_id: string
           pickup_address: string
           pickup_lat: number
           pickup_lng: number
+          pickup_place_id?: string | null
+          route_version?: number
+          started_at?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
           updated_at?: string
         }
         Update: {
+          accepted_at?: string | null
+          actual_distance_km?: number
+          actual_duration_seconds?: number | null
+          completed_at?: string | null
           created_at?: string
           destination_address?: string
           destination_lat?: number
           destination_lng?: number
+          destination_place_id?: string | null
           distance_km?: number
+          driver_arrived_at?: string | null
           driver_id?: string | null
+          estimated_duration_seconds?: number | null
           estimated_price?: number
           id?: string
+          last_route_updated_at?: string | null
           passenger_id?: string
           pickup_address?: string
           pickup_lat?: number
           pickup_lng?: number
+          pickup_place_id?: string | null
+          route_version?: number
+          started_at?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
           updated_at?: string
         }
@@ -204,6 +410,7 @@ export type Database = {
         | "requested"
         | "accepted"
         | "driver_arriving"
+        | "arrived"
         | "in_progress"
         | "completed"
         | "cancelled"
@@ -340,6 +547,7 @@ export const Constants = {
         "requested",
         "accepted",
         "driver_arriving",
+        "arrived",
         "in_progress",
         "completed",
         "cancelled",
