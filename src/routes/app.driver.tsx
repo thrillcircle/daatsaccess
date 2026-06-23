@@ -12,7 +12,8 @@ import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { formatZAR } from "@/lib/pricing";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
-import { MapPin, Navigation } from "lucide-react";
+import { MapPin, Navigation, AlertTriangle } from "lucide-react";
+import { useLiveLocation } from "@/hooks/use-live-location";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
