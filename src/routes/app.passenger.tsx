@@ -6,13 +6,14 @@ import { AppShell, NAV_ICONS } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { RouteMap } from "@/components/RouteMap";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
+import { ActiveTripCard } from "@/components/ActiveTripCard";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { computeRoute } from "@/lib/maps.functions";
 import { estimatePrice, formatZAR } from "@/lib/pricing";
 import type { Database } from "@/integrations/supabase/types";
-import { Car, MapPin, Navigation } from "lucide-react";
+import { Car } from "lucide-react";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
@@ -187,36 +188,17 @@ function RideRequest({ userId }: { userId?: string }) {
 
   if (activeRide) {
     return (
-      <section className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Your ride
-          </h2>
-          <RideStatusBadge status={activeRide.status} />
+      <>
+        <ActiveTripCard ride={activeRide} onCancel={onCancel} />
+        <div className="mt-3 flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm">
+          <span className="text-muted-foreground">
+            {Number(activeRide.distance_km).toFixed(2)} km
+          </span>
+          <span className="font-semibold">
+            {formatZAR(Number(activeRide.estimated_price))}
+          </span>
         </div>
-        <RouteMap
-          origin={{ lat: activeRide.pickup_lat, lng: activeRide.pickup_lng }}
-          destination={{ lat: activeRide.destination_lat, lng: activeRide.destination_lng }}
-          className="h-56"
-        />
-        <dl className="mt-4 space-y-2 text-sm">
-          <Row icon={<MapPin className="h-4 w-4 text-primary" />} label="From" value={activeRide.pickup_address} />
-          <Row icon={<Navigation className="h-4 w-4 text-primary" />} label="To" value={activeRide.destination_address} />
-          <div className="flex items-center justify-between pt-2">
-            <span className="text-muted-foreground">Distance</span>
-            <span className="font-medium">{Number(activeRide.distance_km).toFixed(2)} km</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Estimated fare</span>
-            <span className="font-semibold">{formatZAR(Number(activeRide.estimated_price))}</span>
-          </div>
-        </dl>
-        {activeRide.status !== "in_progress" && (
-          <Button variant="outline" className="mt-4 w-full" onClick={onCancel}>
-            Cancel ride
-          </Button>
-        )}
-      </section>
+      </>
     );
   }
 
