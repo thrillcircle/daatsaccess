@@ -50,10 +50,8 @@ function Landing() {
           <div className="inline-flex items-center gap-2 rounded-full border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
             <Car className="h-3.5 w-3.5" /> South Africa · MVP
           </div>
-          <h1 className="text-4xl font-semibold leading-tight tracking-tight">
-            Rides made simple.
-          </h1>
-          <p className="text-base text-muted-foreground">
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight">Rides made simple.</h1>
+          <p className="text-muted-foreground">
             Request a ride in seconds, or earn as a driver. Transparent pricing — a R20 base fare and R13.50 per km.
           </p>
           <div className="flex flex-col gap-3 pt-2">
@@ -70,9 +68,7 @@ function Landing() {
           </div>
         </div>
 
-        <footer className="pt-8 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Access
-        </footer>
+        <footer className="pt-8 text-center text-xs text-muted-foreground">© {new Date().getFullYear()} Access</footer>
       </div>
     </div>
   );
