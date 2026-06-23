@@ -6,13 +6,14 @@ import { AppShell, NAV_ICONS } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { RouteMap } from "@/components/RouteMap";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
+import { ActiveTripCard } from "@/components/ActiveTripCard";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { computeRoute } from "@/lib/maps.functions";
 import { estimatePrice, formatZAR } from "@/lib/pricing";
 import type { Database } from "@/integrations/supabase/types";
-import { Car, MapPin, Navigation } from "lucide-react";
+import { Car } from "lucide-react";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
