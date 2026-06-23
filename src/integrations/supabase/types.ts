@@ -14,16 +14,205 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      driver_profiles: {
+        Row: {
+          created_at: string
+          current_lat: number | null
+          current_lng: number | null
+          id: string
+          is_available: boolean
+          license_plate: string | null
+          user_id: string
+          vehicle_model: string | null
+          vehicle_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_lat?: number | null
+          current_lng?: number | null
+          id?: string
+          is_available?: boolean
+          license_plate?: string | null
+          user_id: string
+          vehicle_model?: string | null
+          vehicle_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_lat?: number | null
+          current_lng?: number | null
+          id?: string
+          is_available?: boolean
+          license_plate?: string | null
+          user_id?: string
+          vehicle_model?: string | null
+          vehicle_type?: string | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          driver_id: string | null
+          id: string
+          passenger_id: string
+          payment_method: string | null
+          ride_id: string
+          status: Database["public"]["Enums"]["payment_status"]
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          driver_id?: string | null
+          id?: string
+          passenger_id: string
+          payment_method?: string | null
+          ride_id: string
+          status?: Database["public"]["Enums"]["payment_status"]
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          driver_id?: string | null
+          id?: string
+          passenger_id?: string
+          payment_method?: string | null
+          ride_id?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      rides: {
+        Row: {
+          created_at: string
+          destination_address: string
+          destination_lat: number
+          destination_lng: number
+          distance_km: number
+          driver_id: string | null
+          estimated_price: number
+          id: string
+          passenger_id: string
+          pickup_address: string
+          pickup_lat: number
+          pickup_lng: number
+          status: Database["public"]["Enums"]["ride_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          destination_address: string
+          destination_lat: number
+          destination_lng: number
+          distance_km: number
+          driver_id?: string | null
+          estimated_price: number
+          id?: string
+          passenger_id: string
+          pickup_address: string
+          pickup_lat: number
+          pickup_lng: number
+          status?: Database["public"]["Enums"]["ride_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          destination_address?: string
+          destination_lat?: number
+          destination_lng?: number
+          distance_km?: number
+          driver_id?: string | null
+          estimated_price?: number
+          id?: string
+          passenger_id?: string
+          pickup_address?: string
+          pickup_lat?: number
+          pickup_lng?: number
+          status?: Database["public"]["Enums"]["ride_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "passenger" | "driver" | "admin"
+      payment_status: "pending" | "paid" | "failed" | "refunded"
+      ride_status:
+        | "requested"
+        | "accepted"
+        | "driver_arriving"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +339,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["passenger", "driver", "admin"],
+      payment_status: ["pending", "paid", "failed", "refunded"],
+      ride_status: [
+        "requested",
+        "accepted",
+        "driver_arriving",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+    },
   },
 } as const
