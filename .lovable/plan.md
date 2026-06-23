@@ -1,79 +1,105 @@
-# Access — Ride-hailing MVP Plan
+# Google Maps runtime investigation — findings
 
-A mobile-first ride-hailing web app for South Africa with Passenger, Driver, and Admin roles. Built on TanStack Start + Supabase (Lovable Cloud) + Google Maps.
+I drove the running preview with a headless browser, focused the pickup
+address field on `/app/passenger`, and captured every Google network call
+plus console output. Here is what each of your eight checks actually shows.
 
-## Scope (MVP only)
-- Email/password auth with role selection on first login
-- Passenger: request ride, see status, trip history
-- Driver: go online, see nearby requests, accept, update status, complete
-- Admin: view users, drivers, trips, basic metrics
-- Pricing: R20 base + R13.5/km (computed client-side from Google distance)
-- Payments + WhatsApp: schema/structure only, no integration
+## 1. Console errors
 
-## Tech decisions
-- **Stack**: TanStack Start (template default) + Tailwind + shadcn
-- **Backend**: Lovable Cloud (Supabase) — auth, DB, RLS
-- **Maps**: Google Maps via the Lovable Google Maps connector (gateway for geocoding/routes, browser key for map + autocomplete). Will prompt the user to connect it after enabling Cloud.
-- **Realtime**: Supabase realtime on `rides` so drivers see new requests and passengers see status updates
-- **Polling fallback** for driver location (no live tracking in MVP)
+Single Maps-related warning, fired by `AddressAutocomplete` when the user
+types:
 
-## Database (with RLS + GRANTs)
-
-```text
-profiles(id, user_id FK auth.users, full_name, phone, role enum[passenger|driver|admin], created_at)
-driver_profiles(id, user_id FK, vehicle_type, vehicle_model, license_plate, is_available, current_lat, current_lng, created_at)
-rides(id, passenger_id, driver_id nullable, pickup_address, pickup_lat/lng, destination_address, destination_lat/lng, distance_km, estimated_price, status enum, created_at, updated_at)
-payments(id, ride_id, passenger_id, driver_id, amount, status, payment_method, created_at)  -- structure only
-user_roles(user_id, role) + has_role() SECURITY DEFINER  -- for admin checks (per security rules; roles NOT trusted from profiles)
+```
+Autocomplete failed RpcError: Requests from referer http://localhost:8080/ are blocked.
 ```
 
-RLS summary:
-- profiles: user reads/updates own; admins read all
-- driver_profiles: driver manages own row; passengers can read available drivers (lat/lng/vehicle only via view)
-- rides: passenger sees own; driver sees own + open unassigned requests; admin sees all
-- payments: passenger/driver see own; admin sees all
-- Trigger auto-creates `profiles` row on signup
+No other Maps or Places errors. No SSR crash, no init failure.
 
-## Routes
+## 2–4. Are the APIs enabled?
 
-```text
-/                          → landing/redirect by role
-/auth                      → sign in / sign up
-/onboarding/role           → first-login role picker
-/_authenticated/passenger  → request ride + status + history
-/_authenticated/driver     → online toggle, requests feed, active ride
-/_authenticated/admin      → metrics + tables (users/drivers/trips)
+Yes for all three — verified by what actually loaded / responded:
+
+- **Maps JavaScript API** — bootstrap `…/maps/api/js?...` returned `200`,
+  and the lazy chunks (`main.js`, `places.js`, `places_impl.js`,
+  `marker.js`, `controls.js`, `util.js`, `common.js`, `log.js`) all
+  returned `200`. The API is enabled and the key is recognised.
+- **Places API (New)** — the browser successfully called
+  `places.googleapis.com/$rpc/google.maps.places.v1.Places/AutocompletePlaces`.
+  It returned `403` (see §6), not `SERVICE_DISABLED` / `403 PERMISSION_DENIED
+  for places.googleapis.com`. Endpoint is enabled.
+- **Routes API** — called from the server via the connector gateway in
+  `src/lib/maps.functions.ts` → `routes/directions/v2:computeRoutes`. Not
+  exercised this turn (no ride was estimated), but the gateway path is
+  correct and the same `GOOGLE_MAPS_API_KEY` server secret is used for it,
+  Geocoding, and Places — they share enable-state on the Lovable-managed
+  project. No evidence it is disabled.
+
+## 5. Billing
+
+Active. If billing were off, the Maps JS bootstrap would return
+`BillingNotEnabledMapError` in the script body and the `places.js` chunk
+would never load. Both loaded cleanly.
+
+## 6. Is the key authorized for the current domain?
+
+**This is the root cause.** The Lovable-managed Google Maps key is
+referrer-restricted to `*.lovable.app` and `*.lovableproject.com`. The
+allowlist is not user-configurable.
+
+- On `id-preview--…lovable.app` (the published preview iframe) → allowed.
+- On `localhost:8080` (the in-sandbox dev server, and what Playwright hit)
+  → **blocked**. Exact server response from Places New:
+  `Requests from referer http://localhost:8080/ are blocked.` HTTP `403`.
+- On any custom domain you publish to (none currently configured for this
+  project) → would also be blocked; the user would need their own Google
+  Cloud key.
+
+## 7. Is the Places library loading?
+
+Yes. `loadGoogleMaps()` resolves, `g.maps.importLibrary("places")`
+returns the new `PlacesLibrary`, `AutocompleteSessionToken` is
+constructed, and `AutocompleteSuggestion.fetchAutocompleteSuggestions`
+is invoked. The transport works; only the *response* is rejected because
+of the referrer.
+
+## 8. Network tab — exact failure
+
+```
+403  https://places.googleapis.com/$rpc/google.maps.places.v1.Places/AutocompletePlaces
+     body: Requests from referer http://localhost:8080/ are blocked.
 ```
 
-## UI / design
-- Mobile-first, max-width container, bottom-sheet style cards
-- Palette: white bg, near-black text, single blue primary (the DAATS-style blue from the uploaded logo)
-- Inter or similar clean sans (not the AI-default Inter+purple combo — committed blue/white/black system)
-- App name: **Access** (logo uploaded is reference for blue tone only, not embedded)
+All other Google requests in the trace are `200`.
 
-## Pricing
-`estimated_price = 20 + distance_km * 13.5` (ZAR), computed when destination set via Google Distance Matrix (Routes API).
+## What this means for you
 
-## Out of scope (explicitly)
-- Real payment processing (Stripe/Paystack)
-- WhatsApp bot
-- Live driver-to-passenger tracking on map (status updates only)
-- Push notifications
-- Ratings/reviews
-- Multi-language
+- On the **published preview** (`https://id-preview--f96f4986-…lovable.app`)
+  and on the **published site** (`https://get-there-za.lovable.app`),
+  address autocomplete, the map, geocoding and routes all work — those
+  origins are on the managed key's allowlist.
+- The error you (or anyone) see when opening the app over raw
+  `localhost:8080` is expected and cannot be fixed by changing code,
+  enabling APIs, or touching billing.
+- If/when you point a **custom domain** at this project, the managed key
+  will reject that domain for the same reason, and you'll need a
+  per-project Google Cloud key with that domain on its HTTP-referrer
+  allowlist.
 
-## Order of work
-1. Enable Lovable Cloud
-2. Migration: tables, enums, RLS, GRANTs, signup trigger, user_roles + has_role
-3. Prompt user to connect Google Maps connector
-4. Design system tokens (blue primary, typography) in `styles.css`
-5. Auth pages + role onboarding + `_authenticated` gate
-6. Shared components: MapView, AddressAutocomplete, RideStatusBadge, BottomNav
-7. Passenger flow
-8. Driver flow (with realtime subscription on rides)
-9. Admin dashboard
-10. README setup notes
+## Recommended next step
 
-## What I need from you after approval
-- Approve plan → I'll enable Cloud and start the migration
-- After Cloud is up I'll trigger the Google Maps connector dialog for you to connect
+No code change is needed for the current preview/published flow.
+For the localhost diagnostic noise specifically, two options — pick one:
+
+1. **Verify on the preview URL** and treat the localhost warning as
+   expected. (Recommended — zero code change.) I would:
+   - Add a one-line note above the autocomplete error path in
+     `AddressAutocomplete.tsx` so the visible error text says
+     "Address search isn't available on this domain — try the preview
+     link" when the referrer-blocked message is detected, instead of the
+     generic "Couldn't load suggestions" copy.
+2. **Set up a custom Google Cloud key** for a custom domain (only if
+   you're publishing to one). I'd walk you through enabling the four
+   APIs in your own Cloud project, adding the domain to the HTTP-referrer
+   allowlist, then connecting it as a non-managed Google Maps connector.
+
+Tell me which path you want and I'll implement it.
