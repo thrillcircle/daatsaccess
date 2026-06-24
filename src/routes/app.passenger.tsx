@@ -612,6 +612,18 @@ function ScheduledTrips({ userId }: { userId?: string }) {
                       : "?"}{" "}
                     min
                   </p>
+                  {r.driver && (
+                    <p className="mt-1 rounded-md bg-secondary px-2 py-1 text-xs">
+                      <span className="font-medium">Driver assigned:</span>{" "}
+                      {r.driver.full_name ?? "Driver"}
+                      {r.driver.vehicle_model
+                        ? ` · ${r.driver.vehicle_model}`
+                        : ""}
+                      {r.driver.license_plate
+                        ? ` · ${r.driver.license_plate}`
+                        : ""}
+                    </p>
+                  )}
                 </div>
                 <p className="text-sm font-semibold">{formatZAR(Number(r.estimated_price))}</p>
               </div>
@@ -632,23 +644,24 @@ function ScheduledTrips({ userId }: { userId?: string }) {
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditingId(r.id);
-                      // Pre-fill in local time
-                      if (r.scheduled_at) {
-                        const d = new Date(r.scheduled_at);
-                        const pad = (n: number) => String(n).padStart(2, "0");
-                        setEditVal(
-                          `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`,
-                        );
-                      }
-                    }}
-                  >
-                    Edit time
-                  </Button>
+                  {!r.driver_id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingId(r.id);
+                        if (r.scheduled_at) {
+                          const d = new Date(r.scheduled_at);
+                          const pad = (n: number) => String(n).padStart(2, "0");
+                          setEditVal(
+                            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`,
+                          );
+                        }
+                      }}
+                    >
+                      Edit time
+                    </Button>
+                  )}
                   <Button size="sm" variant="ghost" onClick={() => cancel(r.id)}>
                     Cancel trip
                   </Button>
