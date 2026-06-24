@@ -15,6 +15,16 @@ import { estimatePrice, formatZAR } from "@/lib/pricing";
 import type { Database } from "@/integrations/supabase/types";
 import { Car, Radio } from "lucide-react";
 import { useLiveLocation } from "@/hooks/use-live-location";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
