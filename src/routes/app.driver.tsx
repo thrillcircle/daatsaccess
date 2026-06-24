@@ -128,14 +128,17 @@ function DriverPage() {
     }
     let unsub: (() => void) | undefined;
     const load = async () => {
+      const nowIso = new Date().toISOString();
       const { data } = await supabase
         .from("rides")
         .select("*")
         .is("driver_id", null)
         .eq("status", "requested")
+        .or(`request_type.eq.now,scheduled_at.lte.${nowIso}`)
         .order("created_at", { ascending: false })
         .limit(20);
       setOpenRides((data ?? []) as Ride[]);
+
     };
     load();
     const ch = supabase
