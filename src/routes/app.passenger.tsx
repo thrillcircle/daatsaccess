@@ -242,8 +242,18 @@ function RideRequest({ userId }: { userId?: string }) {
         .select()
         .single();
       if (error) throw error;
-      setActiveRide(data as Ride);
-      toast.success("Ride requested — finding a driver");
+      const inserted = data as Ride;
+      if (inserted.request_type === "scheduled") {
+        toast.success(
+          `Trip scheduled for ${new Date(inserted.scheduled_at!).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`,
+        );
+        setMode("now");
+        setScheduleLocal("");
+      } else {
+        setActiveRide(inserted);
+        toast.success("Ride requested — finding a driver");
+      }
+
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to request ride");
     } finally {
