@@ -132,14 +132,23 @@ function LivePage() {
       const driverIds = Array.from(new Set(rs.map((r) => r.driver_id).filter((v): v is string => !!v)));
       const rideIds = rs.map((r) => r.id);
 
+      const { data: driverRoleRows } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "driver");
+      const driverRoleIds = (driverRoleRows ?? []).map((r) => r.user_id);
+      const driverIdsScoped = driverIds.filter((id) => driverRoleIds.includes(id));
+
       const [profilesRes, vehiclesRes, onlineRes, changesRes, locsRes, notesRes] = await Promise.all([
         userIds.length
           ? supabase.from("profiles").select("*").in("user_id", userIds)
           : Promise.resolve({ data: [] as Profile[] }),
-        driverIds.length
-          ? supabase.from("driver_profiles").select("*").in("user_id", driverIds)
+        driverIdsScoped.length
+          ? supabase.from("driver_profiles").select("*").in("user_id", driverIdsScoped)
           : Promise.resolve({ data: [] as DriverProfile[] }),
-        supabase.from("driver_profiles").select("*").eq("is_available", true),
+        driverRoleIds.length
+          ? supabase.from("driver_profiles").select("*").eq("is_available", true).in("user_id", driverRoleIds)
+          : Promise.resolve({ data: [] as DriverProfile[] }),
         rideIds.length
           ? supabase
               .from("ride_change_log")
