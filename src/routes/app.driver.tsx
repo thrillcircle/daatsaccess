@@ -810,3 +810,139 @@ function ChangeRow({
   );
 }
 
+type DriverHistoryRow = Ride & {
+  passenger?: { full_name: string | null } | null;
+};
+
+function DriverHistory({ driverId }: { driverId: string }) {
+  const [rows, setRows] = useState<DriverHistoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("rides")
+        .select("*")
+        .eq("driver_id", driverId)
+        .in("status", ["completed", "cancelled"])
+        .order("completed_at", { ascending: false, nullsFirst: false })
+        .limit(50);
+      const list = (data ?? []) as Ride[];
+      const passengerIds = Array.from(new Set(list.map((r) => r.passenger_id)));
+      const { data: profs } = passengerIds.length
+        ? await supabase
+            .from("profiles")
+            .select("user_id, full_name")
+            .in("user_id", passengerIds)
+        : { data: [] as { user_id: string; full_name: string | null }[] };
+      const pMap = new Map((profs ?? []).map((p) => [p.user_id, p]));
+      const enriched: DriverHistoryRow[] = list.map((r) => ({
+        ...r,
+        passenger: pMap.get(r.passenger_id) ?? null,
+      }));
+      if (!cancelled) {
+        setRows(enriched);
+        setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [driverId]);
+
+  const completed = rows.filter((r) => r.status === "completed");
+  const totals = completed.reduce(
+    (acc, r) => {
+      const km = Number(r.actual_distance_km ?? r.distance_km) || 0;
+      const fare = Number(r.estimated_price) || 0;
+      acc.km += km;
+      acc.earnings += fare;
+      return acc;
+    },
+    { km: 0, earnings: 0 },
+  );
+
+  return (
+    <section className="mt-6 rounded-2xl border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Trip history
+        </h3>
+      </div>
+      <div className="mb-4 grid grid-cols-3 gap-2">
+        <SummaryStat label="Completed" value={String(completed.length)} />
+        <SummaryStat label="Distance" value={`${totals.km.toFixed(1)} km`} />
+        <SummaryStat label="Earnings" value={formatZAR(totals.earnings)} />
+      </div>
+      {loading ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
+      ) : !rows.length ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          No past trips yet. Completed rides will appear here.
+        </p>
+      ) : (
+        <ul className="divide-y">
+          {rows.map((r) => {
+            const durSec =
+              r.actual_duration_seconds ??
+              (r.started_at && r.completed_at
+                ? Math.round(
+                    (new Date(r.completed_at).getTime() -
+                      new Date(r.started_at).getTime()) /
+                      1000,
+                  )
+                : null);
+            const km = Number(r.actual_distance_km ?? r.distance_km);
+            const when = r.completed_at ?? r.updated_at ?? r.created_at;
+            return (
+              <li key={r.id} className="py-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(when).toLocaleString(undefined, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </p>
+                    <p className="mt-1 truncate text-sm font-medium">
+                      {r.destination_address}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      From {r.pickup_address}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {r.passenger?.full_name ?? "Passenger"}
+                      {" · "}
+                      {km.toFixed(1)} km
+                      {r.actual_distance_km == null ? " (est)" : ""}
+                      {durSec != null ? ` · ${Math.round(durSec / 60)} min` : ""}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold">
+                      {formatZAR(Number(r.estimated_price))}
+                    </p>
+                    <RideStatusBadge status={r.status} />
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function SummaryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-background p-3">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
+
