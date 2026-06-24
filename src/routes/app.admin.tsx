@@ -95,52 +95,85 @@ function AdminPage() {
     if (!isAdmin) return;
     let cancelled = false;
     const loadMetrics = async () => {
-      const [
-        passengersRes,
-        driversRes,
-        onlineRes,
-        activeRes,
-        scheduledRes,
-        completedRes,
-        cancelledRes,
-        allRides,
-        recentEdits,
-        ratingsRes,
-      ] = await Promise.all([
-        supabase.from("user_roles").select("user_id", { count: "exact", head: true }).eq("role", "passenger"),
-        supabase.from("driver_profiles").select("id", { count: "exact", head: true }),
-        supabase.from("driver_profiles").select("id", { count: "exact", head: true }).eq("is_available", true),
-        supabase.from("rides").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "driver_arriving", "arrived", "in_progress"]),
-        supabase.from("rides").select("id", { count: "exact", head: true }).eq("request_type", "scheduled").in("status", ["requested", "accepted"]),
-        supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "completed"),
-        supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
-        supabase.from("rides").select("*").order("created_at", { ascending: false }).limit(50),
-        supabase.from("ride_change_log").select("*").order("created_at", { ascending: false }).limit(20),
-        supabase.from("ride_ratings").select("rating"),
-      ]);
-      if (cancelled) return;
-      const all = (allRides.data ?? []) as Ride[];
-      const completedRides = all.filter((r) => r.status === "completed");
-      const earnings = completedRides.reduce((acc, r) => acc + Number(r.estimated_price ?? 0), 0);
-      const ratings = (ratingsRes.data ?? []) as { rating: number }[];
-      const ratingAvg = ratings.length
-        ? ratings.reduce((a, r) => a + Number(r.rating), 0) / ratings.length
-        : null;
-      setMetrics({
-        passengers: passengersRes.count ?? 0,
-        drivers: driversRes.count ?? 0,
-        onlineDrivers: onlineRes.count ?? 0,
-        active: activeRes.count ?? 0,
-        scheduled: scheduledRes.count ?? 0,
-        completed: completedRes.count ?? 0,
-        cancelled: cancelledRes.count ?? 0,
-        earnings,
-        ratingAvg,
-        ratingCount: ratings.length,
-      });
-      setRides(all);
-      setEdits((recentEdits.data ?? []) as RideChange[]);
+      setLoadingRides(true);
+      setRidesError(null);
+      try {
+        const [
+          passengersRes,
+          driversRes,
+          onlineRes,
+          totalTripsRes,
+          requestedRes,
+          activeRes,
+          scheduledRes,
+          completedRes,
+          cancelledRes,
+          allRides,
+          recentEdits,
+          ratingsRes,
+        ] = await Promise.all([
+          supabase.from("user_roles").select("user_id", { count: "exact", head: true }).eq("role", "passenger"),
+          supabase.from("driver_profiles").select("id", { count: "exact", head: true }),
+          supabase.from("driver_profiles").select("id", { count: "exact", head: true }).eq("is_available", true),
+          supabase.from("rides").select("id", { count: "exact", head: true }),
+          supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "requested"),
+          supabase.from("rides").select("id", { count: "exact", head: true }).in("status", ACTIVE_STATUSES as unknown as string[]),
+          supabase.from("rides").select("id", { count: "exact", head: true }).eq("request_type", "scheduled").in("status", ["requested", "accepted"]),
+          supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "completed"),
+          supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
+          supabase.from("rides").select("*").order("updated_at", { ascending: false, nullsFirst: false }).limit(50),
+          supabase.from("ride_change_log").select("*").order("created_at", { ascending: false }).limit(20),
+          supabase.from("ride_ratings").select("rating"),
+        ]);
+        if (cancelled) return;
+        if (allRides.error) throw allRides.error;
+        const all = (allRides.data ?? []) as Ride[];
+        const completedRides = all.filter((r) => r.status === "completed");
+        const earnings = completedRides.reduce((acc, r) => acc + Number(r.estimated_price ?? 0), 0);
+        const ratings = (ratingsRes.data ?? []) as { rating: number }[];
+        const ratingAvg = ratings.length
+          ? ratings.reduce((a, r) => a + Number(r.rating), 0) / ratings.length
+          : null;
+        setMetrics({
+          passengers: passengersRes.count ?? 0,
+          drivers: driversRes.count ?? 0,
+          onlineDrivers: onlineRes.count ?? 0,
+          totalTrips: totalTripsRes.count ?? 0,
+          requested: requestedRes.count ?? 0,
+          active: activeRes.count ?? 0,
+          scheduled: scheduledRes.count ?? 0,
+          completed: completedRes.count ?? 0,
+          cancelled: cancelledRes.count ?? 0,
+          earnings,
+          ratingAvg,
+          ratingCount: ratings.length,
+        });
+        setRides(all);
+        setEdits((recentEdits.data ?? []) as RideChange[]);
+
+        const personIds = Array.from(
+          new Set(
+            all.flatMap((r) => [r.passenger_id, r.driver_id]).filter((v): v is string => !!v),
+          ),
+        );
+        if (personIds.length) {
+          const { data: profs } = await supabase
+            .from("profiles")
+            .select("user_id, full_name, phone")
+            .in("user_id", personIds);
+          if (!cancelled) {
+            const m: Record<string, { full_name: string | null; phone: string | null }> = {};
+            for (const p of profs ?? []) m[p.user_id] = { full_name: p.full_name, phone: p.phone };
+            setProfilesById(m);
+          }
+        }
+      } catch (e) {
+        if (!cancelled) setRidesError(e instanceof Error ? e.message : "Failed to load metrics");
+      } finally {
+        if (!cancelled) setLoadingRides(false);
+      }
     };
+
     loadMetrics();
 
 
