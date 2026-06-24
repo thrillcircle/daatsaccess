@@ -312,11 +312,19 @@ function AdminPage() {
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Recent trips · <span className="text-foreground">{selectedLabel}</span>
           </h3>
-          <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-            <Link to="/app/admin/trips" search={{ status: TRIPS_STATUS_FOR[selected], q: "" }}>
-              View all <ArrowRight className="ml-1 h-3 w-3" />
-            </Link>
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+              <Link to="/app/admin/trips" search={{ status: TRIPS_STATUS_FOR[selected], q: "" }}>
+                View all <ArrowRight className="ml-1 h-3 w-3" />
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+              <Link to="/app/admin/trip-history" search={{ status: "all", q: "", from: "", to: "" }}>
+                Trip History
+              </Link>
+            </Button>
+          </div>
+
         </div>
         <ul className="divide-y rounded-2xl border bg-card">
           {ridesError ? (
