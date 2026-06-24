@@ -99,7 +99,7 @@ function AdminTripsPage() {
       const trimmed = searchInput.trim();
       setDebouncedSearch(trimmed);
       if (trimmed !== search.q) {
-        navigate({ search: (p) => ({ ...p, q: trimmed }), replace: true });
+        navigate({ search: (p: TripsSearch) => ({ ...p, q: trimmed }), replace: true });
       }
     }, 300);
     return () => clearTimeout(t);
@@ -283,7 +283,7 @@ function AdminTripsPage() {
             variant={active === f.key ? "default" : "outline"}
             className="h-8 text-xs"
             onClick={() =>
-              navigate({ search: (p) => ({ ...p, status: f.key }) })
+              navigate({ search: (p: TripsSearch) => ({ ...p, status: f.key }) })
             }
           >
             {f.label}
