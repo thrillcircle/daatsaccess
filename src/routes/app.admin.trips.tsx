@@ -2,8 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
-import { AppShell, NAV_ICONS } from "@/components/AppShell";
-import { AdminTabs } from "@/components/AdminTabs";
+import { AdminShell } from "@/components/AdminShell";
+import { NAV_ICONS } from "@/components/AppShell";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -362,20 +362,19 @@ function AdminTripsPage() {
 
   if (rolesLoading) {
     return (
-      <AppShell title="Admin" nav={nav}>
+      <AdminShell title="Trips">
         <p className="text-sm text-muted-foreground">Loading…</p>
-      </AppShell>
+      </AdminShell>
     );
   }
 
   if (!isAdmin) {
     return (
-      <AppShell title="Admin" nav={nav}>
-        <AdminTabs />
+      <AdminShell title="Trips">
         <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
           Admins only.
         </div>
-      </AppShell>
+      </AdminShell>
     );
   }
 
@@ -383,9 +382,7 @@ function AdminTripsPage() {
   const filtersApplied = active !== "all" || !!debouncedSearch;
 
   return (
-    <AppShell title="Admin" nav={nav}>
-      <AdminTabs />
-
+    <AdminShell title="Trips">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-5">
           <CountChip label="Total" value={counts?.total ?? "—"} />
@@ -503,7 +500,7 @@ function AdminTripsPage() {
         </div>
       )}
 
-    </AppShell>
+    </AdminShell>
   );
 }
 

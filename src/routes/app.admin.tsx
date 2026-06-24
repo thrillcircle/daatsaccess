@@ -2,8 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
-import { AppShell, NAV_ICONS } from "@/components/AppShell";
-import { AdminTabs } from "@/components/AdminTabs";
+import { AdminShell } from "@/components/AdminShell";
+import { NAV_ICONS } from "@/components/AppShell";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -230,22 +230,22 @@ function AdminPage() {
 
   if (rolesLoading) {
     return (
-      <AppShell title="Admin" nav={nav}>
+      <AdminShell title="Overview">
         <p className="text-sm text-muted-foreground">Loading…</p>
-      </AppShell>
+      </AdminShell>
     );
   }
 
   if (!isAdmin) {
     return (
-      <AppShell title="Admin" nav={nav}>
+      <AdminShell title="Overview">
         <div className="rounded-2xl border bg-card p-6 text-center">
           <h2 className="font-semibold">Admins only</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Your account doesn't have the admin role.
           </p>
         </div>
-      </AppShell>
+      </AdminShell>
     );
   }
 
@@ -260,8 +260,7 @@ function AdminPage() {
   } as const)[selected];
 
   return (
-    <AppShell title="Admin" nav={nav}>
-      <AdminTabs />
+    <AdminShell title="Overview">
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <MetricCard
           label="Total trips" value={metrics?.totalTrips ?? "—"}
@@ -413,7 +412,7 @@ function AdminPage() {
           )}
         </ul>
       </section>
-    </AppShell>
+    </AdminShell>
   );
 }
 

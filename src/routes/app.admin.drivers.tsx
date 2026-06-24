@@ -2,8 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
-import { AppShell, NAV_ICONS } from "@/components/AppShell";
-import { AdminTabs } from "@/components/AdminTabs";
+import { AdminShell } from "@/components/AdminShell";
+import { NAV_ICONS } from "@/components/AppShell";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -247,18 +247,18 @@ function DriversPage() {
 
   if (rolesLoading) {
     return (
-      <AppShell title="Admin" nav={nav}>
+      <AdminShell title="Drivers">
         <p className="text-sm text-muted-foreground">Loading…</p>
-      </AppShell>
+      </AdminShell>
     );
   }
   if (!isAdmin) {
     return (
-      <AppShell title="Admin" nav={nav}>
+      <AdminShell title="Drivers">
         <div className="rounded-2xl border bg-card p-6 text-center">
           <h2 className="font-semibold">Admins only</h2>
         </div>
-      </AppShell>
+      </AdminShell>
     );
   }
 
@@ -307,9 +307,7 @@ function DriversPage() {
   const filtersApplied = activeFilter !== "all" || !!q;
 
   return (
-    <AppShell title="Admin" nav={nav}>
-      <AdminTabs />
-
+    <AdminShell title="Drivers">
       <div className="relative mb-3">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -503,7 +501,7 @@ function DriversPage() {
         )}
       </ul>
 
-    </AppShell>
+    </AdminShell>
   );
 }
 
