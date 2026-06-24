@@ -57,7 +57,7 @@ function AdminPage() {
   const { roles, loading: rolesLoading } = useUserRoles(user?.id);
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/app/admin" });
-  const selected = search.filter;
+  const selected: OverviewFilter = search.filter as OverviewFilter;
 
   const nav = useMemo(() => {
     const items = [];
