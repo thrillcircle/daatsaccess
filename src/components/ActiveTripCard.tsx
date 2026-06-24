@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
-import { RouteMap } from "@/components/RouteMap";
+import { LiveTripMap } from "@/components/LiveTripMap";
 import { useRideLiveLocations } from "@/hooks/use-ride-live-locations";
 import {
   getRideDriverDetails,
@@ -77,6 +77,10 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
     () => liveRows.find((r) => r.user_role === "driver"),
     [liveRows],
   );
+  const passengerLive = useMemo(
+    () => liveRows.find((r) => r.user_role === "passenger"),
+    [liveRows],
+  );
 
   const pickup = { lat: ride.pickup_lat, lng: ride.pickup_lng };
   const destination = { lat: ride.destination_lat, lng: ride.destination_lng };
@@ -98,10 +102,9 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
     etaMin = Math.max(1, Math.round((distanceToPickupKm / 30) * 60));
   }
 
-  // Decide what the map shows.
-  const mapOrigin =
-    inProgress ? pickup : beforePickup && driverPos ? driverPos : pickup;
-  const mapDestination = inProgress ? destination : pickup;
+  const passengerPos = passengerLive
+    ? { lat: Number(passengerLive.latitude), lng: Number(passengerLive.longitude) }
+    : null;
 
   return (
     <section className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
@@ -112,7 +115,14 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
         <RideStatusBadge status={ride.status} />
       </div>
 
-      <RouteMap origin={mapOrigin} destination={mapDestination} className="h-56" />
+      <LiveTripMap
+        pickup={pickup}
+        destination={destination}
+        driver={driverPos}
+        passenger={passengerPos}
+        phase={inProgress ? "inProgress" : "beforePickup"}
+        className="h-56"
+      />
 
       {/* Live tracking strip */}
       {(beforePickup || inProgress) && (
