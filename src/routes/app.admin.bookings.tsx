@@ -75,7 +75,7 @@ type VehicleAssign = { id: string; booking_id: string; fleet_vehicle_id: string;
 type CompanionAssign = { id: string; booking_id: string; companion_id: string; status: string };
 type FleetVehicle = { id: string; registration_number: string; make: string | null; model: string | null; passenger_capacity: number; wheelchair_capacity: number; operational_status: string; is_active: boolean };
 type Companion = { id: string; full_name: string; photo_url: string | null; admin_approved: boolean; is_available: boolean };
-type Ride = { id: string; service_booking_id: string | null; status: string; driver_id: string | null };
+type Ride = { id: string; service_booking_id: string | null; itinerary_item_id: string | null; status: string; driver_id: string | null };
 type Profile = { user_id: string; full_name: string | null; phone: string | null };
 
 const ALL_STATUSES: (BookingStatus | "all")[] = [
