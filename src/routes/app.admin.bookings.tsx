@@ -42,9 +42,13 @@ type Booking = {
   service_type: ServiceType;
   status: BookingStatus;
   start_at: string | null;
+  end_at: string | null;
   requested_companion_count: number;
   estimated_total: number | null;
   quoted_total: number | null;
+  deposit_amount: number | null;
+  deposit_status: "none" | "pending" | "paid" | "refunded" | "waived";
+  metadata: unknown;
   passenger_notes: string | null;
   admin_notes: string | null;
   created_at: string;
