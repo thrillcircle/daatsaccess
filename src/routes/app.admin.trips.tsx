@@ -510,6 +510,7 @@ function TripRow({
   passenger,
   driver,
   vehicle,
+  fleetVehicle,
   payment,
   review,
   variant,
@@ -519,12 +520,16 @@ function TripRow({
   passenger: Profile | null;
   driver: Profile | null;
   vehicle: Vehicle | null;
+  fleetVehicle: FleetVehicle | null;
   payment: PaymentRow | null;
   review: Review | null;
   variant: FilterKey;
   onChanged: () => void;
 }) {
-  const vehicleLabel = vehicle
+  const fleetAlerts = fleetVehicle ? getVehicleAlerts(fleetVehicle) : [];
+  const vehicleLabel = fleetVehicle
+    ? `${fleetVehicle.vehicle_name} · ${fleetVehicle.license_plate}`
+    : vehicle
     ? [vehicle.vehicle_model, vehicle.license_plate].filter(Boolean).join(" · ") || "—"
     : ride.driver_id
     ? "—"
@@ -556,6 +561,7 @@ function TripRow({
           value={driver?.full_name ?? (ride.driver_id ? "Assigned" : "Unassigned")}
         />
         <Field label="Vehicle" value={vehicleLabel} />
+
         {variant === "scheduled" && (
           <>
             <Field
