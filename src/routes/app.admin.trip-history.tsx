@@ -318,7 +318,7 @@ function TripHistoryPage() {
         if (driverIds.length) {
           const { data: vs } = await supabase
             .from("driver_profiles")
-            .select("user_id, vehicle_model, license_plate")
+            .select("user_id, vehicle_model, license_plate, vehicle_type")
             .in("user_id", driverIds);
           if (!cancelled)
             setDriverVehicles(
