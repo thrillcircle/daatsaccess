@@ -149,12 +149,13 @@ function VehiclesPage() {
   const refresh = () => setReloadTick((n) => n + 1);
 
   useEffect(() => {
-    if (authLoading || rolesLoading) return;
+    if (authLoading || rolesLoading || roles === null) return;
     if (!user || !isAdmin) navigate({ to: "/app" });
-  }, [authLoading, rolesLoading, user, isAdmin, navigate]);
+  }, [authLoading, rolesLoading, roles, user, isAdmin, navigate]);
 
-  if (authLoading || rolesLoading) return <AdminShell title="Fleet"><div className="p-6 text-sm text-muted-foreground">Loading…</div></AdminShell>;
+  if (authLoading || rolesLoading || (user && roles === null)) return <AdminShell title="Fleet"><div className="p-6 text-sm text-muted-foreground">Loading…</div></AdminShell>;
   if (!isAdmin) return null;
+
 
 
   const driverName = (id: string | null) => {
