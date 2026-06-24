@@ -67,7 +67,7 @@ type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
 type Profile = { user_id: string; full_name: string | null; phone: string | null };
 type DriverVehicle = { user_id: string; vehicle_model: string | null; license_plate: string | null; vehicle_type: string | null };
-type FleetVehicle = { id: string; vehicle_name: string | null; license_plate: string | null };
+type FleetVehicle = { id: string; vehicle_name: string | null; vehicle_type: string | null; license_plate: string | null };
 type PaymentRow = { ride_id: string; status: PaymentStatus; amount: number };
 
 type StatusFilter = "all" | "scheduled" | "active" | "completed" | "cancelled";
