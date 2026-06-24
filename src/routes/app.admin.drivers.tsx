@@ -126,7 +126,7 @@ function DriversPage() {
       setDrivers(ds);
 
       const userIds = ds.map((d) => d.user_id);
-      const [profRes, ridesRes] = await Promise.all([
+      const [profRes, ridesRes, allRidesRes, unassignedRes] = await Promise.all([
         userIds.length
           ? supabase.from("profiles").select("*").in("user_id", userIds)
           : Promise.resolve({ data: [] as Profile[] }),
@@ -137,6 +137,19 @@ function DriversPage() {
               .in("driver_id", userIds)
               .in("status", ACTIVE)
           : Promise.resolve({ data: [] as Ride[] }),
+        userIds.length
+          ? supabase
+              .from("rides")
+              .select("driver_id, status, distance_km, actual_distance_km, scheduled_at, request_type")
+              .in("driver_id", userIds)
+          : Promise.resolve({ data: [] as Pick<Ride, "driver_id" | "status" | "distance_km" | "actual_distance_km" | "scheduled_at" | "request_type">[] }),
+        supabase
+          .from("rides")
+          .select("*")
+          .is("driver_id", null)
+          .eq("status", "requested")
+          .order("created_at", { ascending: false })
+          .limit(50),
       ]);
       if (cancelled) return;
 
@@ -149,6 +162,33 @@ function DriversPage() {
         if (r.driver_id) rMap[r.driver_id] = r;
       }
       setActiveRides(rMap);
+
+      const sMap: Record<string, DriverStats> = {};
+      for (const uid of userIds) sMap[uid] = { completed: 0, cancelled: 0, upcoming: 0, totalKm: 0 };
+      const nowTs = Date.now();
+      for (const row of (allRidesRes.data ?? []) as Array<Pick<Ride, "driver_id" | "status" | "distance_km" | "actual_distance_km" | "scheduled_at" | "request_type">>) {
+        if (!row.driver_id) continue;
+        const s = sMap[row.driver_id];
+        if (!s) continue;
+        if (row.status === "completed") {
+          s.completed += 1;
+          s.totalKm += Number(row.actual_distance_km ?? row.distance_km ?? 0);
+        } else if (row.status === "cancelled") {
+          s.cancelled += 1;
+        }
+        if (
+          row.request_type === "scheduled" &&
+          row.scheduled_at &&
+          new Date(row.scheduled_at).getTime() > nowTs &&
+          (row.status === "requested" || row.status === "accepted")
+        ) {
+          s.upcoming += 1;
+        }
+      }
+      setStats(sMap);
+
+      setUnassignedRides(((unassignedRes.data ?? []) as Ride[]));
+
 
       const { data: passengerRoles } = await supabase
         .from("user_roles")
