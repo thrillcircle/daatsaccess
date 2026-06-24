@@ -37,16 +37,26 @@ function AdminPage() {
     earnings: number;
   } | null>(null);
   const [rides, setRides] = useState<Ride[]>([]);
+  const [edits, setEdits] = useState<RideChange[]>([]);
   const isAdmin = !!roles?.includes("admin");
 
+  // Initial load + live Realtime: rides upserts and ride_change_log inserts
+  // stream in without a refresh.
   useEffect(() => {
     if (!isAdmin) return;
+    let cancelled = false;
     (async () => {
-      const [profiles, drivers, allRides] = await Promise.all([
+      const [profiles, drivers, allRides, recentEdits] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("driver_profiles").select("id", { count: "exact", head: true }),
         supabase.from("rides").select("*").order("created_at", { ascending: false }).limit(50),
+        supabase
+          .from("ride_change_log")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(20),
       ]);
+      if (cancelled) return;
       const all = (allRides.data ?? []) as Ride[];
       const completed = all.filter((r) => r.status === "completed");
       const earnings = completed.reduce((acc, r) => acc + Number(r.estimated_price), 0);
@@ -58,8 +68,48 @@ function AdminPage() {
         earnings,
       });
       setRides(all);
+      setEdits((recentEdits.data ?? []) as RideChange[]);
     })();
+
+    const ridesCh = supabase
+      .channel("admin-rides")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rides" },
+        (payload) => {
+          setRides((prev) => {
+            if (payload.eventType === "DELETE") {
+              return prev.filter((r) => r.id !== (payload.old as Ride).id);
+            }
+            const row = payload.new as Ride;
+            const idx = prev.findIndex((r) => r.id === row.id);
+            if (idx === -1) return [row, ...prev].slice(0, 50);
+            const copy = prev.slice();
+            copy[idx] = row;
+            return copy;
+          });
+        },
+      )
+      .subscribe();
+
+    const editsCh = supabase
+      .channel("admin-ride-edits")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "ride_change_log" },
+        (payload) => {
+          setEdits((prev) => [payload.new as RideChange, ...prev].slice(0, 20));
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ridesCh);
+      supabase.removeChannel(editsCh);
+    };
   }, [isAdmin]);
+
 
   if (rolesLoading) {
     return (
