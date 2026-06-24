@@ -65,6 +65,8 @@ function RideRequest({ userId }: { userId?: string }) {
   const [estimating, setEstimating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeRide, setActiveRide] = useState<Ride | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const price = distanceKm != null ? estimatePrice(distanceKm) : null;
   const canRequest = !!(pickupPt && destPt && distanceKm != null);
