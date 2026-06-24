@@ -61,10 +61,11 @@ export const Route = createFileRoute("/app/admin/fleet")({
 
 
 function VehiclesPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { roles, loading: rolesLoading } = useUserRoles(user?.id);
   const isAdmin = !!roles?.includes("admin");
   const navigate = useNavigate();
+
 
   const nav = useMemo(() => {
     const items: { to: string; label: string; icon: typeof NAV_ICONS.Admin }[] = [];
@@ -148,11 +149,14 @@ function VehiclesPage() {
   const refresh = () => setReloadTick((n) => n + 1);
 
   useEffect(() => {
-    if (!rolesLoading && !isAdmin) navigate({ to: "/app" });
-  }, [rolesLoading, isAdmin, navigate]);
+    if (authLoading || rolesLoading || roles === null) return;
+    if (!user || !isAdmin) navigate({ to: "/app" });
+  }, [authLoading, rolesLoading, roles, user, isAdmin, navigate]);
 
-  if (rolesLoading) return <AdminShell title="Fleet"><div className="p-6 text-sm text-muted-foreground">Loading…</div></AdminShell>;
+  if (authLoading || rolesLoading || (user && roles === null)) return <AdminShell title="Fleet"><div className="p-6 text-sm text-muted-foreground">Loading…</div></AdminShell>;
   if (!isAdmin) return null;
+
+
 
   const driverName = (id: string | null) => {
     if (!id) return "Unassigned";
