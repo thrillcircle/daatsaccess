@@ -34,11 +34,18 @@ import {
   markArrived,
   startTrip,
   completeTrip,
+  startScheduledPickup,
 } from "@/lib/ride-driver.functions";
 import {
   getRidePassengerDetails,
   type PassengerDetails,
 } from "@/lib/driver-trip.functions";
+
+const PICKUP_WINDOW_MS = 30 * 60 * 1000;
+const isFarFutureScheduled = (r: Ride) =>
+  r.request_type === "scheduled" &&
+  r.scheduled_at != null &&
+  new Date(r.scheduled_at).getTime() - Date.now() > PICKUP_WINDOW_MS;
 
 function mapsNavUrl(lat: number, lng: number) {
   return `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${lat},${lng}`;
