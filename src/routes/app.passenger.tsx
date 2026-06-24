@@ -25,8 +25,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
+
+const JOBURG_TZ = "Africa/Johannesburg";
+
+function formatJoburg(d: Date): string {
+  return d.toLocaleString("en-ZA", {
+    timeZone: JOBURG_TZ,
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function localInputNow(): string {
+  // datetime-local needs YYYY-MM-DDTHH:mm in the browser's local time.
+  const d = new Date(Date.now() + 60_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 
 export const Route = createFileRoute("/app/passenger")({
   head: () => ({ meta: [{ title: "Passenger — Access" }] }),
@@ -49,11 +69,24 @@ function PassengerPage() {
     <AppShell title="Passenger" nav={nav}>
       <RideRequest userId={user?.id} />
       <RatePrompt userId={user?.id} />
+      <ScheduledTrips userId={user?.id} />
       <BecomeDriver userId={user?.id} hasDriverRole={!!roles?.includes("driver")} />
-      <RideHistory userId={user?.id} />
+      <RideHistory
+        userId={user?.id}
+        title="Completed trips"
+        statuses={["completed"]}
+        emptyText="No completed trips yet. Your finished rides will show here."
+      />
+      <RideHistory
+        userId={user?.id}
+        title="Cancelled trips"
+        statuses={["cancelled"]}
+        emptyText="No cancelled trips."
+      />
     </AppShell>
   );
 }
+
 
 function RatePrompt({ userId }: { userId?: string }) {
   const [ride, setRide] = useState<Ride | null>(null);
@@ -113,9 +146,21 @@ function RideRequest({ userId }: { userId?: string }) {
   const [activeRide, setActiveRide] = useState<Ride | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [mode, setMode] = useState<"now" | "scheduled">("now");
+  // Local datetime string in user's browser timezone (Africa/Johannesburg for ZA users).
+  const [scheduleLocal, setScheduleLocal] = useState<string>("");
+
+  const scheduleDate = mode === "scheduled" && scheduleLocal ? new Date(scheduleLocal) : null;
+  const scheduleValid =
+    mode === "now"
+      ? true
+      : !!scheduleDate &&
+        !Number.isNaN(scheduleDate.getTime()) &&
+        scheduleDate.getTime() > Date.now() + 60_000; // at least 1 minute in future
 
   const price = distanceKm != null ? estimatePrice(distanceKm) : null;
-  const canRequest = !!(pickupPt && destPt && distanceKm != null);
+  const canRequest = !!(pickupPt && destPt && distanceKm != null) && scheduleValid;
+
 
   // Soft-bias autocomplete around the passenger's current location (no prompt — only if cached).
   useEffect(() => {
@@ -159,19 +204,26 @@ function RideRequest({ userId }: { userId?: string }) {
     };
   }, [pickupPt, destPt, route]);
 
-  // Load + subscribe to active ride
+  // Load + subscribe to active ride. A scheduled ride only becomes "current"
+  // once its scheduled time has arrived (or it's a "now" request).
   useEffect(() => {
     if (!userId) return;
     let unsub: (() => void) | undefined;
+    const isCurrent = (r: Ride) =>
+      ["requested", "accepted", "driver_arriving", "arrived", "in_progress"].includes(r.status) &&
+      (r.request_type !== "scheduled" ||
+        (r.scheduled_at != null && new Date(r.scheduled_at).getTime() <= Date.now()));
     (async () => {
+      const nowIso = new Date().toISOString();
       const { data } = await supabase
         .from("rides")
         .select("*")
         .eq("passenger_id", userId)
         .in("status", ["requested", "accepted", "driver_arriving", "arrived", "in_progress"])
+        .or(`request_type.eq.now,scheduled_at.lte.${nowIso}`)
         .order("created_at", { ascending: false })
         .limit(1);
-      setActiveRide(data?.[0] ?? null);
+      setActiveRide((data?.[0] as Ride | undefined) ?? null);
 
       const ch = supabase
         .channel("passenger-rides-" + userId)
@@ -181,15 +233,8 @@ function RideRequest({ userId }: { userId?: string }) {
           (payload) => {
             const r = payload.new as Ride;
             if (!r) return;
-            if (
-              ["requested", "accepted", "driver_arriving", "arrived", "in_progress"].includes(
-                r.status,
-              )
-            ) {
-              setActiveRide(r);
-            } else {
-              setActiveRide(null);
-            }
+            if (isCurrent(r)) setActiveRide(r);
+            else setActiveRide(null);
           },
         )
         .subscribe();
@@ -202,6 +247,10 @@ function RideRequest({ userId }: { userId?: string }) {
 
   async function onRequest() {
     if (!userId || !pickupPt || !destPt || distanceKm == null || price == null) return;
+    if (mode === "scheduled" && !scheduleValid) {
+      toast.error("Pick a future date and time");
+      return;
+    }
     setSubmitting(true);
     try {
       const { data, error } = await supabase
@@ -219,12 +268,25 @@ function RideRequest({ userId }: { userId?: string }) {
           distance_km: distanceKm,
           estimated_price: price,
           estimated_duration_seconds: durationMin != null ? durationMin * 60 : null,
+          request_type: mode,
+          scheduled_at: mode === "scheduled" && scheduleDate ? scheduleDate.toISOString() : null,
         })
+
         .select()
         .single();
       if (error) throw error;
-      setActiveRide(data as Ride);
-      toast.success("Ride requested — finding a driver");
+      const inserted = data as Ride;
+      if (inserted.request_type === "scheduled") {
+        toast.success(
+          `Trip scheduled for ${new Date(inserted.scheduled_at!).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`,
+        );
+        setMode("now");
+        setScheduleLocal("");
+      } else {
+        setActiveRide(inserted);
+        toast.success("Ride requested — finding a driver");
+      }
+
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to request ride");
     } finally {
@@ -338,6 +400,49 @@ function RideRequest({ userId }: { userId?: string }) {
         />
       </div>
 
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <Button
+          type="button"
+          variant={mode === "now" ? "default" : "outline"}
+          onClick={() => setMode("now")}
+        >
+          Ride now
+        </Button>
+        <Button
+          type="button"
+          variant={mode === "scheduled" ? "default" : "outline"}
+          onClick={() => setMode("scheduled")}
+        >
+          Schedule for later
+        </Button>
+      </div>
+
+      {mode === "scheduled" && (
+        <div className="mt-3 space-y-2 rounded-lg border bg-background p-3">
+          <Label htmlFor="schedule-at" className="text-xs">
+            Pickup time (Africa/Johannesburg)
+          </Label>
+          <Input
+            id="schedule-at"
+            type="datetime-local"
+            value={scheduleLocal}
+            min={localInputNow()}
+            onChange={(e) => setScheduleLocal(e.target.value)}
+          />
+          {scheduleDate && scheduleValid ? (
+            <p className="text-xs text-muted-foreground">
+              Scheduled for{" "}
+              <strong className="text-foreground">{formatJoburg(scheduleDate)}</strong>
+            </p>
+          ) : scheduleLocal ? (
+            <p className="text-xs text-destructive">Pick a time in the future.</p>
+          ) : null}
+          <p className="text-[11px] text-muted-foreground">
+            Final ETA can change due to traffic and driver availability.
+          </p>
+        </div>
+      )}
+
       {pickupPt && destPt && (
         <div className="mt-4 space-y-3">
           <RouteMap origin={pickupPt} destination={destPt} className="h-48" />
@@ -359,13 +464,165 @@ function RideRequest({ userId }: { userId?: string }) {
             onClick={onRequest}
             disabled={!canRequest || submitting || estimating}
           >
-            {submitting ? "Requesting…" : "Request ride"}
+            {submitting
+              ? mode === "scheduled" ? "Scheduling…" : "Requesting…"
+              : mode === "scheduled" ? "Schedule ride" : "Request ride"}
           </Button>
         </div>
       )}
+
     </section>
   );
 }
+
+function ScheduledTrips({ userId }: { userId?: string }) {
+  const [rides, setRides] = useState<Ride[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editVal, setEditVal] = useState<string>("");
+
+  const load = async () => {
+    if (!userId) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from("rides")
+      .select("*")
+      .eq("passenger_id", userId)
+      .eq("request_type", "scheduled")
+      .eq("status", "requested")
+      .is("driver_id", null)
+      .gt("scheduled_at", new Date().toISOString())
+      .order("scheduled_at", { ascending: true });
+    setRides((data ?? []) as Ride[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (!userId) return;
+    load();
+    const ch = supabase
+      .channel("passenger-scheduled-" + userId)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rides", filter: `passenger_id=eq.${userId}` },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  async function cancel(id: string) {
+    const { error } = await supabase.from("rides").update({ status: "cancelled" }).eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Scheduled trip cancelled");
+      load();
+    }
+  }
+
+  async function saveEdit(id: string) {
+    if (!editVal) return;
+    const d = new Date(editVal);
+    if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now() + 60_000) {
+      toast.error("Pick a future date and time");
+      return;
+    }
+    const { error } = await supabase
+      .from("rides")
+      .update({ scheduled_at: d.toISOString() })
+      .eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Scheduled time updated");
+      setEditingId(null);
+      load();
+    }
+  }
+
+  if (loading) return null;
+  if (!rides.length) return null;
+
+  return (
+    <section className="mt-4 rounded-2xl border bg-card p-4">
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Upcoming scheduled trips
+      </h3>
+      <ul className="divide-y">
+        {rides.map((r) => {
+          const editing = editingId === r.id;
+          return (
+            <li key={r.id} className="space-y-2 py-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">
+                    {r.scheduled_at ? formatJoburg(new Date(r.scheduled_at)) : "—"}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-medium">{r.destination_address}</p>
+                  <p className="truncate text-xs text-muted-foreground">From {r.pickup_address}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {Number(r.distance_km).toFixed(1)} km · ~
+                    {r.estimated_duration_seconds
+                      ? Math.round(r.estimated_duration_seconds / 60)
+                      : "?"}{" "}
+                    min
+                  </p>
+                </div>
+                <p className="text-sm font-semibold">{formatZAR(Number(r.estimated_price))}</p>
+              </div>
+              {editing ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="datetime-local"
+                    value={editVal}
+                    min={localInputNow()}
+                    onChange={(e) => setEditVal(e.target.value)}
+                  />
+                  <Button size="sm" onClick={() => saveEdit(r.id)}>
+                    Save
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingId(r.id);
+                      // Pre-fill in local time
+                      if (r.scheduled_at) {
+                        const d = new Date(r.scheduled_at);
+                        const pad = (n: number) => String(n).padStart(2, "0");
+                        setEditVal(
+                          `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`,
+                        );
+                      }
+                    }}
+                  >
+                    Edit time
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => cancel(r.id)}>
+                    Cancel trip
+                  </Button>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        Final ETA can change due to traffic and driver availability.
+      </p>
+    </section>
+  );
+}
+
+
 
 function BecomeDriver({ userId, hasDriverRole }: { userId?: string; hasDriverRole: boolean }) {
   if (!userId || hasDriverRole) return null;
@@ -403,7 +660,19 @@ type HistoryRow = Ride & {
   review?: { rating: number } | null;
 };
 
-function RideHistory({ userId }: { userId?: string }) {
+type RideStatus = Database["public"]["Enums"]["ride_status"];
+
+function RideHistory({
+  userId,
+  title = "Trip history",
+  statuses = ["completed", "cancelled"],
+  emptyText = "No trips to show.",
+}: {
+  userId?: string;
+  title?: string;
+  statuses?: RideStatus[];
+  emptyText?: string;
+}) {
   const [rides, setRides] = useState<HistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -416,7 +685,7 @@ function RideHistory({ userId }: { userId?: string }) {
         .from("rides")
         .select("*")
         .eq("passenger_id", userId)
-        .in("status", ["completed", "cancelled"])
+        .in("status", statuses)
         .order("created_at", { ascending: false })
         .limit(50);
       const list = (data ?? []) as Ride[];
@@ -466,20 +735,19 @@ function RideHistory({ userId }: { userId?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, statuses]);
 
   return (
     <section className="mt-4 rounded-2xl border bg-card p-4">
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Trip history
+        {title}
       </h3>
       {loading ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
       ) : !rides.length ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          No completed trips yet. Your finished rides will show here.
-        </p>
+        <p className="py-6 text-center text-sm text-muted-foreground">{emptyText}</p>
       ) : (
+
         <ul className="divide-y">
           {rides.map((r) => {
             const travelSec =
