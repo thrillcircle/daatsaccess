@@ -111,9 +111,17 @@ function AdminTripsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [hasMore, setHasMore] = useState(false);
+  const [counts, setCounts] = useState<StatusCounts | null>(null);
   const reload = () => setReloadKey((k) => k + 1);
 
   useEffect(() => setSearchInput(search.q), [search.q]);
+
+  // Reset pagination when filters change.
+  useEffect(() => {
+    setPageSize(PAGE_SIZE);
+  }, [active, debouncedSearch]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -125,6 +133,40 @@ function AdminTripsPage() {
     }, 300);
     return () => clearTimeout(t);
   }, [searchInput, navigate, search.q]);
+
+  // Status counts (unfiltered by search/status — always show totals).
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    (async () => {
+      const [total, scheduled, active, completed, cancelledQ] = await Promise.all([
+        supabase.from("rides").select("id", { count: "exact", head: true }),
+        supabase
+          .from("rides")
+          .select("id", { count: "exact", head: true })
+          .eq("request_type", "scheduled")
+          .in("status", ["requested", "accepted"]),
+        supabase
+          .from("rides")
+          .select("id", { count: "exact", head: true })
+          .in("status", ACTIVE_STATUSES as unknown as Ride["status"][]),
+        supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "completed"),
+        supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
+      ]);
+      if (cancelled) return;
+      setCounts({
+        total: total.count ?? 0,
+        scheduled: scheduled.count ?? 0,
+        active: active.count ?? 0,
+        completed: completed.count ?? 0,
+        cancelled: cancelledQ.count ?? 0,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, reloadKey]);
+
 
   useEffect(() => {
     if (!isAdmin) return;
