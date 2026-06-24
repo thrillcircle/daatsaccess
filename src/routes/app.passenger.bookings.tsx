@@ -29,17 +29,23 @@ type Booking = {
   service_type: ServiceType;
   status: BookingStatus;
   start_at: string | null;
+  end_at: string | null;
   requested_companion_count: number;
   estimated_total: number | null;
   quoted_total: number | null;
+  deposit_amount: number | null;
+  deposit_status: "none" | "pending" | "paid" | "refunded" | "waived";
+  metadata: unknown;
   passenger_notes: string | null;
   created_at: string;
 };
 
 type Traveller = { id: string; booking_id: string; full_name: string; phone: string | null; is_primary: boolean; relationship_to_booker: string | null };
 type Assistance = { id: string; booking_id: string; requirement_code: AssistanceCode; notes: string | null };
-type Quote = { id: string; booking_id: string; status: string; total: number; currency: string };
-type DriverAssign = { id: string; booking_id: string; driver_user_id: string; status: string };
+type Quote = { id: string; booking_id: string; status: string; total: number; currency: string; valid_until: string | null; notes: string | null };
+type QuoteItem = { id: string; quote_id: string; label: string; description: string | null; quantity: number; unit_price: number; line_total: number; sort_order: number };
+type Itinerary = { id: string; booking_id: string; day_number: number; sequence_number: number; item_type: string; title: string | null; address: string | null; planned_start_at: string | null; planned_end_at: string | null; status: string };
+type DriverAssign = { id: string; booking_id: string; driver_user_id: string; status: string; assignment_role: string };
 type VehicleAssign = { id: string; booking_id: string; fleet_vehicle_id: string; status: string };
 type CompanionAssign = { id: string; booking_id: string; companion_id: string; status: string };
 type FleetVehicle = { id: string; registration_number: string; make: string | null; model: string | null };
@@ -67,6 +73,8 @@ function PassengerBookingsPage() {
   const [travellers, setTravellers] = useState<Traveller[]>([]);
   const [assistance, setAssistance] = useState<Assistance[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
+  const [itinerary, setItinerary] = useState<Itinerary[]>([]);
   const [driverAssigns, setDriverAssigns] = useState<DriverAssign[]>([]);
   const [vehicleAssigns, setVehicleAssigns] = useState<VehicleAssign[]>([]);
   const [companionAssigns, setCompanionAssigns] = useState<CompanionAssign[]>([]);
@@ -83,7 +91,7 @@ function PassengerBookingsPage() {
       setLoading(true);
       const { data: b } = await supabase
         .from("service_bookings")
-        .select("id,booking_reference,service_type,status,start_at,requested_companion_count,estimated_total,quoted_total,passenger_notes,created_at")
+        .select("id,booking_reference,service_type,status,start_at,end_at,requested_companion_count,estimated_total,quoted_total,deposit_amount,deposit_status,metadata,passenger_notes,created_at")
         .eq("booked_by_user_id", user.id)
         .order("created_at", { ascending: false });
       if (cancelled) return;
@@ -91,23 +99,32 @@ function PassengerBookingsPage() {
       setBookings(list);
       const ids = list.map((x) => x.id);
       if (ids.length) {
-        const [tr, ar, qr, dr, vr, cr, rr] = await Promise.all([
+        const [tr, ar, qr, dr, vr, cr, rr, ir] = await Promise.all([
           supabase.from("booking_travellers").select("*").in("booking_id", ids),
           supabase.from("booking_assistance_requirements").select("*").in("booking_id", ids),
-          supabase.from("service_quotes").select("id,booking_id,status,total,currency").in("booking_id", ids),
+          supabase.from("service_quotes").select("id,booking_id,status,total,currency,valid_until,notes").in("booking_id", ids),
           supabase.from("booking_driver_assignments").select("*").in("booking_id", ids),
           supabase.from("booking_vehicle_assignments").select("*").in("booking_id", ids),
           supabase.from("booking_companion_assignments").select("*").in("booking_id", ids),
           supabase.from("rides").select("id,service_booking_id,status,driver_id").in("service_booking_id", ids),
+          supabase.from("booking_itinerary_items").select("*").in("booking_id", ids).order("day_number").order("sequence_number"),
         ]);
         if (cancelled) return;
         setTravellers((tr.data ?? []) as Traveller[]);
         setAssistance((ar.data ?? []) as Assistance[]);
-        setQuotes((qr.data ?? []) as Quote[]);
+        const qs = (qr.data ?? []) as Quote[];
+        setQuotes(qs);
         setDriverAssigns((dr.data ?? []) as DriverAssign[]);
         setVehicleAssigns((vr.data ?? []) as VehicleAssign[]);
         setCompanionAssigns((cr.data ?? []) as CompanionAssign[]);
         setRides((rr.data ?? []) as Ride[]);
+        setItinerary((ir.data ?? []) as Itinerary[]);
+        if (qs.length) {
+          const { data: qi } = await supabase.from("service_quote_items").select("*").in("quote_id", qs.map((q) => q.id)).order("sort_order");
+          if (!cancelled) setQuoteItems((qi ?? []) as QuoteItem[]);
+        } else {
+          setQuoteItems([]);
+        }
         const vIds = Array.from(new Set((vr.data ?? []).map((v) => v.fleet_vehicle_id)));
         const cIds = Array.from(new Set((cr.data ?? []).map((c) => c.companion_id)));
         const drIds = Array.from(new Set([
@@ -221,8 +238,46 @@ function PassengerBookingsPage() {
                   ) : null}
                   <div><dt className="text-muted-foreground">Quote</dt><dd>{q ? `${q.status} · ${formatZAR(Number(q.total))}` : "—"}</dd></div>
                   <div><dt className="text-muted-foreground">Estimated</dt><dd>{b.estimated_total != null ? formatZAR(Number(b.estimated_total)) : "—"}</dd></div>
+                  {b.service_type === "extended_journey" ? (
+                    <>
+                      {b.end_at ? <div className="col-span-2"><dt className="text-muted-foreground">Ends</dt><dd>{new Date(b.end_at).toLocaleDateString("en-ZA", { dateStyle: "medium" })}</dd></div> : null}
+                      <div><dt className="text-muted-foreground">Deposit</dt><dd>{b.deposit_amount != null ? `${formatZAR(Number(b.deposit_amount))} · ${b.deposit_status}` : b.deposit_status}</dd></div>
+                      <div><dt className="text-muted-foreground">Companions</dt><dd>{comps.length ? comps.map((c) => c.full_name).join(", ") : `${b.requested_companion_count} requested`}</dd></div>
+                    </>
+                  ) : null}
                   {ride ? <div className="col-span-2"><dt className="text-muted-foreground">Ride status</dt><dd>{ride.status.replace("_", " ")}</dd></div> : null}
                 </dl>
+
+                {b.service_type === "extended_journey" && q ? (
+                  <details className="mt-2 rounded-lg border bg-background/40 p-2 text-xs">
+                    <summary className="cursor-pointer font-medium">Quote breakdown ({quoteItems.filter((qi) => qi.quote_id === q.id).length} line items)</summary>
+                    <ul className="mt-2 space-y-1">
+                      {quoteItems.filter((qi) => qi.quote_id === q.id).map((qi) => (
+                        <li key={qi.id} className="flex justify-between gap-2">
+                          <span className="truncate">{qi.label} × {Number(qi.quantity)}</span>
+                          <span className="font-mono">{formatZAR(Number(qi.line_total))}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {q.valid_until ? <p className="mt-2 text-[11px] text-muted-foreground">Valid until {new Date(q.valid_until).toLocaleDateString("en-ZA")}</p> : null}
+                    {q.notes ? <p className="mt-1 text-[11px] text-muted-foreground">{q.notes}</p> : null}
+                  </details>
+                ) : null}
+
+                {b.service_type === "extended_journey" && itinerary.some((i) => i.booking_id === b.id) ? (
+                  <details className="mt-2 rounded-lg border bg-background/40 p-2 text-xs">
+                    <summary className="cursor-pointer font-medium">Itinerary</summary>
+                    <ol className="mt-2 space-y-1">
+                      {itinerary.filter((i) => i.booking_id === b.id).map((i) => (
+                        <li key={i.id}>
+                          <span className="font-medium">Day {i.day_number} · {i.item_type}:</span> {i.title ?? "—"}
+                          {i.address ? ` · ${i.address}` : ""}
+                          {" · "}<span className="text-muted-foreground">{i.status}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                ) : null}
 
                 <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-secondary/60 px-3 py-2 text-xs">
                   <span className="min-w-0 truncate"><span className="font-medium">Next:</span> {nextAction}</span>

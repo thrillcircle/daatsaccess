@@ -29,6 +29,7 @@ import {
 import { formatZAR } from "@/lib/pricing";
 import { toast } from "sonner";
 import { Filter, ExternalLink, MapPin, ClipboardList } from "lucide-react";
+import { ExtendedJourneyAdminPanel, type EJBooking } from "@/components/ExtendedJourneyAdmin";
 
 export const Route = createFileRoute("/app/admin/bookings")({
   head: () => ({ meta: [{ title: "Service Bookings — Admin" }] }),
@@ -42,9 +43,13 @@ type Booking = {
   service_type: ServiceType;
   status: BookingStatus;
   start_at: string | null;
+  end_at: string | null;
   requested_companion_count: number;
   estimated_total: number | null;
   quoted_total: number | null;
+  deposit_amount: number | null;
+  deposit_status: "none" | "pending" | "paid" | "refunded" | "waived";
+  metadata: unknown;
   passenger_notes: string | null;
   admin_notes: string | null;
   created_at: string;
@@ -824,24 +829,34 @@ function BookingDetailDialog({
           ) : null}
         </section>
 
-        <section className="grid gap-2 rounded-lg border p-3">
-          <h4 className="text-sm font-semibold flex items-center gap-1"><ClipboardList className="h-3.5 w-3.5" /> Quote</h4>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="qt-total">Total (ZAR)</Label>
-              <Input id="qt-total" type="number" min="0" step="0.01" value={quoteTotal} onChange={(e) => setQuoteTotal(e.target.value)} />
+        {booking.service_type === "extended_journey" ? (
+          <ExtendedJourneyAdminPanel
+            booking={booking as unknown as EJBooking}
+            drivers={drivers}
+            primaryDriverId={driverId || null}
+            onChanged={onChanged}
+            actorId={actorId}
+          />
+        ) : (
+          <section className="grid gap-2 rounded-lg border p-3">
+            <h4 className="text-sm font-semibold flex items-center gap-1"><ClipboardList className="h-3.5 w-3.5" /> Quote</h4>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="qt-total">Total (ZAR)</Label>
+                <Input id="qt-total" type="number" min="0" step="0.01" value={quoteTotal} onChange={(e) => setQuoteTotal(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="qt-notes">Notes</Label>
+                <Input id="qt-notes" value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="qt-notes">Notes</Label>
-              <Input id="qt-notes" value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} />
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => saveQuote(false)}>Save draft</Button>
+              <Button size="sm" disabled={busy} onClick={() => saveQuote(true)}>Send to customer</Button>
             </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => saveQuote(false)}>Save draft</Button>
-            <Button size="sm" disabled={busy} onClick={() => saveQuote(true)}>Send to customer</Button>
-          </div>
-          {q ? <p className="text-xs text-muted-foreground">Current: {q.status} · {formatZAR(Number(q.total))}</p> : null}
-        </section>
+            {q ? <p className="text-xs text-muted-foreground">Current: {q.status} · {formatZAR(Number(q.total))}</p> : null}
+          </section>
+        )}
 
         <section className="grid gap-2 rounded-lg border p-3">
           <h4 className="text-sm font-semibold">Activation</h4>
