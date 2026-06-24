@@ -238,7 +238,8 @@ function DriversPage() {
           const row = payload.new as DriverProfile;
           setDrivers((prev) => {
             const idx = prev.findIndex((d) => d.id === row.id);
-            if (idx === -1) return [row, ...prev];
+            // Only merge updates for users already known to have the driver role.
+            if (idx === -1) return prev;
             const copy = prev.slice();
             copy[idx] = row;
             return copy;
