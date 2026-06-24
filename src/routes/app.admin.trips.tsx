@@ -455,6 +455,24 @@ function AdminTripsPage() {
           ))
         )}
       </ul>
+
+      {!loading && rides.length > 0 && (
+        <div className="mt-3 flex justify-center">
+          {hasMore ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={() => setPageSize((s) => s + PAGE_SIZE)}
+            >
+              Load more
+            </Button>
+          ) : (
+            <span className="text-[11px] text-muted-foreground">No more trips</span>
+          )}
+        </div>
+      )}
+
     </AppShell>
   );
 }
