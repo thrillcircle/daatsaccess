@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
@@ -6,6 +6,7 @@ import { AppShell, NAV_ICONS } from "@/components/AppShell";
 import { AdminTabs } from "@/components/AdminTabs";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Phone, Car, Search } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
@@ -25,8 +26,36 @@ const ACTIVE: Database["public"]["Enums"]["ride_status"][] = [
 
 const LIVE_THRESHOLD_MS = 90 * 1000; // location considered live if updated within 90s
 
+type DriverFilter =
+  | "all"
+  | "online"
+  | "offline"
+  | "assigned"
+  | "available"
+  | "stale"
+  | "incomplete";
+
+const DRIVER_FILTERS: { key: DriverFilter; label: string }[] = [
+  { key: "all", label: "All drivers" },
+  { key: "online", label: "Online" },
+  { key: "offline", label: "Offline" },
+  { key: "assigned", label: "Assigned to trip" },
+  { key: "available", label: "Available" },
+  { key: "stale", label: "Stale location" },
+  { key: "incomplete", label: "Profile incomplete" },
+];
+const VALID_DRIVER_FILTERS = new Set<DriverFilter>(DRIVER_FILTERS.map((f) => f.key));
+
+type DriversSearch = { status: DriverFilter; q: string };
+
 export const Route = createFileRoute("/app/admin/drivers")({
   head: () => ({ meta: [{ title: "Drivers — Admin" }] }),
+  validateSearch: (raw: Record<string, unknown>): DriversSearch => ({
+    status: typeof raw.status === "string" && VALID_DRIVER_FILTERS.has(raw.status as DriverFilter)
+      ? (raw.status as DriverFilter)
+      : "all",
+    q: typeof raw.q === "string" ? raw.q : "",
+  }),
   component: DriversPage,
 });
 
@@ -43,6 +72,8 @@ function DriversPage() {
   const { user } = useAuth();
   const { roles, loading: rolesLoading } = useUserRoles(user?.id);
   const isAdmin = !!roles?.includes("admin");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/app/admin/drivers" });
 
   const nav = useMemo(() => {
     const items = [];
@@ -52,12 +83,23 @@ function DriversPage() {
     return items;
   }, [roles]);
 
+  const activeFilter = search.status;
   const [drivers, setDrivers] = useState<DriverProfile[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [activeRides, setActiveRides] = useState<Record<string, Ride>>({});
   const [passengers, setPassengers] = useState<Profile[]>([]);
-  const [query, setQuery] = useState("");
+  const [queryInput, setQueryInput] = useState(search.q);
 
+  useEffect(() => setQueryInput(search.q), [search.q]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const trimmed = queryInput.trim();
+      if (trimmed !== search.q) {
+        navigate({ search: (p: DriversSearch) => ({ ...p, q: trimmed }), replace: true });
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [queryInput, navigate, search.q]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -97,7 +139,6 @@ function DriversPage() {
       }
       setActiveRides(rMap);
 
-      // Load passenger profiles (role = passenger, not in driver_profiles)
       const { data: passengerRoles } = await supabase
         .from("user_roles")
         .select("user_id")
@@ -113,7 +154,6 @@ function DriversPage() {
         setPassengers([]);
       }
     };
-
 
     load();
 
@@ -172,35 +212,102 @@ function DriversPage() {
   }
 
   const now = Date.now();
-  const q = query.trim().toLowerCase();
-  const matchProfile = (p: Profile | undefined, userId: string) => {
+  const q = queryInput.trim().toLowerCase();
+
+  const matchSearch = (d: DriverProfile) => {
     if (!q) return true;
+    const p = profiles[d.user_id];
     return (
       (p?.full_name?.toLowerCase().includes(q) ?? false) ||
       (p?.phone?.toLowerCase().includes(q) ?? false) ||
-      userId.toLowerCase().includes(q)
+      (d.license_plate?.toLowerCase().includes(q) ?? false) ||
+      d.user_id.toLowerCase().includes(q)
     );
   };
-  const filteredDrivers = drivers.filter((d) => matchProfile(profiles[d.user_id], d.user_id));
-  const filteredPassengers = passengers.filter((p) => matchProfile(p, p.user_id));
+
+  const matchFilter = (d: DriverProfile) => {
+    const updatedTs = d.location_updated_at ? new Date(d.location_updated_at).getTime() : 0;
+    const isLiveLoc = updatedTs && now - updatedTs < LIVE_THRESHOLD_MS;
+    const onTrip = !!activeRides[d.user_id];
+    const profileComplete =
+      !!d.vehicle_type && !!d.vehicle_model && !!d.license_plate &&
+      !!profiles[d.user_id]?.full_name && !!profiles[d.user_id]?.phone;
+    switch (activeFilter) {
+      case "online": return !!d.is_available;
+      case "offline": return !d.is_available;
+      case "assigned": return onTrip;
+      case "available": return !!d.is_available && !onTrip;
+      case "stale": return !!d.is_available && !isLiveLoc;
+      case "incomplete": return !profileComplete;
+      default: return true;
+    }
+  };
+
+  const filteredDrivers = drivers.filter((d) => matchSearch(d) && matchFilter(d));
+  const filteredPassengers = passengers.filter((p) => {
+    if (!q) return true;
+    return (
+      (p.full_name?.toLowerCase().includes(q) ?? false) ||
+      (p.phone?.toLowerCase().includes(q) ?? false) ||
+      p.user_id.toLowerCase().includes(q)
+    );
+  });
+
+  const filtersApplied = activeFilter !== "all" || !!q;
 
   return (
     <AppShell title="Admin" nav={nav}>
       <AdminTabs />
 
-      <div className="relative mb-4">
+      <div className="relative mb-3">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name, phone, or user ID…"
+          value={queryInput}
+          onChange={(e) => setQueryInput(e.target.value)}
+          placeholder="Search by name, phone, licence plate, or user ID…"
           className="pl-9"
         />
       </div>
 
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {DRIVER_FILTERS.map((f) => (
+          <Button
+            key={f.key}
+            size="sm"
+            variant={activeFilter === f.key ? "default" : "outline"}
+            className="h-8 text-xs"
+            onClick={() => navigate({ search: (p: DriversSearch) => ({ ...p, status: f.key }) })}
+          >
+            {f.label}
+          </Button>
+        ))}
+      </div>
+
+      {filtersApplied && (
+        <div className="mb-3 flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">
+            {filteredDrivers.length} of {drivers.length} drivers ·{" "}
+            {DRIVER_FILTERS.find((f) => f.key === activeFilter)?.label}
+            {q && <> matching "<span className="text-foreground">{q}</span>"</>}
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs"
+            onClick={() => {
+              setQueryInput("");
+              navigate({ search: { status: "all", q: "" } });
+            }}
+          >
+            Clear filters
+          </Button>
+        </div>
+      )}
+
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         Drivers ({filteredDrivers.length}/{drivers.length})
       </h3>
+
 
       <ul className="space-y-3">
         {filteredDrivers.map((d) => {
