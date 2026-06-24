@@ -136,6 +136,7 @@ export type Database = {
       booking_driver_assignments: {
         Row: {
           assigned_at: string
+          assignment_role: string
           booking_id: string
           driver_user_id: string
           id: string
@@ -145,6 +146,7 @@ export type Database = {
         }
         Insert: {
           assigned_at?: string
+          assignment_role?: string
           booking_id: string
           driver_user_id: string
           id?: string
@@ -154,6 +156,7 @@ export type Database = {
         }
         Update: {
           assigned_at?: string
+          assignment_role?: string
           booking_id?: string
           driver_user_id?: string
           id?: string
@@ -1043,6 +1046,7 @@ export type Database = {
           estimated_total: number | null
           id: string
           journey_pattern: Database["public"]["Enums"]["journey_pattern"]
+          metadata: Json
           parent_booking_id: string | null
           passenger_notes: string | null
           quoted_total: number | null
@@ -1065,6 +1069,7 @@ export type Database = {
           estimated_total?: number | null
           id?: string
           journey_pattern: Database["public"]["Enums"]["journey_pattern"]
+          metadata?: Json
           parent_booking_id?: string | null
           passenger_notes?: string | null
           quoted_total?: number | null
@@ -1087,6 +1092,7 @@ export type Database = {
           estimated_total?: number | null
           id?: string
           journey_pattern?: Database["public"]["Enums"]["journey_pattern"]
+          metadata?: Json
           parent_booking_id?: string | null
           passenger_notes?: string | null
           quoted_total?: number | null
