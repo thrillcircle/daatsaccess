@@ -91,7 +91,7 @@ function PassengerBookingsPage() {
       setLoading(true);
       const { data: b } = await supabase
         .from("service_bookings")
-        .select("id,booking_reference,service_type,status,start_at,requested_companion_count,estimated_total,quoted_total,passenger_notes,created_at")
+        .select("id,booking_reference,service_type,status,start_at,end_at,requested_companion_count,estimated_total,quoted_total,deposit_amount,deposit_status,metadata,passenger_notes,created_at")
         .eq("booked_by_user_id", user.id)
         .order("created_at", { ascending: false });
       if (cancelled) return;
@@ -99,23 +99,32 @@ function PassengerBookingsPage() {
       setBookings(list);
       const ids = list.map((x) => x.id);
       if (ids.length) {
-        const [tr, ar, qr, dr, vr, cr, rr] = await Promise.all([
+        const [tr, ar, qr, dr, vr, cr, rr, ir] = await Promise.all([
           supabase.from("booking_travellers").select("*").in("booking_id", ids),
           supabase.from("booking_assistance_requirements").select("*").in("booking_id", ids),
-          supabase.from("service_quotes").select("id,booking_id,status,total,currency").in("booking_id", ids),
+          supabase.from("service_quotes").select("id,booking_id,status,total,currency,valid_until,notes").in("booking_id", ids),
           supabase.from("booking_driver_assignments").select("*").in("booking_id", ids),
           supabase.from("booking_vehicle_assignments").select("*").in("booking_id", ids),
           supabase.from("booking_companion_assignments").select("*").in("booking_id", ids),
           supabase.from("rides").select("id,service_booking_id,status,driver_id").in("service_booking_id", ids),
+          supabase.from("booking_itinerary_items").select("*").in("booking_id", ids).order("day_number").order("sequence_number"),
         ]);
         if (cancelled) return;
         setTravellers((tr.data ?? []) as Traveller[]);
         setAssistance((ar.data ?? []) as Assistance[]);
-        setQuotes((qr.data ?? []) as Quote[]);
+        const qs = (qr.data ?? []) as Quote[];
+        setQuotes(qs);
         setDriverAssigns((dr.data ?? []) as DriverAssign[]);
         setVehicleAssigns((vr.data ?? []) as VehicleAssign[]);
         setCompanionAssigns((cr.data ?? []) as CompanionAssign[]);
         setRides((rr.data ?? []) as Ride[]);
+        setItinerary((ir.data ?? []) as Itinerary[]);
+        if (qs.length) {
+          const { data: qi } = await supabase.from("service_quote_items").select("*").in("quote_id", qs.map((q) => q.id)).order("sort_order");
+          if (!cancelled) setQuoteItems((qi ?? []) as QuoteItem[]);
+        } else {
+          setQuoteItems([]);
+        }
         const vIds = Array.from(new Set((vr.data ?? []).map((v) => v.fleet_vehicle_id)));
         const cIds = Array.from(new Set((cr.data ?? []).map((c) => c.companion_id)));
         const drIds = Array.from(new Set([
