@@ -511,7 +511,19 @@ type HistoryRow = Ride & {
   review?: { rating: number } | null;
 };
 
-function RideHistory({ userId }: { userId?: string }) {
+type RideStatus = Database["public"]["Enums"]["ride_status"];
+
+function RideHistory({
+  userId,
+  title = "Trip history",
+  statuses = ["completed", "cancelled"],
+  emptyText = "No trips to show.",
+}: {
+  userId?: string;
+  title?: string;
+  statuses?: RideStatus[];
+  emptyText?: string;
+}) {
   const [rides, setRides] = useState<HistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -524,7 +536,7 @@ function RideHistory({ userId }: { userId?: string }) {
         .from("rides")
         .select("*")
         .eq("passenger_id", userId)
-        .in("status", ["completed", "cancelled"])
+        .in("status", statuses)
         .order("created_at", { ascending: false })
         .limit(50);
       const list = (data ?? []) as Ride[];
@@ -574,20 +586,19 @@ function RideHistory({ userId }: { userId?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, statuses]);
 
   return (
     <section className="mt-4 rounded-2xl border bg-card p-4">
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Trip history
+        {title}
       </h3>
       {loading ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
       ) : !rides.length ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          No completed trips yet. Your finished rides will show here.
-        </p>
+        <p className="py-6 text-center text-sm text-muted-foreground">{emptyText}</p>
       ) : (
+
         <ul className="divide-y">
           {rides.map((r) => {
             const travelSec =
