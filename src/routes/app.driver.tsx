@@ -197,6 +197,8 @@ function DriverPage() {
           You're offline. Go online to see ride requests.
         </div>
       )}
+      <DriverHistory driverId={user!.id} />
+
     </AppShell>
   );
 }
