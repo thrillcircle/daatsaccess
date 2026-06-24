@@ -675,12 +675,26 @@ function TripRow({
         <Badge variant="outline" className="font-mono text-[10px]">
           {ride.id.slice(0, 8)}
         </Badge>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
             <Link to="/app/trip/$rideId" params={{ rideId: ride.id }}>
               <ExternalLink className="mr-1 h-3 w-3" /> Details
             </Link>
           </Button>
+          {ride.driver_id && (
+            <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+              <Link to="/app/admin/drivers" search={{ status: "all", q: ride.driver_id }}>
+                <ExternalLink className="mr-1 h-3 w-3" /> Driver
+              </Link>
+            </Button>
+          )}
+          {(ride.vehicle_id || vehicle?.license_plate) && (
+            <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+              <Link to="/app/admin/fleet">
+                <Car className="mr-1 h-3 w-3" /> Vehicle
+              </Link>
+            </Button>
+          )}
           <AdminActionsDialog
             ride={ride}
             passenger={passenger}
