@@ -311,17 +311,21 @@ function OnlineToggle({
   );
 }
 
-function OpenRidesList({ rides, driverId }: { rides: Ride[]; driverId: string }) {
-  async function accept(ride: Ride) {
-    const { error } = await supabase
-      .from("rides")
-      .update({ driver_id: driverId, status: "accepted" })
-      .eq("id", ride.id)
-      .eq("status", "requested")
-      .is("driver_id", null);
-    if (error) toast.error(error.message);
-    else toast.success("Ride accepted");
+function OpenRidesList({ rides }: { rides: Ride[]; driverId: string }) {
+  const accept = useServerFn(acceptRide);
+  async function onAccept(ride: Ride) {
+    // Pre-open the Maps tab synchronously so the popup-blocker treats it as
+    // user-initiated. If the server claim fails we close the placeholder.
+    const win = openMapsNav(ride.pickup_lat, ride.pickup_lng);
+    try {
+      await accept({ data: { rideId: ride.id } });
+      toast.success("Ride accepted — navigating to pickup");
+    } catch (e) {
+      win?.close();
+      toast.error(e instanceof Error ? e.message : "Could not accept ride");
+    }
   }
+
 
   if (!rides.length) {
     return (
