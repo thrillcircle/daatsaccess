@@ -40,7 +40,6 @@ import {
   type PassengerDetails,
 } from "@/lib/driver-trip.functions";
 import { StartTripPinDialog } from "@/components/StartTripPinDialog";
-import { openMapsNav } from "@/lib/google-maps";
 
 const PICKUP_WINDOW_MS = 30 * 60 * 1000;
 const isFarFutureScheduled = (r: Ride) =>
