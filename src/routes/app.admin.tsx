@@ -117,7 +117,7 @@ function AdminPage() {
           supabase.from("driver_profiles").select("id", { count: "exact", head: true }).eq("is_available", true),
           supabase.from("rides").select("id", { count: "exact", head: true }),
           supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "requested"),
-          supabase.from("rides").select("id", { count: "exact", head: true }).in("status", ACTIVE_STATUSES as unknown as string[]),
+          supabase.from("rides").select("id", { count: "exact", head: true }).in("status", ACTIVE_STATUSES as unknown as ("requested" | "accepted" | "driver_arriving" | "arrived" | "in_progress")[]),
           supabase.from("rides").select("id", { count: "exact", head: true }).eq("request_type", "scheduled").in("status", ["requested", "accepted"]),
           supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "completed"),
           supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
