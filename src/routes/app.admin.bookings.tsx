@@ -153,7 +153,7 @@ function AdminBookingsPage() {
           supabase.from("booking_driver_assignments").select("*").in("booking_id", ids),
           supabase.from("booking_vehicle_assignments").select("*").in("booking_id", ids),
           supabase.from("booking_companion_assignments").select("*").in("booking_id", ids),
-          supabase.from("rides").select("id,service_booking_id,status,driver_id").in("service_booking_id", ids),
+          supabase.from("rides").select("id,service_booking_id,itinerary_item_id,status,driver_id").in("service_booking_id", ids),
           supabase.from("user_roles").select("user_id").eq("role", "driver"),
           supabase.from("fleet_vehicles").select("*").eq("is_active", true).order("registration_number"),
           supabase.from("companion_profiles").select("*").order("full_name"),
