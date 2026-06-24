@@ -173,9 +173,52 @@ function AdminPage() {
           )}
         </ul>
       </section>
+
+      <section className="mt-6">
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <Pencil className="h-3.5 w-3.5" /> Live trip edits
+        </h3>
+        <ul className="divide-y rounded-2xl border bg-card">
+          {edits.map((c) => {
+            const next = (c.new_values ?? {}) as Record<string, unknown>;
+            const ackd = !!c.acknowledged_by_driver_at;
+            return (
+              <li key={c.id} className="space-y-1 px-4 py-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium capitalize">
+                    {c.change_type.replaceAll("_", " ")}
+                  </span>
+                  <Badge variant={ackd ? "outline" : "secondary"}>
+                    {ackd ? "Acknowledged" : "Pending driver ack"}
+                  </Badge>
+                </div>
+                {"pickup_address" in next && (
+                  <p className="truncate text-xs text-muted-foreground">
+                    Pickup → {String(next.pickup_address)}
+                  </p>
+                )}
+                {"destination_address" in next && (
+                  <p className="truncate text-xs text-muted-foreground">
+                    Destination → {String(next.destination_address)}
+                  </p>
+                )}
+                <p className="text-[11px] text-muted-foreground">
+                  v{c.route_version} · {new Date(c.created_at).toLocaleString()}
+                </p>
+              </li>
+            );
+          })}
+          {!edits.length && (
+            <li className="px-4 py-6 text-center text-sm text-muted-foreground">
+              No trip edits yet.
+            </li>
+          )}
+        </ul>
+      </section>
     </AppShell>
   );
 }
+
 
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (
