@@ -388,9 +388,14 @@ function BookingDetailDialog({
   const q = quotes.find((x) => x.booking_id === booking.id);
   const ride = rides.find((r) => r.service_booking_id === booking.id);
   const bookerProfile = bookers.find((p) => p.user_id === booking.booked_by_user_id);
-  const rideItem = it.find((i) => i.item_type === "ride");
+  const rideItems = it.filter((i) => i.item_type === "ride");
+  const waitingItems = it.filter((i) => i.item_type === "waiting");
+  const bookingRides = rides.filter((r) => r.service_booking_id === booking.id);
+  const rideForItem = (itemId: string) => bookingRides.find((r) => r.itinerary_item_id === itemId);
+  // Legacy: first ride item (used for the existing single-ride summary).
+  const rideItem = rideItems[0] ?? null;
   let parsedDest: { address: string; lat: number; lng: number } | null = null;
-  let parsedMeta: { distanceKm?: number; durationMin?: number; estimatedTransport?: number; requestType?: "now" | "scheduled"; scheduledAt?: string | null } = {};
+  let parsedMeta: { distanceKm?: number; durationMin?: number; estimatedTransport?: number; requestType?: "now" | "scheduled"; scheduledAt?: string | null; facilityName?: string } = {};
   if (rideItem?.notes) {
     try {
       const j = JSON.parse(rideItem.notes);
@@ -398,6 +403,26 @@ function BookingDetailDialog({
       parsedMeta = j;
     } catch { /* ignore */ }
   }
+  function parseItem(item: Itinerary): {
+    dest: { address: string; lat: number; lng: number } | null;
+    meta: { distanceKm?: number; durationMin?: number; estimatedTransport?: number; requestType?: "now" | "scheduled"; scheduledAt?: string | null; facilityName?: string };
+  } {
+    if (!item.notes) return { dest: null, meta: {} };
+    try {
+      const j = JSON.parse(item.notes);
+      return { dest: j.destination ?? null, meta: j };
+    } catch {
+      return { dest: null, meta: {} };
+    }
+  }
+  const allRidesComplete =
+    rideItems.length > 0 &&
+    rideItems.every((ri) => {
+      const r = rideForItem(ri.id);
+      return r && r.status === "completed";
+    });
+  const allWaitingComplete = waitingItems.every((wi) => wi.status === "completed");
+  const canCompleteService = allRidesComplete && allWaitingComplete && booking.status !== "completed" && booking.status !== "cancelled";
 
   async function logEvent(eventType: string, payload: Record<string, unknown>) {
     await supabase.from("service_booking_events").insert({
