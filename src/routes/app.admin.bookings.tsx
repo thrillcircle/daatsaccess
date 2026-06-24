@@ -692,16 +692,77 @@ function BookingDetailDialog({
         </section>
 
         <section className="rounded-lg border p-3 text-sm">
-          <h4 className="font-semibold flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Route</h4>
-          {ride ? (
-            <p>Linked ride <Link to="/app/trip/$rideId" params={{ rideId: ride.id }} className="text-primary underline">{ride.id.slice(0, 8)}</Link> · {ride.status.replace("_", " ")}</p>
-          ) : rideItem ? (
-            <div className="mt-1 space-y-0.5 text-xs">
-              <p><span className="text-muted-foreground">Pickup:</span> {rideItem.address}</p>
-              {parsedDest ? <p><span className="text-muted-foreground">Destination:</span> {parsedDest.address}</p> : null}
-              {parsedMeta.distanceKm != null ? <p><span className="text-muted-foreground">Estimate:</span> {Number(parsedMeta.distanceKm).toFixed(2)} km · {formatZAR(Number(parsedMeta.estimatedTransport ?? 0))} transport</p> : null}
-            </div>
-          ) : <p className="text-xs text-muted-foreground">No route yet.</p>}
+          <h4 className="font-semibold flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Itinerary</h4>
+          {it.length === 0 ? (
+            <p className="mt-1 text-xs text-muted-foreground">No itinerary items yet.</p>
+          ) : (
+            <ol className="mt-2 space-y-2">
+              {it.map((item, idx) => {
+                const parsed = parseItem(item);
+                const linkedRide = item.item_type === "ride" ? rideForItem(item.id) : null;
+                const legSeq = it.filter((x) => x.item_type === "ride" && x.sequence_number <= item.sequence_number).length;
+                return (
+                  <li key={item.id} className="rounded-md border bg-background/40 p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium uppercase text-muted-foreground">
+                          Day {item.day_number} · Step {item.sequence_number} · {item.item_type}
+                        </p>
+                        <p className="text-sm">{item.title ?? "—"}</p>
+                        {item.address ? <p className="text-[11px] text-muted-foreground">From: {item.address}</p> : null}
+                        {parsed.dest ? <p className="text-[11px] text-muted-foreground">To: {parsed.dest.address}</p> : null}
+                        {item.planned_start_at ? (
+                          <p className="text-[11px] text-muted-foreground">
+                            Planned: {new Date(item.planned_start_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "short", timeStyle: "short" })}
+                            {item.planned_end_at ? ` → ${new Date(item.planned_end_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", timeStyle: "short" })}` : ""}
+                          </p>
+                        ) : null}
+                        {item.actual_start_at ? (
+                          <p className="text-[11px] text-emerald-600">
+                            Actual: {new Date(item.actual_start_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", timeStyle: "short" })}
+                            {item.actual_end_at ? ` → ${new Date(item.actual_end_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", timeStyle: "short" })}` : ""}
+                          </p>
+                        ) : null}
+                      </div>
+                      <Badge variant="outline" className="shrink-0 text-[10px]">{item.status}</Badge>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {item.item_type === "ride" ? (
+                        linkedRide ? (
+                          <>
+                            <Badge variant="secondary" className="text-[10px]">Ride {linkedRide.status.replace("_", " ")}</Badge>
+                            <Button asChild size="sm" variant="outline">
+                              <Link to="/app/trip/$rideId" params={{ rideId: linkedRide.id }}>Open trip</Link>
+                            </Button>
+                          </>
+                        ) : (
+                          <Button size="sm" disabled={busy || !driverId} onClick={() => createLinkedRideForItem(item, legSeq)}>
+                            Create ride leg {legSeq}
+                          </Button>
+                        )
+                      ) : null}
+                      {item.item_type === "waiting" ? (
+                        <>
+                          {!item.actual_start_at ? (
+                            <Button size="sm" disabled={busy} onClick={() => markWaiting(item, "start")}>Mark waiting started</Button>
+                          ) : !item.actual_end_at ? (
+                            <Button size="sm" disabled={busy} onClick={() => markWaiting(item, "end")}>Mark waiting ended</Button>
+                          ) : (
+                            <Badge variant="secondary" className="text-[10px]">Wait complete</Badge>
+                          )}
+                        </>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+          {/* Legacy single-route summary stays for transport bookings without itinerary destination metadata */}
+          {!it.length && ride ? (
+            <p className="mt-2 text-xs">Linked ride <Link to="/app/trip/$rideId" params={{ rideId: ride.id }} className="text-primary underline">{ride.id.slice(0, 8)}</Link> · {ride.status.replace("_", " ")}</p>
+          ) : null}
         </section>
 
         <section className="grid gap-3 rounded-lg border p-3">
