@@ -368,40 +368,64 @@ function OpenRidesList({ rides }: { rides: Ride[]; driverId: string }) {
 }
 
 function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | null) => void }) {
-  const nextStatus: Record<RideStatus, RideStatus | null> = {
-    requested: "accepted",
-    accepted: "driver_arriving",
-    driver_arriving: "arrived",
-    arrived: "in_progress",
-    in_progress: "completed",
-    completed: null,
-    cancelled: null,
-  };
-  const nextLabel: Record<RideStatus, string> = {
-    requested: "Accept",
-    accepted: "I'm arriving",
-    driver_arriving: "I've arrived",
-    arrived: "Start trip",
-    in_progress: "Complete trip",
-    completed: "",
-    cancelled: "",
-  };
+  const arriveFn = useServerFn(markArrived);
+  const startFn = useServerFn(startTrip);
+  const completeFn = useServerFn(completeTrip);
+  const [busy, setBusy] = useState(false);
+  // Track whether the last attempt to open Google Maps was blocked, so we can
+  // surface a large fallback "Open Google Maps Navigation" button.
+  const [navBlocked, setNavBlocked] = useState(false);
 
-  async function advance() {
-    const next = nextStatus[ride.status];
-    if (!next) return;
-    const { data, error } = await supabase
-      .from("rides")
-      .update({ status: next })
-      .eq("id", ride.id)
-      .select()
-      .single();
-    if (error) toast.error(error.message);
-    else if (data) {
-      if (next === "completed") {
-        toast.success("Trip completed");
-        onUpdate(null);
-      } else onUpdate(data as Ride);
+  const navTarget: { lat: number; lng: number; label: string } =
+    ride.status === "in_progress"
+      ? { lat: ride.destination_lat, lng: ride.destination_lng, label: "destination" }
+      : { lat: ride.pickup_lat, lng: ride.pickup_lng, label: "pickup" };
+
+  function launchNav() {
+    const win = openMapsNav(navTarget.lat, navTarget.lng);
+    setNavBlocked(!win);
+    return win;
+  }
+
+  async function onArrived() {
+    setBusy(true);
+    try {
+      const r = await arriveFn({ data: { rideId: ride.id } });
+      onUpdate(r as Ride);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not mark arrived");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onStart() {
+    setBusy(true);
+    // Open Maps to the destination synchronously inside the click.
+    const win = openMapsNav(ride.destination_lat, ride.destination_lng);
+    try {
+      const r = await startFn({ data: { rideId: ride.id } });
+      setNavBlocked(!win);
+      onUpdate(r as Ride);
+      toast.success("Trip started — navigating to destination");
+    } catch (e) {
+      win?.close();
+      toast.error(e instanceof Error ? e.message : "Could not start trip");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onComplete() {
+    setBusy(true);
+    try {
+      await completeFn({ data: { rideId: ride.id } });
+      toast.success("Trip completed");
+      onUpdate(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not complete trip");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -416,6 +440,7 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
       toast.success("Ride cancelled");
     }
   }
+
 
   // Passenger contact (active rides only — hidden after completion/cancel).
   const fetchPassenger = useServerFn(getRidePassengerDetails);
