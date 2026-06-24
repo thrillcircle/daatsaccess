@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Phone, Star, Car, MapPin, Navigation, Clock, AlertTriangle } from "lucide-react";
+import { Phone, Star, Car, MapPin, Navigation, Clock, AlertTriangle, Pencil } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { LiveTripMap } from "@/components/LiveTripMap";
 import { useRideLiveLocations } from "@/hooks/use-ride-live-locations";
+import { EditTripDialog } from "@/components/EditTripDialog";
 import {
   getRideDriverDetails,
   type DriverDetails,
@@ -227,8 +228,10 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
         <Row icon={<Navigation className="h-4 w-4 text-primary" />} label="To" value={ride.destination_address} />
       </dl>
 
+      <EditTripButton ride={ride} />
+
       {onCancel && ride.status !== "in_progress" && ride.status !== "arrived" && (
-        <Button variant="outline" className="mt-4 w-full" onClick={onCancel}>
+        <Button variant="outline" className="mt-2 w-full" onClick={onCancel}>
           Cancel ride
         </Button>
       )}
@@ -245,5 +248,31 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
         <p className="truncate text-sm">{value}</p>
       </div>
     </div>
+  );
+}
+
+const EDITABLE_STATUSES = new Set([
+  "requested",
+  "accepted",
+  "driver_arriving",
+  "arrived",
+  "in_progress",
+]);
+
+function EditTripButton({ ride }: { ride: Ride }) {
+  const [open, setOpen] = useState(false);
+  if (!EDITABLE_STATUSES.has(ride.status)) return null;
+  return (
+    <>
+      <Button
+        variant="outline"
+        className="mt-4 w-full"
+        onClick={() => setOpen(true)}
+      >
+        <Pencil className="mr-2 h-4 w-4" />
+        Edit trip
+      </Button>
+      <EditTripDialog ride={ride} open={open} onOpenChange={setOpen} />
+    </>
   );
 }
