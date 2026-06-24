@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
@@ -8,13 +8,22 @@ import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Phone, Car, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Phone, Car, Search, MessageSquare, History, UserPlus, UserMinus, Power, ExternalLink, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
-
 
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
+
+type DriverStats = {
+  completed: number;
+  cancelled: number;
+  upcoming: number;
+  totalKm: number;
+};
 
 const ACTIVE: Database["public"]["Enums"]["ride_status"][] = [
   "requested",
