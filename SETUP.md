@@ -394,7 +394,7 @@ Use separate accounts and browser sessions.
 4. Enter a destination.
 5. Confirm the route preview appears.
 6. Confirm distance and duration are displayed.
-7. Confirm the fare uses R20 plus R10 per kilometre.
+7. Confirm the fare uses R20 plus R13.50 per kilometre.
 8. Request the ride.
 9. Confirm the ride status is `requested`.
 
