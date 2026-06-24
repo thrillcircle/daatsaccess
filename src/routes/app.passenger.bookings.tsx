@@ -29,17 +29,23 @@ type Booking = {
   service_type: ServiceType;
   status: BookingStatus;
   start_at: string | null;
+  end_at: string | null;
   requested_companion_count: number;
   estimated_total: number | null;
   quoted_total: number | null;
+  deposit_amount: number | null;
+  deposit_status: "none" | "pending" | "paid" | "refunded" | "waived";
+  metadata: unknown;
   passenger_notes: string | null;
   created_at: string;
 };
 
 type Traveller = { id: string; booking_id: string; full_name: string; phone: string | null; is_primary: boolean; relationship_to_booker: string | null };
 type Assistance = { id: string; booking_id: string; requirement_code: AssistanceCode; notes: string | null };
-type Quote = { id: string; booking_id: string; status: string; total: number; currency: string };
-type DriverAssign = { id: string; booking_id: string; driver_user_id: string; status: string };
+type Quote = { id: string; booking_id: string; status: string; total: number; currency: string; valid_until: string | null; notes: string | null };
+type QuoteItem = { id: string; quote_id: string; label: string; description: string | null; quantity: number; unit_price: number; line_total: number; sort_order: number };
+type Itinerary = { id: string; booking_id: string; day_number: number; sequence_number: number; item_type: string; title: string | null; address: string | null; planned_start_at: string | null; planned_end_at: string | null; status: string };
+type DriverAssign = { id: string; booking_id: string; driver_user_id: string; status: string; assignment_role: string };
 type VehicleAssign = { id: string; booking_id: string; fleet_vehicle_id: string; status: string };
 type CompanionAssign = { id: string; booking_id: string; companion_id: string; status: string };
 type FleetVehicle = { id: string; registration_number: string; make: string | null; model: string | null };
