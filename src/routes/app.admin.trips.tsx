@@ -527,13 +527,19 @@ function TripRow({
   onChanged: () => void;
 }) {
   const fleetAlerts = fleetVehicle ? getVehicleAlerts(fleetVehicle) : [];
-  const vehicleLabel = fleetVehicle
-    ? `${fleetVehicle.vehicle_name} · ${fleetVehicle.license_plate}`
-    : vehicle
-    ? [vehicle.vehicle_model, vehicle.license_plate].filter(Boolean).join(" · ") || "—"
-    : ride.driver_id
-    ? "—"
-    : "Unassigned";
+  const vehicleModel = fleetVehicle ? `${fleetVehicle.vehicle_name ?? ""} ${fleetVehicle.model ?? ""}`.trim() || (fleetVehicle.vehicle_name ?? "—") : vehicle?.vehicle_model ?? null;
+  const vehicleType = fleetVehicle?.vehicle_type ?? vehicle?.vehicle_type ?? null;
+  const vehiclePlate = fleetVehicle?.license_plate ?? vehicle?.license_plate ?? null;
+  const vehicleAssignmentStatus: "fleet" | "driver" | "unassigned" = fleetVehicle
+    ? "fleet"
+    : vehicle && (vehicle.vehicle_model || vehicle.license_plate)
+    ? "driver"
+    : "unassigned";
+  const driverAvailability: "available" | "offline" | "none" = vehicle
+    ? vehicle.is_available
+      ? "available"
+      : "offline"
+    : "none";
 
   return (
     <li className="space-y-2 px-4 py-3">
@@ -560,7 +566,33 @@ function TripRow({
           label="Driver"
           value={driver?.full_name ?? (ride.driver_id ? "Assigned" : "Unassigned")}
         />
-        <Field label="Vehicle" value={vehicleLabel} />
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Driver availability</div>
+          <div className="text-xs">
+            {driverAvailability === "available" ? (
+              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Available</Badge>
+            ) : driverAvailability === "offline" ? (
+              <Badge variant="secondary">Offline</Badge>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </div>
+        </div>
+        <Field label="Vehicle model" value={vehicleModel ?? "Unassigned"} />
+        <Field label="Vehicle type" value={vehicleType ?? "—"} />
+        <Field label="License plate" value={vehiclePlate ?? "—"} />
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Vehicle assignment</div>
+          <div className="text-xs">
+            {vehicleAssignmentStatus === "fleet" ? (
+              <Badge className="bg-sky-500/15 text-sky-700 dark:text-sky-300">Fleet vehicle</Badge>
+            ) : vehicleAssignmentStatus === "driver" ? (
+              <Badge variant="outline">Driver's vehicle</Badge>
+            ) : (
+              <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">Unassigned</Badge>
+            )}
+          </div>
+        </div>
 
         {variant === "scheduled" && (
           <>
