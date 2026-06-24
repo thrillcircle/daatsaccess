@@ -367,6 +367,49 @@ function RideRequest({ userId }: { userId?: string }) {
         />
       </div>
 
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <Button
+          type="button"
+          variant={mode === "now" ? "default" : "outline"}
+          onClick={() => setMode("now")}
+        >
+          Ride now
+        </Button>
+        <Button
+          type="button"
+          variant={mode === "scheduled" ? "default" : "outline"}
+          onClick={() => setMode("scheduled")}
+        >
+          Schedule for later
+        </Button>
+      </div>
+
+      {mode === "scheduled" && (
+        <div className="mt-3 space-y-2 rounded-lg border bg-background p-3">
+          <Label htmlFor="schedule-at" className="text-xs">
+            Pickup time (Africa/Johannesburg)
+          </Label>
+          <Input
+            id="schedule-at"
+            type="datetime-local"
+            value={scheduleLocal}
+            min={localInputNow()}
+            onChange={(e) => setScheduleLocal(e.target.value)}
+          />
+          {scheduleDate && scheduleValid ? (
+            <p className="text-xs text-muted-foreground">
+              Scheduled for{" "}
+              <strong className="text-foreground">{formatJoburg(scheduleDate)}</strong>
+            </p>
+          ) : scheduleLocal ? (
+            <p className="text-xs text-destructive">Pick a time in the future.</p>
+          ) : null}
+          <p className="text-[11px] text-muted-foreground">
+            Final ETA can change due to traffic and driver availability.
+          </p>
+        </div>
+      )}
+
       {pickupPt && destPt && (
         <div className="mt-4 space-y-3">
           <RouteMap origin={pickupPt} destination={destPt} className="h-48" />
@@ -388,10 +431,13 @@ function RideRequest({ userId }: { userId?: string }) {
             onClick={onRequest}
             disabled={!canRequest || submitting || estimating}
           >
-            {submitting ? "Requesting…" : "Request ride"}
+            {submitting
+              ? mode === "scheduled" ? "Scheduling…" : "Requesting…"
+              : mode === "scheduled" ? "Schedule ride" : "Request ride"}
           </Button>
         </div>
       )}
+
     </section>
   );
 }
