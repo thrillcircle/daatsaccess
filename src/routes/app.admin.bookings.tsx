@@ -400,7 +400,7 @@ function BookingDetailDialog({
       booking_id: booking!.id,
       actor_user_id: actorId,
       event_type: eventType,
-      payload,
+      payload: payload as never,
     });
   }
 
