@@ -32,7 +32,6 @@ import { acknowledgeRideChange } from "@/lib/ride-edit.functions";
 import {
   acceptRide,
   markArrived,
-  startTrip,
   completeTrip,
   startScheduledPickup,
 } from "@/lib/ride-driver.functions";
@@ -40,6 +39,8 @@ import {
   getRidePassengerDetails,
   type PassengerDetails,
 } from "@/lib/driver-trip.functions";
+import { StartTripPinDialog } from "@/components/StartTripPinDialog";
+import { openMapsNav } from "@/lib/google-maps";
 
 const PICKUP_WINDOW_MS = 30 * 60 * 1000;
 const isFarFutureScheduled = (r: Ride) =>
