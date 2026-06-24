@@ -36,6 +36,9 @@ function ProfilePage() {
   return (
     <AppShell title="Profile" nav={nav}>
       {user ? <ProfileEditor userId={user.id} /> : null}
+      {user && roles?.includes("driver") ? (
+        <DriverVehicleEditor userId={user.id} />
+      ) : null}
     </AppShell>
   );
 }
@@ -314,6 +317,177 @@ function ProfileEditor({ userId }: { userId: string }) {
           {saving ? "Saving…" : "Save changes"}
         </Button>
       </div>
+    </section>
+  );
+}
+
+type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
+
+const PLATE_RE = /^[A-Z0-9 -]{2,12}$/;
+
+function DriverVehicleEditor({ userId }: { userId: string }) {
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<DriverProfile | null>(null);
+  const [vehicleType, setVehicleType] = useState("");
+  const [vehicleModel, setVehicleModel] = useState("");
+  const [licensePlate, setLicensePlate] = useState("");
+  const [errors, setErrors] = useState<{ type?: string; model?: string; plate?: string }>({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setLoadError(null);
+      const { data, error } = await supabase
+        .from("driver_profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        setLoadError(error.message);
+        setLoading(false);
+        return;
+      }
+      setProfile(data);
+      setVehicleType(data?.vehicle_type ?? "");
+      setVehicleModel(data?.vehicle_model ?? "");
+      setLicensePlate(data?.license_plate ?? "");
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  function validate(): boolean {
+    const next: { type?: string; model?: string; plate?: string } = {};
+    if (!vehicleType.trim()) next.type = "Vehicle type is required";
+    else if (vehicleType.length > 40) next.type = "Vehicle type is too long";
+    if (!vehicleModel.trim()) next.model = "Vehicle model is required";
+    else if (vehicleModel.length > 80) next.model = "Vehicle model is too long";
+    const plate = licensePlate.trim().toUpperCase();
+    if (!plate) next.plate = "License plate is required";
+    else if (!PLATE_RE.test(plate)) next.plate = "2–12 letters, numbers, spaces or hyphens";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  }
+
+  async function onSave() {
+    if (!validate()) return;
+    if (!profile) {
+      // No row yet — driver hasn't gone through onboarding. Send them there.
+      toast.error("Finish driver setup on the Drive tab first");
+      return;
+    }
+    setSaving(true);
+    const { data, error } = await supabase
+      .from("driver_profiles")
+      .update({
+        vehicle_type: vehicleType.trim(),
+        vehicle_model: vehicleModel.trim(),
+        license_plate: licensePlate.trim().toUpperCase(),
+      })
+      .eq("user_id", userId)
+      .select()
+      .single();
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setProfile(data);
+    setVehicleType(data.vehicle_type ?? "");
+    setVehicleModel(data.vehicle_model ?? "");
+    setLicensePlate(data.license_plate ?? "");
+    toast.success("Vehicle details saved");
+  }
+
+  if (loading) {
+    return (
+      <section className="mt-4 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading vehicle…
+        </p>
+      </section>
+    );
+  }
+  if (loadError) {
+    return (
+      <section className="mt-4 rounded-2xl border border-destructive/40 bg-destructive/5 p-4">
+        <p className="text-sm font-medium text-destructive">Couldn't load vehicle details</p>
+        <p className="text-xs text-muted-foreground">{loadError}</p>
+      </section>
+    );
+  }
+  if (!profile) {
+    return (
+      <section className="mt-4 rounded-2xl border border-dashed bg-card p-4 text-sm text-muted-foreground">
+        Finish driver setup on the Drive tab to add your vehicle details.
+      </section>
+    );
+  }
+
+  return (
+    <section className="mt-4 space-y-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
+      <div>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Vehicle
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Shown to passengers on rides you accept.
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="vehicle_type">Vehicle type</Label>
+        <Input
+          id="vehicle_type"
+          value={vehicleType}
+          maxLength={40}
+          onChange={(e) => {
+            setVehicleType(e.target.value);
+            if (errors.type) setErrors((p) => ({ ...p, type: undefined }));
+          }}
+          placeholder="Sedan, SUV, Hatchback…"
+          aria-invalid={!!errors.type}
+        />
+        {errors.type && <p className="text-xs text-destructive">{errors.type}</p>}
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="vehicle_model">Vehicle model</Label>
+        <Input
+          id="vehicle_model"
+          value={vehicleModel}
+          maxLength={80}
+          onChange={(e) => {
+            setVehicleModel(e.target.value);
+            if (errors.model) setErrors((p) => ({ ...p, model: undefined }));
+          }}
+          placeholder="Toyota Corolla 2020"
+          aria-invalid={!!errors.model}
+        />
+        {errors.model && <p className="text-xs text-destructive">{errors.model}</p>}
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="license_plate">License plate</Label>
+        <Input
+          id="license_plate"
+          value={licensePlate}
+          maxLength={12}
+          onChange={(e) => {
+            setLicensePlate(e.target.value.toUpperCase());
+            if (errors.plate) setErrors((p) => ({ ...p, plate: undefined }));
+          }}
+          placeholder="ABC 123 GP"
+          aria-invalid={!!errors.plate}
+        />
+        {errors.plate && <p className="text-xs text-destructive">{errors.plate}</p>}
+      </div>
+      <Button className="w-full" onClick={onSave} disabled={saving}>
+        {saving ? "Saving…" : "Save vehicle"}
+      </Button>
     </section>
   );
 }

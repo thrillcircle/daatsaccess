@@ -212,7 +212,15 @@ function DriverPage() {
         <ActiveRideCard ride={activeRide} onUpdate={setActiveRide} />
       ) : profile.is_available ? (
         <>
-          <OpenRidesList rides={openRides.filter((r) => r.request_type !== "scheduled")} driverId={user!.id} />
+          <OpenRidesList
+            rides={openRides.filter(
+              (r) =>
+                r.request_type !== "scheduled" ||
+                (r.scheduled_at != null &&
+                  new Date(r.scheduled_at).getTime() <= Date.now()),
+            )}
+            driverId={user!.id}
+          />
           <ScheduledOpenRequests driverId={user!.id} online={profile.is_available} />
         </>
       ) : (
