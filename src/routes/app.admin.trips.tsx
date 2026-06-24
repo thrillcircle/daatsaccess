@@ -1149,7 +1149,17 @@ function formatDuration(r: Ride): string {
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
+function CountChip({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg border bg-card px-2 py-1.5 text-center">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
 function Field({ label, value }: { label: string; value: string }) {
+
   return (
     <div className="min-w-0">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
