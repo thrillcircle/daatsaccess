@@ -475,8 +475,17 @@ function RideRequest({ userId }: { userId?: string }) {
   );
 }
 
+type ScheduledRideRow = Ride & {
+  driver?: {
+    full_name: string | null;
+    vehicle_model: string | null;
+    vehicle_type: string | null;
+    license_plate: string | null;
+  } | null;
+};
+
 function ScheduledTrips({ userId }: { userId?: string }) {
-  const [rides, setRides] = useState<Ride[]>([]);
+  const [rides, setRides] = useState<ScheduledRideRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editVal, setEditVal] = useState<string>("");
@@ -489,11 +498,45 @@ function ScheduledTrips({ userId }: { userId?: string }) {
       .select("*")
       .eq("passenger_id", userId)
       .eq("request_type", "scheduled")
-      .eq("status", "requested")
-      .is("driver_id", null)
+      .in("status", ["requested", "accepted"])
       .gt("scheduled_at", new Date().toISOString())
       .order("scheduled_at", { ascending: true });
-    setRides((data ?? []) as Ride[]);
+    const list = (data ?? []) as Ride[];
+    const driverIds = Array.from(
+      new Set(list.map((r) => r.driver_id).filter((v): v is string => !!v)),
+    );
+    let driverMap = new Map<
+      string,
+      { full_name: string | null; vehicle_model: string | null; vehicle_type: string | null; license_plate: string | null }
+    >();
+    if (driverIds.length) {
+      const [{ data: profs }, { data: vehs }] = await Promise.all([
+        supabase.from("profiles").select("user_id, full_name").in("user_id", driverIds),
+        supabase
+          .from("driver_profiles")
+          .select("user_id, vehicle_model, vehicle_type, license_plate")
+          .in("user_id", driverIds),
+      ]);
+      const pMap = new Map((profs ?? []).map((p) => [p.user_id, p]));
+      const vMap = new Map((vehs ?? []).map((v) => [v.user_id, v]));
+      driverMap = new Map(
+        driverIds.map((id) => [
+          id,
+          {
+            full_name: pMap.get(id)?.full_name ?? null,
+            vehicle_model: vMap.get(id)?.vehicle_model ?? null,
+            vehicle_type: vMap.get(id)?.vehicle_type ?? null,
+            license_plate: vMap.get(id)?.license_plate ?? null,
+          },
+        ]),
+      );
+    }
+    setRides(
+      list.map((r) => ({
+        ...r,
+        driver: r.driver_id ? driverMap.get(r.driver_id) ?? null : null,
+      })),
+    );
     setLoading(false);
   };
 
