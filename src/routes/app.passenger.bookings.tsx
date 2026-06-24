@@ -251,7 +251,7 @@ function PassengerBookingsPage() {
                       size="sm"
                       variant="outline"
                       onClick={async () => {
-                        const { error: qErr } = await supabase.from("service_quotes").update({ status: "declined" }).eq("id", q.id);
+                        const { error: qErr } = await supabase.from("service_quotes").update({ status: "rejected" }).eq("id", q.id);
                         if (qErr) { toast.error(qErr.message); return; }
                         await supabase.from("service_booking_events").insert({ booking_id: b.id, actor_user_id: user!.id, event_type: "quote_declined", payload: { quote_id: q.id } as never });
                         toast.success("Quote declined");
