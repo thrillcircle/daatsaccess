@@ -43,12 +43,21 @@ type RideChange = Database["public"]["Tables"]["ride_change_log"]["Row"];
 
 export const Route = createFileRoute("/app/admin")({
   head: () => ({ meta: [{ title: "Admin — Access" }] }),
+  validateSearch: (raw: Record<string, unknown>): OverviewSearch => {
+    const f = typeof raw.filter === "string" && VALID_OVERVIEW.has(raw.filter as OverviewFilter)
+      ? (raw.filter as OverviewFilter)
+      : "all";
+    return { filter: f };
+  },
   component: AdminPage,
 });
 
 function AdminPage() {
   const { user } = useAuth();
   const { roles, loading: rolesLoading } = useUserRoles(user?.id);
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/app/admin" });
+  const selected = search.filter;
 
   const nav = useMemo(() => {
     const items = [];
@@ -62,6 +71,8 @@ function AdminPage() {
     passengers: number;
     drivers: number;
     onlineDrivers: number;
+    totalTrips: number;
+    requested: number;
     active: number;
     scheduled: number;
     completed: number;
@@ -71,8 +82,12 @@ function AdminPage() {
     ratingCount: number;
   } | null>(null);
   const [rides, setRides] = useState<Ride[]>([]);
+  const [profilesById, setProfilesById] = useState<Record<string, { full_name: string | null; phone: string | null }>>({});
   const [edits, setEdits] = useState<RideChange[]>([]);
+  const [loadingRides, setLoadingRides] = useState(true);
+  const [ridesError, setRidesError] = useState<string | null>(null);
   const isAdmin = !!roles?.includes("admin");
+
 
   // Initial load + live Realtime: rides upserts and ride_change_log inserts
   // stream in without a refresh.
