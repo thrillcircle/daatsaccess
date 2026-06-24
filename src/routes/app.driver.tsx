@@ -512,7 +512,7 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
           <RideStatusBadge status={ride.status} />
         </div>
       </div>
-      <TripChangeAlerts ride={ride} />
+      <TripChangeAlerts ride={ride} passengerName={passenger?.fullName ?? null} />
       <LiveTripMap
         pickup={pickup}
         destination={destination}
