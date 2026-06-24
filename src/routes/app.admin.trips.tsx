@@ -24,6 +24,7 @@ type Profile = { user_id: string; full_name: string | null; phone: string | null
 type Review = { ride_id: string; rating: number; comment: string | null };
 
 type FilterKey =
+  | "all"
   | "scheduled"
   | "requested"
   | "accepted"
@@ -31,22 +32,38 @@ type FilterKey =
   | "arrived"
   | "in_progress"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  | "pin_required";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: "scheduled", label: "Scheduled" },
+  { key: "all", label: "All" },
   { key: "requested", label: "Requested" },
+  { key: "scheduled", label: "Scheduled" },
   { key: "accepted", label: "Accepted" },
   { key: "driver_arriving", label: "Driver arriving" },
   { key: "arrived", label: "Arrived" },
   { key: "in_progress", label: "In progress" },
   { key: "completed", label: "Completed" },
   { key: "cancelled", label: "Cancelled" },
+  { key: "pin_required", label: "PIN support required" },
 ];
 
+const VALID_FILTERS = new Set<FilterKey>(FILTERS.map((f) => f.key));
+const ACTIVE_STATUSES = ["requested", "accepted", "driver_arriving", "arrived", "in_progress"] as const;
+const PIN_LOCK_WINDOW_MIN = 15;
+const PIN_LOCK_THRESHOLD = 5;
+
+type TripsSearch = { status: FilterKey; q: string };
 
 export const Route = createFileRoute("/app/admin/trips")({
   head: () => ({ meta: [{ title: "Trips — Admin" }] }),
+  validateSearch: (raw: Record<string, unknown>): TripsSearch => {
+    const status = typeof raw.status === "string" && VALID_FILTERS.has(raw.status as FilterKey)
+      ? (raw.status as FilterKey)
+      : "all";
+    const q = typeof raw.q === "string" ? raw.q : "";
+    return { status, q };
+  },
   component: AdminTripsPage,
 });
 
