@@ -651,9 +651,25 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
         </Button>
       )}
       {ride.status === "arrived" && (
-        <Button className="mt-4 w-full" size="lg" onClick={onStart} disabled={busy}>
-          Start trip
-        </Button>
+        <>
+          <Button
+            className="mt-4 w-full"
+            size="lg"
+            onClick={() => setPinOpen(true)}
+            disabled={busy}
+          >
+            Enter passenger PIN to start trip
+          </Button>
+          <p className="mt-1 text-center text-xs text-muted-foreground">
+            Ask the passenger for their 4-digit trip PIN before starting.
+          </p>
+          <StartTripPinDialog
+            ride={ride}
+            open={pinOpen}
+            onOpenChange={setPinOpen}
+            onStarted={onPinStarted}
+          />
+        </>
       )}
       {ride.status === "in_progress" && (
         <Button className="mt-4 w-full" size="lg" onClick={onComplete} disabled={busy}>
