@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Activity, Users, ListOrdered, Car, History } from "lucide-react";
+import { LayoutDashboard, Activity, Users, ListOrdered, Truck, History } from "lucide-react";
 
 const TABS: ReadonlyArray<{
   to: string;
@@ -12,8 +12,9 @@ const TABS: ReadonlyArray<{
   { to: "/app/admin/trip-history", label: "History", icon: History },
   { to: "/app/admin/live", label: "Live Ops", icon: Activity },
   { to: "/app/admin/drivers", label: "Drivers", icon: Users },
-  { to: "/app/admin/vehicles", label: "Vehicles", icon: Car },
+  { to: "/app/admin/fleet", label: "Fleet", icon: Truck },
 ];
+
 
 
 export function AdminTabs() {
