@@ -612,6 +612,90 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_profiles: {
+        Row: {
+          admin_notes: string | null
+          assigned_driver_id: string | null
+          created_at: string
+          current_odometer_km: number
+          id: string
+          insurance_expiry_date: string | null
+          last_service_date: string | null
+          last_service_km: number | null
+          license_disc_expiry_date: string | null
+          license_plate: string
+          make: string | null
+          model: string | null
+          next_service_due_km: number | null
+          passenger_capacity: number | null
+          ramp_or_lift_available: boolean
+          roadworthy_expiry_date: string | null
+          service_interval_km: number
+          status: string
+          updated_at: string
+          vehicle_name: string
+          vehicle_type: string | null
+          vin_number: string | null
+          wheelchair_accessible: boolean
+          wheelchair_capacity: number | null
+          year: number | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          assigned_driver_id?: string | null
+          created_at?: string
+          current_odometer_km?: number
+          id?: string
+          insurance_expiry_date?: string | null
+          last_service_date?: string | null
+          last_service_km?: number | null
+          license_disc_expiry_date?: string | null
+          license_plate: string
+          make?: string | null
+          model?: string | null
+          next_service_due_km?: number | null
+          passenger_capacity?: number | null
+          ramp_or_lift_available?: boolean
+          roadworthy_expiry_date?: string | null
+          service_interval_km?: number
+          status?: string
+          updated_at?: string
+          vehicle_name: string
+          vehicle_type?: string | null
+          vin_number?: string | null
+          wheelchair_accessible?: boolean
+          wheelchair_capacity?: number | null
+          year?: number | null
+        }
+        Update: {
+          admin_notes?: string | null
+          assigned_driver_id?: string | null
+          created_at?: string
+          current_odometer_km?: number
+          id?: string
+          insurance_expiry_date?: string | null
+          last_service_date?: string | null
+          last_service_km?: number | null
+          license_disc_expiry_date?: string | null
+          license_plate?: string
+          make?: string | null
+          model?: string | null
+          next_service_due_km?: number | null
+          passenger_capacity?: number | null
+          ramp_or_lift_available?: boolean
+          roadworthy_expiry_date?: string | null
+          service_interval_km?: number
+          status?: string
+          updated_at?: string
+          vehicle_name?: string
+          vehicle_type?: string | null
+          vin_number?: string | null
+          wheelchair_accessible?: boolean
+          wheelchair_capacity?: number | null
+          year?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

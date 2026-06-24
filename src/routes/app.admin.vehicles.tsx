@@ -1,0 +1,603 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth, useUserRoles } from "@/hooks/use-auth";
+import { AppShell, NAV_ICONS } from "@/components/AppShell";
+import { AdminTabs } from "@/components/AdminTabs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Pencil, Gauge, Wrench, UserPlus, StickyNote, Loader2, Accessibility } from "lucide-react";
+import { toast } from "sonner";
+import type { Database } from "@/integrations/supabase/types";
+import { getVehicleAlerts, highestSeverity } from "@/lib/vehicle-alerts";
+
+type Vehicle = Database["public"]["Tables"]["vehicle_profiles"]["Row"];
+type VehicleInsert = Database["public"]["Tables"]["vehicle_profiles"]["Insert"];
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+
+const STATUSES = ["active", "in_maintenance", "out_of_service", "retired"] as const;
+
+export const Route = createFileRoute("/app/admin/vehicles")({
+  head: () => ({ meta: [{ title: "Vehicles — Admin" }] }),
+  component: VehiclesPage,
+});
+
+function VehiclesPage() {
+  const { user } = useAuth();
+  const { roles, loading: rolesLoading } = useUserRoles(user?.id);
+  const isAdmin = !!roles?.includes("admin");
+  const navigate = useNavigate();
+
+  const nav = useMemo(() => {
+    const items: { to: string; label: string; icon: typeof NAV_ICONS.Admin }[] = [];
+    if (roles?.includes("passenger")) items.push({ to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger });
+    if (roles?.includes("driver")) items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
+    items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
+    return items;
+  }, [roles]);
+
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [drivers, setDrivers] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [reloadTick, setReloadTick] = useState(0);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const [vRes, rRes] = await Promise.all([
+        supabase.from("vehicle_profiles").select("*").order("vehicle_name"),
+        supabase.from("user_roles").select("user_id").eq("role", "driver"),
+      ]);
+      if (cancelled) return;
+      if (vRes.error) toast.error("Failed to load vehicles");
+      setVehicles(vRes.data ?? []);
+      const driverIds = (rRes.data ?? []).map((r) => r.user_id);
+      let ds: Profile[] = [];
+      if (driverIds.length) {
+        const pRes = await supabase.from("profiles").select("*").in("user_id", driverIds);
+        ds = pRes.data ?? [];
+      }
+      setDrivers(ds);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [isAdmin, reloadTick]);
+
+  const refresh = () => setReloadTick((n) => n + 1);
+
+  useEffect(() => {
+    if (!rolesLoading && !isAdmin) navigate({ to: "/app" });
+  }, [rolesLoading, isAdmin, navigate]);
+
+  if (rolesLoading) return <AppShell nav={[]}><div className="p-6 text-sm text-muted-foreground">Loading…</div></AppShell>;
+  if (!isAdmin) return null;
+
+  const driverName = (id: string | null) => {
+    if (!id) return "Unassigned";
+    const d = drivers.find((p) => p.user_id === id);
+    return d?.full_name ?? id.slice(0, 8);
+  };
+
+  const summary = vehicles.reduce(
+    (acc, v) => {
+      const a = getVehicleAlerts(v);
+      const sev = highestSeverity(a);
+      if (sev === "urgent") acc.urgent++;
+      else if (sev === "warning") acc.warning++;
+      return acc;
+    },
+    { urgent: 0, warning: 0 }
+  );
+
+  return (
+    <AppShell nav={nav}>
+      <div className="mx-auto max-w-6xl p-4">
+        <AdminTabs />
+
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div>
+            <h1 className="text-xl font-semibold">Vehicles</h1>
+            <p className="text-sm text-muted-foreground">
+              {vehicles.length} vehicle{vehicles.length === 1 ? "" : "s"}
+              {summary.urgent > 0 && <span className="ml-2 text-destructive">· {summary.urgent} urgent</span>}
+              {summary.warning > 0 && <span className="ml-2 text-amber-600">· {summary.warning} warning</span>}
+            </p>
+          </div>
+          <VehicleDialog drivers={drivers} onSaved={refresh}>
+            <Button size="sm"><Plus className="mr-1 h-4 w-4" /> Add vehicle</Button>
+          </VehicleDialog>
+        </div>
+
+        {loading ? (
+          <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+            <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" /> Loading vehicles…
+          </div>
+        ) : vehicles.length === 0 ? (
+          <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+            No vehicles yet. Add your first one to get started.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {vehicles.map((v) => (
+              <VehicleRow
+                key={v.id}
+                vehicle={v}
+                driverName={driverName(v.assigned_driver_id)}
+                drivers={drivers}
+                onChanged={refresh}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </AppShell>
+  );
+}
+
+function VehicleRow({
+  vehicle: v,
+  driverName,
+  drivers,
+  onChanged,
+}: {
+  vehicle: Vehicle;
+  driverName: string;
+  drivers: Profile[];
+  onChanged: () => void;
+}) {
+  const alerts = getVehicleAlerts(v);
+  const sev = highestSeverity(alerts);
+  const ringClass =
+    sev === "urgent" ? "ring-2 ring-destructive/40" :
+    sev === "warning" ? "ring-2 ring-amber-400/40" : "";
+
+  const statusColor: Record<string, string> = {
+    active: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+    in_maintenance: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+    out_of_service: "bg-destructive/15 text-destructive",
+    retired: "bg-muted text-muted-foreground",
+  };
+
+  return (
+    <div className={`rounded-xl border bg-card p-4 ${ringClass}`}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold">{v.vehicle_name}</span>
+            <Badge variant="outline" className="font-mono">{v.license_plate}</Badge>
+            <Badge className={statusColor[v.status] ?? ""}>{v.status.replace(/_/g, " ")}</Badge>
+            {v.wheelchair_accessible && (
+              <Badge variant="secondary" className="gap-1"><Accessibility className="h-3 w-3" /> Accessible</Badge>
+            )}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {[v.vehicle_type, [v.make, v.model].filter(Boolean).join(" "), v.year].filter(Boolean).join(" · ")}
+            {v.ramp_or_lift_available && " · Ramp/lift"}
+            {v.passenger_capacity != null && ` · ${v.passenger_capacity} pax`}
+            {v.wheelchair_capacity != null && ` · ${v.wheelchair_capacity} WC`}
+          </div>
+        </div>
+        <div className="text-right text-xs">
+          <div className="text-muted-foreground">Driver</div>
+          <div className="font-medium">{driverName}</div>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+        <Stat label="Odometer" value={`${Number(v.current_odometer_km).toLocaleString()} km`} />
+        <Stat
+          label="Next service"
+          value={v.next_service_due_km != null ? `${Number(v.next_service_due_km).toLocaleString()} km` : "—"}
+        />
+        <Stat label="License" value={v.license_disc_expiry_date ?? "—"} />
+        <Stat label="Insurance" value={v.insurance_expiry_date ?? "—"} />
+        <Stat label="Roadworthy" value={v.roadworthy_expiry_date ?? "—"} />
+        <Stat label="Last service" value={v.last_service_date ?? "—"} />
+        <Stat label="Service interval" value={`${Number(v.service_interval_km).toLocaleString()} km`} />
+        <Stat label="VIN" value={v.vin_number ?? "—"} />
+      </div>
+
+      {alerts.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1">
+          {alerts.map((a, i) => (
+            <Badge
+              key={i}
+              className={a.severity === "urgent"
+                ? "bg-destructive text-destructive-foreground"
+                : "bg-amber-500/20 text-amber-800 dark:text-amber-200"}
+            >
+              {a.label}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {v.admin_notes && (
+        <div className="mt-3 rounded-md border bg-muted/30 p-2 text-xs whitespace-pre-wrap">
+          <span className="font-medium">Notes: </span>{v.admin_notes}
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <VehicleDialog vehicle={v} drivers={drivers} onSaved={onChanged}>
+          <Button size="sm" variant="outline"><Pencil className="mr-1 h-3.5 w-3.5" /> Edit</Button>
+        </VehicleDialog>
+        <AssignDriverDialog vehicle={v} drivers={drivers} onSaved={onChanged}>
+          <Button size="sm" variant="outline"><UserPlus className="mr-1 h-3.5 w-3.5" /> Driver</Button>
+        </AssignDriverDialog>
+        <OdometerDialog vehicle={v} onSaved={onChanged}>
+          <Button size="sm" variant="outline"><Gauge className="mr-1 h-3.5 w-3.5" /> Odometer</Button>
+        </OdometerDialog>
+        <NoteDialog vehicle={v} onSaved={onChanged}>
+          <Button size="sm" variant="outline"><StickyNote className="mr-1 h-3.5 w-3.5" /> Note</Button>
+        </NoteDialog>
+        <StatusButtons vehicle={v} onSaved={onChanged} />
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-background p-2">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="truncate text-xs font-medium">{value}</div>
+    </div>
+  );
+}
+
+function StatusButtons({ vehicle: v, onSaved }: { vehicle: Vehicle; onSaved: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const update = async (status: typeof STATUSES[number]) => {
+    setBusy(true);
+    const { error } = await supabase.from("vehicle_profiles").update({ status }).eq("id", v.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success(`Marked ${status.replace(/_/g, " ")}`);
+    onSaved();
+  };
+  if (v.status === "active") {
+    return (
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => update("in_maintenance")}>
+        <Wrench className="mr-1 h-3.5 w-3.5" /> Mark in maintenance
+      </Button>
+    );
+  }
+  return (
+    <Button size="sm" variant="outline" disabled={busy} onClick={() => update("active")}>
+      Mark active
+    </Button>
+  );
+}
+
+function VehicleDialog({
+  vehicle,
+  drivers,
+  children,
+  onSaved,
+}: {
+  vehicle?: Vehicle;
+  drivers: Profile[];
+  children: React.ReactNode;
+  onSaved: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState<VehicleInsert>(() => ({
+    vehicle_name: vehicle?.vehicle_name ?? "",
+    vehicle_type: vehicle?.vehicle_type ?? "",
+    make: vehicle?.make ?? "",
+    model: vehicle?.model ?? "",
+    year: vehicle?.year ?? null,
+    license_plate: vehicle?.license_plate ?? "",
+    vin_number: vehicle?.vin_number ?? "",
+    wheelchair_accessible: vehicle?.wheelchair_accessible ?? false,
+    ramp_or_lift_available: vehicle?.ramp_or_lift_available ?? false,
+    passenger_capacity: vehicle?.passenger_capacity ?? null,
+    wheelchair_capacity: vehicle?.wheelchair_capacity ?? null,
+    assigned_driver_id: vehicle?.assigned_driver_id ?? null,
+    current_odometer_km: vehicle?.current_odometer_km ?? 0,
+    last_service_km: vehicle?.last_service_km ?? null,
+    next_service_due_km: vehicle?.next_service_due_km ?? null,
+    service_interval_km: vehicle?.service_interval_km ?? 10000,
+    last_service_date: vehicle?.last_service_date ?? null,
+    roadworthy_expiry_date: vehicle?.roadworthy_expiry_date ?? null,
+    license_disc_expiry_date: vehicle?.license_disc_expiry_date ?? null,
+    insurance_expiry_date: vehicle?.insurance_expiry_date ?? null,
+    status: vehicle?.status ?? "active",
+    admin_notes: vehicle?.admin_notes ?? "",
+  }));
+
+  const set = <K extends keyof VehicleInsert>(k: K, v: VehicleInsert[K]) =>
+    setForm((f) => ({ ...f, [k]: v }));
+
+  const save = async () => {
+    if (!form.vehicle_name?.trim() || !form.license_plate?.trim()) {
+      return toast.error("Name and license plate are required");
+    }
+    setBusy(true);
+    const payload: VehicleInsert = {
+      ...form,
+      assigned_driver_id: form.assigned_driver_id || null,
+      vehicle_type: form.vehicle_type || null,
+      make: form.make || null,
+      model: form.model || null,
+      vin_number: form.vin_number || null,
+      admin_notes: form.admin_notes || null,
+    };
+    const res = vehicle
+      ? await supabase.from("vehicle_profiles").update(payload).eq("id", vehicle.id)
+      : await supabase.from("vehicle_profiles").insert(payload);
+    setBusy(false);
+    if (res.error) return toast.error(res.error.message);
+    toast.success(vehicle ? "Vehicle updated" : "Vehicle added");
+    setOpen(false);
+    onSaved();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{vehicle ? "Edit vehicle" : "Add vehicle"}</DialogTitle>
+          <DialogDescription>Manage vehicle details, accessibility, and maintenance schedule.</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Vehicle name *">
+            <Input value={form.vehicle_name ?? ""} onChange={(e) => set("vehicle_name", e.target.value)} />
+          </Field>
+          <Field label="License plate *">
+            <Input value={form.license_plate ?? ""} onChange={(e) => set("license_plate", e.target.value)} />
+          </Field>
+          <Field label="Type">
+            <Input placeholder="Sedan, Minivan, MPV…" value={form.vehicle_type ?? ""} onChange={(e) => set("vehicle_type", e.target.value)} />
+          </Field>
+          <Field label="Status">
+            <Select value={form.status ?? "active"} onValueChange={(val) => set("status", val)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {STATUSES.map((s) => <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Make"><Input value={form.make ?? ""} onChange={(e) => set("make", e.target.value)} /></Field>
+          <Field label="Model"><Input value={form.model ?? ""} onChange={(e) => set("model", e.target.value)} /></Field>
+          <Field label="Year">
+            <Input type="number" value={form.year ?? ""} onChange={(e) => set("year", e.target.value ? Number(e.target.value) : null)} />
+          </Field>
+          <Field label="VIN"><Input value={form.vin_number ?? ""} onChange={(e) => set("vin_number", e.target.value)} /></Field>
+          <Field label="Passenger capacity">
+            <Input type="number" value={form.passenger_capacity ?? ""} onChange={(e) => set("passenger_capacity", e.target.value ? Number(e.target.value) : null)} />
+          </Field>
+          <Field label="Wheelchair capacity">
+            <Input type="number" value={form.wheelchair_capacity ?? ""} onChange={(e) => set("wheelchair_capacity", e.target.value ? Number(e.target.value) : null)} />
+          </Field>
+          <Field label="Assigned driver">
+            <Select
+              value={form.assigned_driver_id ?? "none"}
+              onValueChange={(val) => set("assigned_driver_id", val === "none" ? null : val)}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Unassigned</SelectItem>
+                {drivers.map((d) => (
+                  <SelectItem key={d.user_id} value={d.user_id}>{d.full_name ?? d.user_id.slice(0, 8)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <div className="flex items-center justify-between rounded-md border p-2">
+            <Label>Wheelchair accessible</Label>
+            <Switch checked={!!form.wheelchair_accessible} onCheckedChange={(c) => set("wheelchair_accessible", c)} />
+          </div>
+          <div className="flex items-center justify-between rounded-md border p-2">
+            <Label>Ramp / lift available</Label>
+            <Switch checked={!!form.ramp_or_lift_available} onCheckedChange={(c) => set("ramp_or_lift_available", c)} />
+          </div>
+          <Field label="Current odometer (km)">
+            <Input type="number" value={form.current_odometer_km ?? 0} onChange={(e) => set("current_odometer_km", e.target.value ? Number(e.target.value) : 0)} />
+          </Field>
+          <Field label="Service interval (km)">
+            <Input type="number" value={form.service_interval_km ?? 10000} onChange={(e) => set("service_interval_km", e.target.value ? Number(e.target.value) : 10000)} />
+          </Field>
+          <Field label="Last service (km)">
+            <Input type="number" value={form.last_service_km ?? ""} onChange={(e) => set("last_service_km", e.target.value ? Number(e.target.value) : null)} />
+          </Field>
+          <Field label="Next service due (km)">
+            <Input type="number" value={form.next_service_due_km ?? ""} onChange={(e) => set("next_service_due_km", e.target.value ? Number(e.target.value) : null)} />
+          </Field>
+          <Field label="Last service date">
+            <Input type="date" value={form.last_service_date ?? ""} onChange={(e) => set("last_service_date", e.target.value || null)} />
+          </Field>
+          <Field label="Roadworthy expiry">
+            <Input type="date" value={form.roadworthy_expiry_date ?? ""} onChange={(e) => set("roadworthy_expiry_date", e.target.value || null)} />
+          </Field>
+          <Field label="License disc expiry">
+            <Input type="date" value={form.license_disc_expiry_date ?? ""} onChange={(e) => set("license_disc_expiry_date", e.target.value || null)} />
+          </Field>
+          <Field label="Insurance expiry">
+            <Input type="date" value={form.insurance_expiry_date ?? ""} onChange={(e) => set("insurance_expiry_date", e.target.value || null)} />
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Admin notes">
+              <Textarea rows={3} value={form.admin_notes ?? ""} onChange={(e) => set("admin_notes", e.target.value)} />
+            </Field>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={save} disabled={busy}>
+            {busy && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function AssignDriverDialog({
+  vehicle,
+  drivers,
+  children,
+  onSaved,
+}: {
+  vehicle: Vehicle;
+  drivers: Profile[];
+  children: React.ReactNode;
+  onSaved: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState<string>(vehicle.assigned_driver_id ?? "none");
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    const { error } = await supabase.from("vehicle_profiles")
+      .update({ assigned_driver_id: value === "none" ? null : value })
+      .eq("id", vehicle.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Driver updated");
+    setOpen(false);
+    onSaved();
+  };
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Assign driver</DialogTitle></DialogHeader>
+        <Select value={value} onValueChange={setValue}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Unassigned</SelectItem>
+            {drivers.map((d) => (
+              <SelectItem key={d.user_id} value={d.user_id}>{d.full_name ?? d.user_id.slice(0, 8)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={save} disabled={busy}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function OdometerDialog({
+  vehicle,
+  children,
+  onSaved,
+}: {
+  vehicle: Vehicle;
+  children: React.ReactNode;
+  onSaved: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState<string>(String(vehicle.current_odometer_km ?? 0));
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    const km = Number(value);
+    if (Number.isNaN(km) || km < 0) return toast.error("Enter a valid km value");
+    if (km < Number(vehicle.current_odometer_km ?? 0)) {
+      return toast.error("Odometer cannot decrease");
+    }
+    setBusy(true);
+    const { error } = await supabase.from("vehicle_profiles")
+      .update({ current_odometer_km: km })
+      .eq("id", vehicle.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Odometer updated");
+    setOpen(false);
+    onSaved();
+  };
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Update odometer</DialogTitle>
+          <DialogDescription>Current: {Number(vehicle.current_odometer_km).toLocaleString()} km</DialogDescription>
+        </DialogHeader>
+        <Input type="number" value={value} onChange={(e) => setValue(e.target.value)} />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={save} disabled={busy}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NoteDialog({
+  vehicle,
+  children,
+  onSaved,
+}: {
+  vehicle: Vehicle;
+  children: React.ReactNode;
+  onSaved: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState<string>(vehicle.admin_notes ?? "");
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    const { error } = await supabase.from("vehicle_profiles")
+      .update({ admin_notes: value || null })
+      .eq("id", vehicle.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Note saved");
+    setOpen(false);
+    onSaved();
+  };
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Admin note</DialogTitle></DialogHeader>
+        <Textarea rows={5} value={value} onChange={(e) => setValue(e.target.value)} />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={save} disabled={busy}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Used by other admin surfaces to link in
+export { Link };
