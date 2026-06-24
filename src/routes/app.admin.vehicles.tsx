@@ -66,19 +66,19 @@ function VehiclesPage() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const [vRes, dRes] = await Promise.all([
+      const [vRes, rRes] = await Promise.all([
         supabase.from("vehicle_profiles").select("*").order("vehicle_name"),
-        supabase
-          .from("user_roles")
-          .select("user_id, profiles!inner(user_id, full_name, phone)")
-          .eq("role", "driver"),
+        supabase.from("user_roles").select("user_id").eq("role", "driver"),
       ]);
       if (cancelled) return;
       if (vRes.error) toast.error("Failed to load vehicles");
       setVehicles(vRes.data ?? []);
-      const ds = (dRes.data ?? [])
-        .map((r: { profiles: Profile | Profile[] | null }) => Array.isArray(r.profiles) ? r.profiles[0] : r.profiles)
-        .filter((p): p is Profile => !!p);
+      const driverIds = (rRes.data ?? []).map((r) => r.user_id);
+      let ds: Profile[] = [];
+      if (driverIds.length) {
+        const pRes = await supabase.from("profiles").select("*").in("user_id", driverIds);
+        ds = pRes.data ?? [];
+      }
       setDrivers(ds);
       setLoading(false);
     })();
