@@ -96,6 +96,8 @@ function DriversPage() {
   const [drivers, setDrivers] = useState<DriverProfile[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [activeRides, setActiveRides] = useState<Record<string, Ride>>({});
+  const [stats, setStats] = useState<Record<string, DriverStats>>({});
+  const [unassignedRides, setUnassignedRides] = useState<Ride[]>([]);
   const [passengers, setPassengers] = useState<Profile[]>([]);
   const [queryInput, setQueryInput] = useState(search.q);
 
