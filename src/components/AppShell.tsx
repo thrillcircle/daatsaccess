@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Car, User, ShieldCheck, LogOut, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { NotificationBell } from "@/components/NotificationBell";
 
 type NavItem = { to: string; label: string; icon: ReactNode };
 
@@ -31,9 +32,12 @@ export function AppShell({
             </span>
           </Link>
           {user ? (
-            <Button variant="ghost" size="icon" onClick={signOut} aria-label="Sign out">
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <NotificationBell />
+              <Button variant="ghost" size="icon" onClick={signOut} aria-label="Sign out">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           ) : null}
         </div>
       </header>
