@@ -15,6 +15,7 @@ import {
   type ServiceType,
 } from "@/lib/booking-types";
 import { formatZAR } from "@/lib/pricing";
+import { toast } from "sonner";
 import { Plus, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/app/passenger/bookings")({
