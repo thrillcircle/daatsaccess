@@ -69,11 +69,24 @@ function PassengerPage() {
     <AppShell title="Passenger" nav={nav}>
       <RideRequest userId={user?.id} />
       <RatePrompt userId={user?.id} />
+      <ScheduledTrips userId={user?.id} />
       <BecomeDriver userId={user?.id} hasDriverRole={!!roles?.includes("driver")} />
-      <RideHistory userId={user?.id} />
+      <RideHistory
+        userId={user?.id}
+        title="Completed trips"
+        statuses={["completed"]}
+        emptyText="No completed trips yet. Your finished rides will show here."
+      />
+      <RideHistory
+        userId={user?.id}
+        title="Cancelled trips"
+        statuses={["cancelled"]}
+        emptyText="No cancelled trips."
+      />
     </AppShell>
   );
 }
+
 
 function RatePrompt({ userId }: { userId?: string }) {
   const [ride, setRide] = useState<Ride | null>(null);
