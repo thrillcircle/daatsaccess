@@ -1296,14 +1296,6 @@ export type Database = {
       admin_reset_ride_pin: { Args: { _ride_id: string }; Returns: Json }
       admin_view_ride_pin: { Args: { _ride_id: string }; Returns: Json }
       generate_ride_pin: { Args: never; Returns: string }
-      is_assigned_driver_for_booking: {
-        Args: { _booking_id: string; _user_id: string }
-        Returns: boolean
-      }
-      is_booking_owner: {
-        Args: { _booking_id: string; _user_id: string }
-        Returns: boolean
-      }
       notify_approaching_scheduled_rides: { Args: never; Returns: undefined }
       short_addr: { Args: { t: string }; Returns: string }
       verify_ride_start_pin: {
