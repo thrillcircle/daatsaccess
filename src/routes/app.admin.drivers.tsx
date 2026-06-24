@@ -6,8 +6,10 @@ import { AppShell, NAV_ICONS } from "@/components/AppShell";
 import { AdminTabs } from "@/components/AdminTabs";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Car } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Phone, Car, Search } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+
 
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
