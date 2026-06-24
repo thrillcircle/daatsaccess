@@ -813,6 +813,13 @@ function AdminActionsDialog({
     );
   }
 
+  async function onAssignFleetVehicle() {
+    const nextId = selectedFleet || null;
+    if (nextId === (ride.vehicle_id ?? null)) return;
+    await runUpdate({ vehicle_id: nextId }, nextId ? "Vehicle assigned" : "Vehicle cleared");
+  }
+
+
   async function onChangeStatus() {
     if (selectedStatus === ride.status) return;
     const patch: Partial<Ride> = { status: selectedStatus };
