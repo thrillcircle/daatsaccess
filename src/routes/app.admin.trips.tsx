@@ -330,7 +330,7 @@ function AdminTripsPage() {
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, active, debouncedSearch, reloadKey]);
+  }, [isAdmin, active, debouncedSearch, reloadKey, pageSize]);
 
   if (rolesLoading) {
     return (
