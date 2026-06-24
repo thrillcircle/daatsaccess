@@ -23,7 +23,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
+type RideStatus = Database["public"]["Enums"]["ride_status"];
+type PaymentStatus = Database["public"]["Enums"]["payment_status"];
 type Profile = { user_id: string; full_name: string | null; phone: string | null };
+type Vehicle = { user_id: string; vehicle_model: string | null; license_plate: string | null; vehicle_type: string | null };
+type PaymentRow = { ride_id: string; status: PaymentStatus; amount: number; payment_method: string | null };
 type Review = { ride_id: string; rating: number; comment: string | null };
 
 type FilterKey =
