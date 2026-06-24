@@ -198,6 +198,10 @@ function VehiclesPage() {
           <FleetStatCard label="Expired docs" value={stats.expiredDocs} accent="bad" />
         </div>
 
+        <DriverVehiclesSection isAdmin={isAdmin} />
+
+
+
         {loading ? (
           <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
             <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" /> Loading fleet…
