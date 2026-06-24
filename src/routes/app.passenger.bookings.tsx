@@ -73,6 +73,8 @@ function PassengerBookingsPage() {
   const [travellers, setTravellers] = useState<Traveller[]>([]);
   const [assistance, setAssistance] = useState<Assistance[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
+  const [itinerary, setItinerary] = useState<Itinerary[]>([]);
   const [driverAssigns, setDriverAssigns] = useState<DriverAssign[]>([]);
   const [vehicleAssigns, setVehicleAssigns] = useState<VehicleAssign[]>([]);
   const [companionAssigns, setCompanionAssigns] = useState<CompanionAssign[]>([]);
