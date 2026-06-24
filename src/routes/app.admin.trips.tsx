@@ -392,15 +392,27 @@ function TripRow({
   ride,
   passenger,
   driver,
+  vehicle,
+  payment,
   review,
   variant,
+  onChanged,
 }: {
   ride: Ride;
   passenger: Profile | null;
   driver: Profile | null;
+  vehicle: Vehicle | null;
+  payment: PaymentRow | null;
   review: Review | null;
   variant: FilterKey;
+  onChanged: () => void;
 }) {
+  const vehicleLabel = vehicle
+    ? [vehicle.vehicle_model, vehicle.license_plate].filter(Boolean).join(" · ") || "—"
+    : ride.driver_id
+    ? "—"
+    : "Unassigned";
+
   return (
     <li className="space-y-2 px-4 py-3">
       <div className="flex items-start justify-between gap-2">
@@ -415,19 +427,18 @@ function TripRow({
             {formatZAR(Number(ride.estimated_price))}
           </p>
           <RideStatusBadge status={ride.status} />
+          <PaymentBadge payment={payment} />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
         <Field label="Passenger" value={passenger?.full_name ?? "—"} />
-        <Field
-          label="Phone"
-          value={passenger?.phone ?? "—"}
-        />
+        <Field label="Phone" value={passenger?.phone ?? "—"} />
         <Field
           label="Driver"
           value={driver?.full_name ?? (ride.driver_id ? "Assigned" : "Unassigned")}
         />
+        <Field label="Vehicle" value={vehicleLabel} />
         {variant === "scheduled" && (
           <>
             <Field
@@ -446,13 +457,6 @@ function TripRow({
               label="Est. distance"
               value={`${Number(ride.distance_km).toFixed(1)} km`}
             />
-            <Field
-              label="Created"
-              value={new Date(ride.created_at).toLocaleString(undefined, {
-                dateStyle: "short",
-                timeStyle: "short",
-              })}
-            />
           </>
         )}
         {variant === "completed" && (
@@ -465,22 +469,16 @@ function TripRow({
                   : `${Number(ride.distance_km).toFixed(1)} km (est)`
               }
             />
-            <Field
-              label="Actual duration"
-              value={formatDuration(ride)}
-            />
-            <Field label="Final fare" value={formatZAR(Number(ride.estimated_price))} />
+            <Field label="Actual duration" value={formatDuration(ride)} />
           </>
         )}
-        {variant !== "scheduled" && variant !== "completed" && (
-          <Field
-            label="Created"
-            value={new Date(ride.created_at).toLocaleString(undefined, {
-              dateStyle: "short",
-              timeStyle: "short",
-            })}
-          />
-        )}
+        <Field
+          label="Created"
+          value={new Date(ride.created_at).toLocaleString(undefined, {
+            dateStyle: "short",
+            timeStyle: "short",
+          })}
+        />
       </div>
 
       {variant === "completed" && review && (
@@ -500,14 +498,347 @@ function TripRow({
           <AdminPinRow rideId={ride.id} />
         )}
 
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+      <div className="flex items-center justify-between gap-2">
         <Badge variant="outline" className="font-mono text-[10px]">
           {ride.id.slice(0, 8)}
         </Badge>
-      </p>
+        <div className="flex items-center gap-1">
+          <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+            <Link to="/app/trip/$rideId" params={{ rideId: ride.id }}>
+              <ExternalLink className="mr-1 h-3 w-3" /> Details
+            </Link>
+          </Button>
+          <AdminActionsDialog
+            ride={ride}
+            passenger={passenger}
+            driver={driver}
+            vehicle={vehicle}
+            payment={payment}
+            onChanged={onChanged}
+          />
+        </div>
+      </div>
     </li>
   );
 }
+
+function PaymentBadge({ payment }: { payment: PaymentRow | null }) {
+  if (!payment) return null;
+  const variant: "default" | "secondary" | "destructive" | "outline" =
+    payment.status === "paid"
+      ? "default"
+      : payment.status === "failed"
+      ? "destructive"
+      : payment.status === "refunded"
+      ? "outline"
+      : "secondary";
+  return (
+    <Badge variant={variant} className="ml-1 mt-1 text-[10px] capitalize">
+      {payment.status}
+    </Badge>
+  );
+}
+
+const STATUS_TRANSITIONS: RideStatus[] = [
+  "requested",
+  "accepted",
+  "driver_arriving",
+  "arrived",
+  "in_progress",
+  "completed",
+  "cancelled",
+];
+
+type DriverOption = {
+  user_id: string;
+  full_name: string | null;
+  vehicle_model: string | null;
+  license_plate: string | null;
+  is_available: boolean;
+};
+
+function AdminActionsDialog({
+  ride,
+  passenger,
+  driver,
+  vehicle,
+  payment,
+  onChanged,
+}: {
+  ride: Ride;
+  passenger: Profile | null;
+  driver: Profile | null;
+  vehicle: Vehicle | null;
+  payment: PaymentRow | null;
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [drivers, setDrivers] = useState<DriverOption[]>([]);
+  const [selectedDriver, setSelectedDriver] = useState<string>(ride.driver_id ?? "");
+  const [selectedStatus, setSelectedStatus] = useState<RideStatus>(ride.status);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentStatus | "">(payment?.status ?? "");
+
+  useEffect(() => {
+    if (!open) return;
+    setSelectedDriver(ride.driver_id ?? "");
+    setSelectedStatus(ride.status);
+    setSelectedPayment(payment?.status ?? "");
+    (async () => {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "driver");
+      const ids = (roles ?? []).map((r) => r.user_id);
+      if (!ids.length) return setDrivers([]);
+      const [{ data: profs }, { data: vs }] = await Promise.all([
+        supabase.from("profiles").select("user_id, full_name").in("user_id", ids),
+        supabase
+          .from("driver_profiles")
+          .select("user_id, vehicle_model, license_plate, is_available")
+          .in("user_id", ids),
+      ]);
+      const vMap = new Map(((vs ?? []) as { user_id: string; vehicle_model: string | null; license_plate: string | null; is_available: boolean }[]).map((v) => [v.user_id, v]));
+      const opts: DriverOption[] = ((profs ?? []) as { user_id: string; full_name: string | null }[]).map((p) => ({
+        user_id: p.user_id,
+        full_name: p.full_name,
+        vehicle_model: vMap.get(p.user_id)?.vehicle_model ?? null,
+        license_plate: vMap.get(p.user_id)?.license_plate ?? null,
+        is_available: vMap.get(p.user_id)?.is_available ?? false,
+      }));
+      opts.sort((a, b) => Number(b.is_available) - Number(a.is_available) || (a.full_name ?? "").localeCompare(b.full_name ?? ""));
+      setDrivers(opts);
+    })();
+  }, [open, ride.driver_id, ride.status, payment?.status]);
+
+  async function runUpdate(patch: Partial<Ride>, successMsg: string) {
+    setBusy(true);
+    try {
+      const { error } = await supabase.from("rides").update(patch).eq("id", ride.id);
+      if (error) throw error;
+      toast.success(successMsg);
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onAssignDriver() {
+    if (!selectedDriver || selectedDriver === ride.driver_id) {
+      setOpen(false);
+      return;
+    }
+    await runUpdate(
+      { driver_id: selectedDriver, status: ride.status === "requested" ? "accepted" : ride.status, accepted_at: ride.accepted_at ?? new Date().toISOString() },
+      "Driver assigned",
+    );
+  }
+
+  async function onChangeStatus() {
+    if (selectedStatus === ride.status) return;
+    const patch: Partial<Ride> = { status: selectedStatus };
+    const nowIso = new Date().toISOString();
+    if (selectedStatus === "accepted" && !ride.accepted_at) patch.accepted_at = nowIso;
+    if (selectedStatus === "driver_arriving") patch.accepted_at = ride.accepted_at ?? nowIso;
+    if (selectedStatus === "arrived" && !ride.driver_arrived_at) patch.driver_arrived_at = nowIso;
+    if (selectedStatus === "in_progress" && !ride.started_at) patch.started_at = nowIso;
+    if (selectedStatus === "completed" && !ride.completed_at) patch.completed_at = nowIso;
+    await runUpdate(patch, `Status changed to ${selectedStatus.replace("_", " ")}`);
+  }
+
+  async function onCancel() {
+    await runUpdate({ status: "cancelled" }, "Trip cancelled");
+  }
+
+  async function onComplete() {
+    await runUpdate(
+      { status: "completed", completed_at: ride.completed_at ?? new Date().toISOString() },
+      "Trip marked completed",
+    );
+  }
+
+  async function onUpdatePayment() {
+    if (!payment || !selectedPayment || selectedPayment === payment.status) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase
+        .from("payments")
+        .update({ status: selectedPayment })
+        .eq("ride_id", ride.id);
+      if (error) throw error;
+      toast.success(`Payment marked ${selectedPayment}`);
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Payment update failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const terminal = ride.status === "completed" || ride.status === "cancelled";
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 text-xs">
+          <Settings2 className="mr-1 h-3 w-3" /> Actions
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Manage trip</DialogTitle>
+          <DialogDescription className="font-mono text-[10px]">{ride.id}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 text-sm">
+          <div className="rounded-md border bg-secondary/40 p-2 text-xs">
+            <p className="font-medium">{ride.destination_address}</p>
+            <p className="text-muted-foreground">From {ride.pickup_address}</p>
+            <p className="mt-1 text-muted-foreground">
+              Passenger: {passenger?.full_name ?? "—"} · Driver: {driver?.full_name ?? (ride.driver_id ? "Assigned" : "Unassigned")}
+            </p>
+            {vehicle && (vehicle.vehicle_model || vehicle.license_plate) && (
+              <p className="mt-0.5 flex items-center gap-1 text-muted-foreground">
+                <Car className="h-3 w-3" /> {[vehicle.vehicle_model, vehicle.license_plate].filter(Boolean).join(" · ")}
+              </p>
+            )}
+          </div>
+
+          {/* Contact */}
+          <div className="space-y-1">
+            <Label className="text-xs">Contact</Label>
+            <div className="flex flex-wrap gap-1.5">
+              <Button asChild size="sm" variant="outline" disabled={!passenger?.phone} className="h-8 text-xs">
+                <a href={passenger?.phone ? `tel:${passenger.phone}` : "#"}>
+                  <Phone className="mr-1 h-3 w-3" /> Call passenger
+                </a>
+              </Button>
+              <Button asChild size="sm" variant="outline" disabled={!passenger?.phone} className="h-8 text-xs">
+                <a href={passenger?.phone ? `sms:${passenger.phone}` : "#"}>
+                  <MessageSquare className="mr-1 h-3 w-3" /> SMS passenger
+                </a>
+              </Button>
+              <Button asChild size="sm" variant="outline" disabled={!driver?.phone} className="h-8 text-xs">
+                <a href={driver?.phone ? `tel:${driver.phone}` : "#"}>
+                  <Phone className="mr-1 h-3 w-3" /> Call driver
+                </a>
+              </Button>
+              <Button asChild size="sm" variant="outline" disabled={!driver?.phone} className="h-8 text-xs">
+                <a href={driver?.phone ? `sms:${driver.phone}` : "#"}>
+                  <MessageSquare className="mr-1 h-3 w-3" /> SMS driver
+                </a>
+              </Button>
+            </div>
+          </div>
+
+          {/* Assign driver / vehicle */}
+          <div className="space-y-1">
+            <Label className="text-xs">Assign driver &amp; vehicle</Label>
+            <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Select a driver" />
+              </SelectTrigger>
+              <SelectContent>
+                {drivers.length === 0 && (
+                  <SelectItem value="__none" disabled>
+                    No drivers found
+                  </SelectItem>
+                )}
+                {drivers.map((d) => (
+                  <SelectItem key={d.user_id} value={d.user_id}>
+                    {(d.full_name ?? d.user_id.slice(0, 8))}
+                    {d.vehicle_model || d.license_plate
+                      ? ` — ${[d.vehicle_model, d.license_plate].filter(Boolean).join(" · ")}`
+                      : ""}
+                    {d.is_available ? " · available" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">
+              The vehicle assigned to the driver is used for this trip.
+            </p>
+            <Button size="sm" disabled={busy || !selectedDriver || terminal} onClick={onAssignDriver} className="h-8 text-xs">
+              {busy && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}Assign
+            </Button>
+          </div>
+
+          {/* Change status */}
+          <div className="space-y-1">
+            <Label className="text-xs">Change status</Label>
+            <div className="flex gap-1.5">
+              <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as RideStatus)}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_TRANSITIONS.map((s) => (
+                    <SelectItem key={s} value={s} className="capitalize">
+                      {s.replace(/_/g, " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" disabled={busy || selectedStatus === ride.status} onClick={onChangeStatus} className="h-9 text-xs">
+                Apply
+              </Button>
+            </div>
+          </div>
+
+          {/* Payment */}
+          {payment && (
+            <div className="space-y-1">
+              <Label className="text-xs">Payment status</Label>
+              <div className="flex gap-1.5">
+                <Select value={selectedPayment || undefined} onValueChange={(v) => setSelectedPayment(v as PaymentStatus)}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(["pending", "paid", "failed", "refunded"] as PaymentStatus[]).map((s) => (
+                      <SelectItem key={s} value={s} className="capitalize">
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  disabled={busy || !selectedPayment || selectedPayment === payment.status}
+                  onClick={onUpdatePayment}
+                  className="h-9 text-xs"
+                >
+                  Update
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={busy || terminal}
+            onClick={onCancel}
+          >
+            Cancel trip
+          </Button>
+          <Button
+            size="sm"
+            disabled={busy || ride.status === "completed" || ride.status === "cancelled"}
+            onClick={onComplete}
+          >
+            <Check className="mr-1 h-3 w-3" /> Mark completed
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 const LOCK_WINDOW_MS = 15 * 60 * 1000;
 const MAX_FAILURES = 5;
