@@ -5,7 +5,7 @@ import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { Accessibility, HeartHandshake, CalendarClock, Plane } from "lucide-react";
 
-export const Route = createFileRoute("/app/passenger/book")({
+export const Route = createFileRoute("/app/passenger/book/")({
   head: () => ({ meta: [{ title: "Book a service — Access" }] }),
   component: BookServicePage,
 });

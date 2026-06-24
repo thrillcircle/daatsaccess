@@ -48,7 +48,7 @@ function localInputNow(): string {
 }
 
 
-export const Route = createFileRoute("/app/passenger")({
+export const Route = createFileRoute("/app/passenger/")({
   head: () => ({ meta: [{ title: "Passenger — Access" }] }),
   component: PassengerPage,
 });
