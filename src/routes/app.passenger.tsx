@@ -475,6 +475,155 @@ function RideRequest({ userId }: { userId?: string }) {
   );
 }
 
+function ScheduledTrips({ userId }: { userId?: string }) {
+  const [rides, setRides] = useState<Ride[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editVal, setEditVal] = useState<string>("");
+
+  const load = async () => {
+    if (!userId) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from("rides")
+      .select("*")
+      .eq("passenger_id", userId)
+      .eq("request_type", "scheduled")
+      .eq("status", "requested")
+      .is("driver_id", null)
+      .gt("scheduled_at", new Date().toISOString())
+      .order("scheduled_at", { ascending: true });
+    setRides((data ?? []) as Ride[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (!userId) return;
+    load();
+    const ch = supabase
+      .channel("passenger-scheduled-" + userId)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rides", filter: `passenger_id=eq.${userId}` },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  async function cancel(id: string) {
+    const { error } = await supabase.from("rides").update({ status: "cancelled" }).eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Scheduled trip cancelled");
+      load();
+    }
+  }
+
+  async function saveEdit(id: string) {
+    if (!editVal) return;
+    const d = new Date(editVal);
+    if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now() + 60_000) {
+      toast.error("Pick a future date and time");
+      return;
+    }
+    const { error } = await supabase
+      .from("rides")
+      .update({ scheduled_at: d.toISOString() })
+      .eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Scheduled time updated");
+      setEditingId(null);
+      load();
+    }
+  }
+
+  if (loading) return null;
+  if (!rides.length) return null;
+
+  return (
+    <section className="mt-4 rounded-2xl border bg-card p-4">
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Upcoming scheduled trips
+      </h3>
+      <ul className="divide-y">
+        {rides.map((r) => {
+          const editing = editingId === r.id;
+          return (
+            <li key={r.id} className="space-y-2 py-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">
+                    {r.scheduled_at ? formatJoburg(new Date(r.scheduled_at)) : "—"}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-medium">{r.destination_address}</p>
+                  <p className="truncate text-xs text-muted-foreground">From {r.pickup_address}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {Number(r.distance_km).toFixed(1)} km · ~
+                    {r.estimated_duration_seconds
+                      ? Math.round(r.estimated_duration_seconds / 60)
+                      : "?"}{" "}
+                    min
+                  </p>
+                </div>
+                <p className="text-sm font-semibold">{formatZAR(Number(r.estimated_price))}</p>
+              </div>
+              {editing ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="datetime-local"
+                    value={editVal}
+                    min={localInputNow()}
+                    onChange={(e) => setEditVal(e.target.value)}
+                  />
+                  <Button size="sm" onClick={() => saveEdit(r.id)}>
+                    Save
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingId(r.id);
+                      // Pre-fill in local time
+                      if (r.scheduled_at) {
+                        const d = new Date(r.scheduled_at);
+                        const pad = (n: number) => String(n).padStart(2, "0");
+                        setEditVal(
+                          `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`,
+                        );
+                      }
+                    }}
+                  >
+                    Edit time
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => cancel(r.id)}>
+                    Cancel trip
+                  </Button>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        Final ETA can change due to traffic and driver availability.
+      </p>
+    </section>
+  );
+}
+
+
+
 function BecomeDriver({ userId, hasDriverRole }: { userId?: string; hasDriverRole: boolean }) {
   if (!userId || hasDriverRole) return null;
   async function onBecome() {
