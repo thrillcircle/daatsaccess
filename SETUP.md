@@ -174,21 +174,22 @@ Never place server API keys in:
 The Access MVP pricing model is:
 
 - Base fare: **R20.00**
-- Distance rate: **R10.00 per kilometre**
+- Distance rate: **R13.50 per kilometre**
 
 The formula is:
 
 ```text
-Estimated fare = R20.00 + (distance in kilometres × R10.00)
+Estimated fare = R20.00 + (distance in kilometres × R13.50)
 ```
 
 Example:
 
 ```text
 Distance: 5 km
-Estimated fare: R20.00 + (5 × R10.00)
-Estimated fare: R70.00
+Estimated fare: R20.00 + (5 × R13.50)
+Estimated fare: R87.50
 ```
+
 
 The shared frontend pricing display is configured in:
 
