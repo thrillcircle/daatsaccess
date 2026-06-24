@@ -760,7 +760,33 @@ function AdminActionsDialog({
       opts.sort((a, b) => Number(b.is_available) - Number(a.is_available) || (a.full_name ?? "").localeCompare(b.full_name ?? ""));
       setDrivers(opts);
     })();
-  }, [open, ride.driver_id, ride.status, payment?.status]);
+
+    // Fleet vehicles + active assignments for suitability ranking.
+    (async () => {
+      setSelectedFleet(ride.vehicle_id ?? "");
+      const [{ data: vehs }, { data: busyRides }] = await Promise.all([
+        supabase.from("vehicle_profiles").select("*").order("vehicle_name"),
+        supabase
+          .from("rides")
+          .select("vehicle_id")
+          .in("status", ACTIVE_STATUSES as unknown as Ride["status"][])
+          .neq("id", ride.id),
+      ]);
+      const busy = new Set<string>(
+        ((busyRides ?? []) as { vehicle_id: string | null }[])
+          .map((r) => r.vehicle_id)
+          .filter((v): v is string => !!v),
+      );
+      const ranked = rankVehiclesForTrip(
+        (vehs ?? []) as FleetVehicle[],
+        { passengerCount: 1 },
+        busy,
+        ride.id,
+      );
+      setFleetRanked(ranked);
+    })();
+  }, [open, ride.id, ride.driver_id, ride.status, ride.vehicle_id, payment?.status]);
+
 
   async function runUpdate(patch: Partial<Ride>, successMsg: string) {
     setBusy(true);
