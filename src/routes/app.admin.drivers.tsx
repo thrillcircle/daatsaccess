@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
@@ -6,6 +6,7 @@ import { AppShell, NAV_ICONS } from "@/components/AppShell";
 import { AdminTabs } from "@/components/AdminTabs";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Phone, Car, Search } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
@@ -25,8 +26,36 @@ const ACTIVE: Database["public"]["Enums"]["ride_status"][] = [
 
 const LIVE_THRESHOLD_MS = 90 * 1000; // location considered live if updated within 90s
 
+type DriverFilter =
+  | "all"
+  | "online"
+  | "offline"
+  | "assigned"
+  | "available"
+  | "stale"
+  | "incomplete";
+
+const DRIVER_FILTERS: { key: DriverFilter; label: string }[] = [
+  { key: "all", label: "All drivers" },
+  { key: "online", label: "Online" },
+  { key: "offline", label: "Offline" },
+  { key: "assigned", label: "Assigned to trip" },
+  { key: "available", label: "Available" },
+  { key: "stale", label: "Stale location" },
+  { key: "incomplete", label: "Profile incomplete" },
+];
+const VALID_DRIVER_FILTERS = new Set<DriverFilter>(DRIVER_FILTERS.map((f) => f.key));
+
+type DriversSearch = { status: DriverFilter; q: string };
+
 export const Route = createFileRoute("/app/admin/drivers")({
   head: () => ({ meta: [{ title: "Drivers — Admin" }] }),
+  validateSearch: (raw: Record<string, unknown>): DriversSearch => ({
+    status: typeof raw.status === "string" && VALID_DRIVER_FILTERS.has(raw.status as DriverFilter)
+      ? (raw.status as DriverFilter)
+      : "all",
+    q: typeof raw.q === "string" ? raw.q : "",
+  }),
   component: DriversPage,
 });
 
