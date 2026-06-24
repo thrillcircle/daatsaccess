@@ -16,6 +16,7 @@ import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppPassengerRouteImport } from './routes/app.passenger'
 import { Route as AppDriverRouteImport } from './routes/app.driver'
 import { Route as AppAdminRouteImport } from './routes/app.admin'
+import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
 import { Route as AppTripRideIdRouteImport } from './routes/app.trip.$rideId'
 import { Route as AppAdminVehiclesRouteImport } from './routes/app.admin.vehicles'
 import { Route as AppAdminTripsRouteImport } from './routes/app.admin.trips'
@@ -58,6 +59,11 @@ const AppAdminRoute = AppAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => AppRoute,
+} as any)
+const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAdminRoute,
 } as any)
 const AppTripRideIdRoute = AppTripRideIdRouteImport.update({
   id: '/trip/$rideId',
@@ -110,12 +116,12 @@ export interface FileRoutesByFullPath {
   '/app/admin/trips': typeof AppAdminTripsRoute
   '/app/admin/vehicles': typeof AppAdminVehiclesRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
+  '/app/admin/': typeof AppAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
-  '/app/admin': typeof AppAdminRouteWithChildren
   '/app/driver': typeof AppDriverRoute
   '/app/passenger': typeof AppPassengerRoute
   '/app/profile': typeof AppProfileRoute
@@ -126,6 +132,7 @@ export interface FileRoutesByTo {
   '/app/admin/trips': typeof AppAdminTripsRoute
   '/app/admin/vehicles': typeof AppAdminVehiclesRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
+  '/app/admin': typeof AppAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,6 +150,7 @@ export interface FileRoutesById {
   '/app/admin/trips': typeof AppAdminTripsRoute
   '/app/admin/vehicles': typeof AppAdminVehiclesRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
+  '/app/admin/': typeof AppAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,12 +169,12 @@ export interface FileRouteTypes {
     | '/app/admin/trips'
     | '/app/admin/vehicles'
     | '/app/trip/$rideId'
+    | '/app/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/app'
     | '/auth'
-    | '/app/admin'
     | '/app/driver'
     | '/app/passenger'
     | '/app/profile'
@@ -177,6 +185,7 @@ export interface FileRouteTypes {
     | '/app/admin/trips'
     | '/app/admin/vehicles'
     | '/app/trip/$rideId'
+    | '/app/admin'
   id:
     | '__root__'
     | '/'
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/app/admin/trips'
     | '/app/admin/vehicles'
     | '/app/trip/$rideId'
+    | '/app/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -251,6 +261,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/admin'
       preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/app/admin/': {
+      id: '/app/admin/'
+      path: '/'
+      fullPath: '/app/admin/'
+      preLoaderRoute: typeof AppAdminIndexRouteImport
+      parentRoute: typeof AppAdminRoute
     }
     '/app/trip/$rideId': {
       id: '/app/trip/$rideId'
@@ -311,6 +328,7 @@ interface AppAdminRouteChildren {
   AppAdminTripHistoryRoute: typeof AppAdminTripHistoryRoute
   AppAdminTripsRoute: typeof AppAdminTripsRoute
   AppAdminVehiclesRoute: typeof AppAdminVehiclesRoute
+  AppAdminIndexRoute: typeof AppAdminIndexRoute
 }
 
 const AppAdminRouteChildren: AppAdminRouteChildren = {
@@ -320,6 +338,7 @@ const AppAdminRouteChildren: AppAdminRouteChildren = {
   AppAdminTripHistoryRoute: AppAdminTripHistoryRoute,
   AppAdminTripsRoute: AppAdminTripsRoute,
   AppAdminVehiclesRoute: AppAdminVehiclesRoute,
+  AppAdminIndexRoute: AppAdminIndexRoute,
 }
 
 const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
