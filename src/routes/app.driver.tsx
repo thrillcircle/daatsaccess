@@ -280,6 +280,28 @@ function OnlineToggle({
   onChange: (p: DriverProfile) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("ride_reviews")
+        .select("rating")
+        .eq("driver_id", profile.user_id);
+      if (cancelled) return;
+      const rows = (data ?? []) as { rating: number }[];
+      if (!rows.length) setRating({ avg: 0, count: 0 });
+      else {
+        const sum = rows.reduce((a, r) => a + r.rating, 0);
+        setRating({ avg: sum / rows.length, count: rows.length });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile.user_id]);
+
   async function toggle(checked: boolean) {
     setBusy(true);
     let payload: Partial<DriverProfile> = { is_available: checked };
@@ -316,11 +338,19 @@ function OnlineToggle({
         <p className="text-xs text-muted-foreground">
           {profile.vehicle_model} · {profile.license_plate}
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {rating == null
+            ? "Loading rating…"
+            : rating.count === 0
+              ? "No ratings yet"
+              : `★ ${rating.avg.toFixed(2)} · ${rating.count} rating${rating.count === 1 ? "" : "s"}`}
+        </p>
       </div>
       <Switch checked={profile.is_available} onCheckedChange={toggle} disabled={busy} />
     </section>
   );
 }
+
 
 function OpenRidesList({ rides }: { rides: Ride[]; driverId: string }) {
   const accept = useServerFn(acceptRide);
