@@ -542,51 +542,99 @@ function BookingDetailDialog({
     } finally { setBusy(false); }
   }
 
-  async function createLinkedRide() {
-    if (!rideItem || !parsedDest) { toast.error("No itinerary route to use"); return; }
+  async function createLinkedRideForItem(item: Itinerary, legSequence: number) {
+    const { dest, meta } = parseItem(item);
+    if (!dest) { toast.error("This leg has no destination"); return; }
     if (!driverId) { toast.error("Assign a driver first"); return; }
     setBusy(true);
     try {
-      const distanceKm = Number(parsedMeta.distanceKm ?? 0);
-      const transport = Number(parsedMeta.estimatedTransport ?? booking!.estimated_total ?? 0);
-      const requestType = parsedMeta.requestType === "scheduled" ? "scheduled" : "now";
-      // Step 1: insert as 'requested' without driver to satisfy validation
+      const distanceKm = Number(meta.distanceKm ?? 0);
+      const transport = Number(meta.estimatedTransport ?? 0);
+      const requestType = meta.requestType === "scheduled" ? "scheduled" : "now";
       const { data: ins, error: insErr } = await supabase
         .from("rides")
         .insert({
           passenger_id: booking!.booked_by_user_id,
-          pickup_address: rideItem.address ?? "",
-          pickup_lat: rideItem.latitude ?? 0,
-          pickup_lng: rideItem.longitude ?? 0,
-          destination_address: parsedDest.address,
-          destination_lat: parsedDest.lat,
-          destination_lng: parsedDest.lng,
+          pickup_address: item.address ?? "",
+          pickup_lat: item.latitude ?? 0,
+          pickup_lng: item.longitude ?? 0,
+          destination_address: dest.address,
+          destination_lat: dest.lat,
+          destination_lng: dest.lng,
           distance_km: distanceKm,
           estimated_price: transport,
-          estimated_duration_seconds: parsedMeta.durationMin != null ? Math.round(Number(parsedMeta.durationMin) * 60) : null,
+          estimated_duration_seconds: meta.durationMin != null ? Math.round(Number(meta.durationMin) * 60) : null,
           request_type: requestType,
-          scheduled_at: parsedMeta.scheduledAt ?? null,
+          scheduled_at: meta.scheduledAt ?? null,
           service_booking_id: booking!.id,
-          itinerary_item_id: rideItem.id,
-          leg_sequence: 1,
-          day_number: 1,
+          itinerary_item_id: item.id,
+          leg_sequence: legSequence,
+          day_number: item.day_number,
         })
         .select().single();
       if (insErr) throw insErr;
-      // Step 2: assign driver (admin bypasses transition checks)
       const { error: updErr } = await supabase
         .from("rides")
         .update({ driver_id: driverId, status: "accepted", accepted_at: new Date().toISOString() })
         .eq("id", ins.id);
       if (updErr) throw updErr;
-      await supabase.from("service_bookings").update({ status: "active" }).eq("id", booking!.id);
-      await logEvent("ride_created", { ride_id: ins.id });
-      toast.success("Ride created and assigned");
+      if (booking!.status !== "active") {
+        await supabase.from("service_bookings").update({ status: "active" }).eq("id", booking!.id);
+      }
+      await logEvent("ride_created", { ride_id: ins.id, itinerary_item_id: item.id, leg_sequence: legSequence });
+      toast.success(`Ride leg ${legSequence} created and assigned`);
       onChanged();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create ride");
     } finally { setBusy(false); }
   }
+
+  async function markWaiting(item: Itinerary, phase: "start" | "end") {
+    setBusy(true);
+    try {
+      const now = new Date().toISOString();
+      const patch =
+        phase === "start"
+          ? { actual_start_at: now, status: "in_progress" }
+          : { actual_end_at: now, status: "completed" };
+      const { error } = await supabase.from("booking_itinerary_items").update(patch).eq("id", item.id);
+      if (error) throw error;
+      await logEvent(phase === "start" ? "waiting_started" : "waiting_ended", { itinerary_item_id: item.id });
+      // Notify booker
+      await supabase.from("notifications").insert({
+        user_id: booking!.booked_by_user_id,
+        type: phase === "start" ? "appointment_waiting_started" : "appointment_waiting_ended",
+        title: phase === "start" ? "Your team is waiting" : "Waiting ended — return on the way",
+        body: phase === "start"
+          ? `The vehicle and team are waiting at ${item.address ?? "the facility"}.`
+          : `Your return ride is being dispatched.`,
+      });
+      toast.success(phase === "start" ? "Waiting started" : "Waiting ended");
+      onChanged();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally { setBusy(false); }
+  }
+
+  async function completeService() {
+    setBusy(true);
+    try {
+      const { error } = await supabase.from("service_bookings").update({ status: "completed" }).eq("id", booking!.id);
+      if (error) throw error;
+      await logEvent("service_completed", {});
+      await supabase.from("notifications").insert({
+        user_id: booking!.booked_by_user_id,
+        type: "appointment_service_completed",
+        title: "Appointment service completed",
+        body: `Booking ${booking!.booking_reference} is complete.`,
+      });
+      toast.success("Service marked complete");
+      onChanged();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally { setBusy(false); }
+  }
+
 
   async function setStatus(status: BookingStatus) {
     setBusy(true);
