@@ -472,6 +472,8 @@ function AdminTripsPage() {
               passenger={passengers.get(r.passenger_id) ?? null}
               driver={r.driver_id ? drivers.get(r.driver_id) ?? null : null}
               vehicle={r.driver_id ? vehicles.get(r.driver_id) ?? null : null}
+              fleetVehicle={fleetVehicles.get(r.id) ?? null}
+
               payment={payments.get(r.id) ?? null}
               review={reviews.get(r.id) ?? null}
               variant={active}
