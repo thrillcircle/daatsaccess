@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
@@ -6,9 +6,37 @@ import { AppShell, NAV_ICONS } from "@/components/AppShell";
 import { AdminTabs } from "@/components/AdminTabs";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatZAR } from "@/lib/pricing";
-import { Pencil } from "lucide-react";
+import { Pencil, ArrowRight } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+
+const ACTIVE_STATUSES = ["requested", "accepted", "driver_arriving", "arrived", "in_progress"] as const;
+
+type OverviewFilter =
+  | "all"
+  | "requested"
+  | "scheduled"
+  | "active"
+  | "completed"
+  | "cancelled";
+
+const VALID_OVERVIEW = new Set<OverviewFilter>([
+  "all", "requested", "scheduled", "active", "completed", "cancelled",
+]);
+
+type OverviewSearch = { filter: OverviewFilter };
+
+// Map overview filter -> Trips page status (when "View All" is clicked).
+const TRIPS_STATUS_FOR: Record<OverviewFilter, string> = {
+  all: "all",
+  requested: "requested",
+  scheduled: "scheduled",
+  active: "all",
+  completed: "completed",
+  cancelled: "cancelled",
+};
+
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type RideChange = Database["public"]["Tables"]["ride_change_log"]["Row"];
