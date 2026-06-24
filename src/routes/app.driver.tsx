@@ -15,16 +15,32 @@ import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
-import { MapPin, Navigation, AlertTriangle, Bell, Phone, Clock, Pencil } from "lucide-react";
+import { MapPin, Navigation, AlertTriangle, Bell, Phone, Clock, Pencil, ExternalLink } from "lucide-react";
 import { useLiveLocation } from "@/hooks/use-live-location";
 import { useRideChanges } from "@/hooks/use-ride-changes";
 import { useRideLiveLocations } from "@/hooks/use-ride-live-locations";
 import { useServerFn } from "@tanstack/react-start";
 import { acknowledgeRideChange } from "@/lib/ride-edit.functions";
 import {
+  acceptRide,
+  markArrived,
+  startTrip,
+  completeTrip,
+} from "@/lib/ride-driver.functions";
+import {
   getRidePassengerDetails,
   type PassengerDetails,
 } from "@/lib/driver-trip.functions";
+
+function mapsNavUrl(lat: number, lng: number) {
+  return `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${lat},${lng}`;
+}
+function openMapsNav(lat: number, lng: number): Window | null {
+  // Called synchronously inside the click handler to satisfy popup-blockers.
+  return typeof window !== "undefined"
+    ? window.open(mapsNavUrl(lat, lng), "_blank", "noopener,noreferrer")
+    : null;
+}
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
