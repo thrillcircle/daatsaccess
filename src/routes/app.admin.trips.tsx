@@ -246,12 +246,15 @@ function AdminTripsPage() {
           : "created_at";
         const { data, error: err } = await query
           .order(orderCol, { ascending: active === "scheduled", nullsFirst: false })
-          .limit(100);
+          .limit(pageSize + 1);
         if (err) throw err;
 
         if (cancelled) return;
-        const list = (data ?? []) as Ride[];
+        const rows = (data ?? []) as Ride[];
+        setHasMore(rows.length > pageSize);
+        const list = rows.slice(0, pageSize);
         setRides(list);
+
 
         const personIds = Array.from(
           new Set(
