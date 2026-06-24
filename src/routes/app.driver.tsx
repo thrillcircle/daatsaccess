@@ -44,7 +44,7 @@ function openMapsNav(lat: number, lng: number): Window | null {
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
-type RideStatus = Database["public"]["Enums"]["ride_status"];
+
 
 export const Route = createFileRoute("/app/driver")({
   head: () => ({ meta: [{ title: "Driver — Access" }] }),
