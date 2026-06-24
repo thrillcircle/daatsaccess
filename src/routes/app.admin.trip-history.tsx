@@ -408,9 +408,9 @@ function TripHistoryPage() {
       const fleet = r.vehicle_id ? fleetVehicles.get(r.vehicle_id) : null;
       const dvVeh = r.driver_id ? driverVehicles.get(r.driver_id) : null;
       const vehicleLabel = fleet
-        ? [fleet.vehicle_name, fleet.license_plate].filter(Boolean).join(" · ")
+        ? [fleet.vehicle_name, fleet.vehicle_type, fleet.license_plate].filter(Boolean).join(" · ")
         : dvVeh
-          ? [dvVeh.vehicle_model, dvVeh.license_plate].filter(Boolean).join(" · ")
+          ? [dvVeh.vehicle_model, dvVeh.vehicle_type, dvVeh.license_plate].filter(Boolean).join(" · ")
           : "";
       return [
         r.id,
@@ -647,9 +647,9 @@ function TripHistoryPage() {
                     const dvVeh = r.driver_id ? driverVehicles.get(r.driver_id) ?? null : null;
                     const pay = payments.get(r.id) ?? null;
                     const vehicleLabel = fleet
-                      ? [fleet.vehicle_name, fleet.license_plate].filter(Boolean).join(" · ")
+                      ? [fleet.vehicle_name, fleet.vehicle_type, fleet.license_plate].filter(Boolean).join(" · ")
                       : dvVeh
-                        ? [dvVeh.vehicle_model, dvVeh.license_plate].filter(Boolean).join(" · ")
+                        ? [dvVeh.vehicle_model, dvVeh.vehicle_type, dvVeh.license_plate].filter(Boolean).join(" · ")
                         : null;
                     return (
                       <TableRow key={r.id}>
@@ -760,9 +760,9 @@ function TripHistoryPage() {
               const dvVeh = r.driver_id ? driverVehicles.get(r.driver_id) ?? null : null;
               const pay = payments.get(r.id) ?? null;
               const vehicleLabel = fleet
-                ? [fleet.vehicle_name, fleet.license_plate].filter(Boolean).join(" · ")
+                ? [fleet.vehicle_name, fleet.vehicle_type, fleet.license_plate].filter(Boolean).join(" · ")
                 : dvVeh
-                  ? [dvVeh.vehicle_model, dvVeh.license_plate].filter(Boolean).join(" · ")
+                  ? [dvVeh.vehicle_model, dvVeh.vehicle_type, dvVeh.license_plate].filter(Boolean).join(" · ")
                   : null;
               const when = r.scheduled_at ?? r.updated_at ?? r.created_at;
               return (
