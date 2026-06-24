@@ -165,19 +165,30 @@ function AdminPage() {
   return (
     <AppShell title="Admin" nav={nav}>
       <AdminTabs />
-      <section className="grid grid-cols-2 gap-3">
-
-        <Metric label="Users" value={metrics?.users ?? "—"} />
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Metric label="Passengers" value={metrics?.passengers ?? "—"} />
         <Metric label="Drivers" value={metrics?.drivers ?? "—"} />
-        <Metric label="Total trips" value={metrics?.trips ?? "—"} />
+        <Metric label="Online drivers" value={metrics?.onlineDrivers ?? "—"} />
+        <Metric label="Active rides" value={metrics?.active ?? "—"} />
+        <Metric label="Scheduled" value={metrics?.scheduled ?? "—"} />
         <Metric label="Completed" value={metrics?.completed ?? "—"} />
-        <div className="col-span-2">
+        <Metric label="Cancelled" value={metrics?.cancelled ?? "—"} />
+        <Metric
+          label="Avg rating"
+          value={
+            metrics?.ratingAvg != null
+              ? `${metrics.ratingAvg.toFixed(2)}★ (${metrics.ratingCount})`
+              : "—"
+          }
+        />
+        <div className="col-span-2 sm:col-span-4">
           <Metric
-            label="Estimated earnings"
+            label="Estimated earnings (completed)"
             value={metrics ? formatZAR(metrics.earnings) : "—"}
           />
         </div>
       </section>
+
 
       <section className="mt-6">
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
