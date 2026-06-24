@@ -249,7 +249,7 @@ function AdminPage() {
     );
   }
 
-  const recentTrips = filteredRides.slice(0, 10);
+  const recentTrips = filteredRides.slice(0, 6);
   const selectedLabel = ({
     all: "All trips",
     requested: "Requested",
