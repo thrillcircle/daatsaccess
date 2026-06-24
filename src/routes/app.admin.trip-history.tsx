@@ -852,19 +852,18 @@ function TripHistoryPage() {
 
 function FilterControls({
   search,
-  navigate,
+  onUpdate,
   drivers,
   vehicles,
   stacked = false,
 }: {
   search: HistorySearch;
-  navigate: ReturnType<typeof useNavigate>;
+  onUpdate: (patch: Partial<HistorySearch>) => void;
   drivers: { user_id: string; full_name: string | null }[];
   vehicles: FleetVehicle[];
   stacked?: boolean;
 }) {
-  const update = (patch: Partial<HistorySearch>) =>
-    navigate({ search: (p: HistorySearch) => ({ ...p, ...patch }) });
+  const update = onUpdate;
   const wrap = stacked ? "grid grid-cols-1 gap-3" : "flex flex-wrap items-center gap-2";
   const fieldCls = stacked ? "w-full" : "w-[150px]";
   return (
