@@ -117,9 +117,25 @@ function DriversPage() {
     let cancelled = false;
 
     const load = async () => {
+      const { data: driverRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "driver");
+      const driverRoleIds = (driverRoles ?? []).map((r) => r.user_id);
+      if (cancelled) return;
+      if (!driverRoleIds.length) {
+        setDrivers([]);
+        setProfiles({});
+        setActiveRides({});
+        setStats({});
+        setUnassignedRides([]);
+        setPassengers([]);
+        return;
+      }
       const { data: drv } = await supabase
         .from("driver_profiles")
         .select("*")
+        .in("user_id", driverRoleIds)
         .order("location_updated_at", { ascending: false, nullsFirst: false });
       const ds = (drv ?? []) as DriverProfile[];
       if (cancelled) return;
