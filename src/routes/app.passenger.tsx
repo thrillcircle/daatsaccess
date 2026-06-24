@@ -25,8 +25,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
+
+const JOBURG_TZ = "Africa/Johannesburg";
+
+function formatJoburg(d: Date): string {
+  return d.toLocaleString("en-ZA", {
+    timeZone: JOBURG_TZ,
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function localInputNow(): string {
+  // datetime-local needs YYYY-MM-DDTHH:mm in the browser's local time.
+  const d = new Date(Date.now() + 60_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 
 export const Route = createFileRoute("/app/passenger")({
   head: () => ({ meta: [{ title: "Passenger — Access" }] }),
