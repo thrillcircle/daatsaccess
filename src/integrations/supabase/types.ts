@@ -49,6 +49,323 @@ export type Database = {
           },
         ]
       }
+      booking_assistance_requirements: {
+        Row: {
+          booking_id: string
+          id: string
+          notes: string | null
+          quantity: number
+          requirement_code: Database["public"]["Enums"]["assistance_requirement_code"]
+        }
+        Insert: {
+          booking_id: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          requirement_code: Database["public"]["Enums"]["assistance_requirement_code"]
+        }
+        Update: {
+          booking_id?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          requirement_code?: Database["public"]["Enums"]["assistance_requirement_code"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_assistance_requirements_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_companion_assignments: {
+        Row: {
+          assigned_at: string
+          booking_id: string
+          companion_id: string
+          id: string
+          itinerary_item_id: string | null
+          notes: string | null
+          status: Database["public"]["Enums"]["assignment_status"]
+        }
+        Insert: {
+          assigned_at?: string
+          booking_id: string
+          companion_id: string
+          id?: string
+          itinerary_item_id?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"]
+        }
+        Update: {
+          assigned_at?: string
+          booking_id?: string
+          companion_id?: string
+          id?: string
+          itinerary_item_id?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_companion_assignments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_companion_assignments_companion_id_fkey"
+            columns: ["companion_id"]
+            isOneToOne: false
+            referencedRelation: "companion_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_companion_assignments_itinerary_item_id_fkey"
+            columns: ["itinerary_item_id"]
+            isOneToOne: false
+            referencedRelation: "booking_itinerary_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_driver_assignments: {
+        Row: {
+          assigned_at: string
+          booking_id: string
+          driver_user_id: string
+          id: string
+          itinerary_item_id: string | null
+          notes: string | null
+          status: Database["public"]["Enums"]["assignment_status"]
+        }
+        Insert: {
+          assigned_at?: string
+          booking_id: string
+          driver_user_id: string
+          id?: string
+          itinerary_item_id?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"]
+        }
+        Update: {
+          assigned_at?: string
+          booking_id?: string
+          driver_user_id?: string
+          id?: string
+          itinerary_item_id?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_driver_assignments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_driver_assignments_itinerary_item_id_fkey"
+            columns: ["itinerary_item_id"]
+            isOneToOne: false
+            referencedRelation: "booking_itinerary_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_itinerary_items: {
+        Row: {
+          address: string | null
+          booking_id: string
+          created_at: string
+          day_number: number
+          id: string
+          item_type: Database["public"]["Enums"]["itinerary_item_type"]
+          latitude: number | null
+          longitude: number | null
+          notes: string | null
+          planned_end_at: string | null
+          planned_start_at: string | null
+          sequence_number: number
+          title: string | null
+        }
+        Insert: {
+          address?: string | null
+          booking_id: string
+          created_at?: string
+          day_number?: number
+          id?: string
+          item_type: Database["public"]["Enums"]["itinerary_item_type"]
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          planned_end_at?: string | null
+          planned_start_at?: string | null
+          sequence_number?: number
+          title?: string | null
+        }
+        Update: {
+          address?: string | null
+          booking_id?: string
+          created_at?: string
+          day_number?: number
+          id?: string
+          item_type?: Database["public"]["Enums"]["itinerary_item_type"]
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          planned_end_at?: string | null
+          planned_start_at?: string | null
+          sequence_number?: number
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_itinerary_items_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_travellers: {
+        Row: {
+          booking_id: string
+          created_at: string
+          full_name: string
+          id: string
+          is_primary: boolean
+          linked_user_id: string | null
+          phone: string | null
+          relationship_to_booker: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          full_name: string
+          id?: string
+          is_primary?: boolean
+          linked_user_id?: string | null
+          phone?: string | null
+          relationship_to_booker?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_primary?: boolean
+          linked_user_id?: string | null
+          phone?: string | null
+          relationship_to_booker?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_travellers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_vehicle_assignments: {
+        Row: {
+          assigned_at: string
+          booking_id: string
+          fleet_vehicle_id: string
+          id: string
+          itinerary_item_id: string | null
+          notes: string | null
+          status: Database["public"]["Enums"]["assignment_status"]
+        }
+        Insert: {
+          assigned_at?: string
+          booking_id: string
+          fleet_vehicle_id: string
+          id?: string
+          itinerary_item_id?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"]
+        }
+        Update: {
+          assigned_at?: string
+          booking_id?: string
+          fleet_vehicle_id?: string
+          id?: string
+          itinerary_item_id?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_vehicle_assignments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_vehicle_assignments_fleet_vehicle_id_fkey"
+            columns: ["fleet_vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "fleet_vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_vehicle_assignments_itinerary_item_id_fkey"
+            columns: ["itinerary_item_id"]
+            isOneToOne: false
+            referencedRelation: "booking_itinerary_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      companion_profiles: {
+        Row: {
+          admin_approved: boolean
+          created_at: string
+          employment_status: string | null
+          full_name: string
+          id: string
+          is_available: boolean
+          phone: string | null
+          photo_url: string | null
+          training_notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_approved?: boolean
+          created_at?: string
+          employment_status?: string | null
+          full_name: string
+          id?: string
+          is_available?: boolean
+          phone?: string | null
+          photo_url?: string | null
+          training_notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_approved?: boolean
+          created_at?: string
+          employment_status?: string | null
+          full_name?: string
+          id?: string
+          is_available?: boolean
+          phone?: string | null
+          photo_url?: string | null
+          training_notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       driver_profiles: {
         Row: {
           created_at: string
@@ -91,6 +408,48 @@ export type Database = {
           user_id?: string
           vehicle_model?: string | null
           vehicle_type?: string | null
+        }
+        Relationships: []
+      }
+      fleet_vehicles: {
+        Row: {
+          accessibility_features: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          make: string | null
+          model: string | null
+          operational_status: Database["public"]["Enums"]["fleet_operational_status"]
+          passenger_capacity: number
+          registration_number: string
+          updated_at: string
+          wheelchair_capacity: number
+        }
+        Insert: {
+          accessibility_features?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          make?: string | null
+          model?: string | null
+          operational_status?: Database["public"]["Enums"]["fleet_operational_status"]
+          passenger_capacity?: number
+          registration_number: string
+          updated_at?: string
+          wheelchair_capacity?: number
+        }
+        Update: {
+          accessibility_features?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          make?: string | null
+          model?: string | null
+          operational_status?: Database["public"]["Enums"]["fleet_operational_status"]
+          passenger_capacity?: number
+          registration_number?: string
+          updated_at?: string
+          wheelchair_capacity?: number
         }
         Relationships: []
       }
@@ -508,6 +867,7 @@ export type Database = {
           actual_duration_seconds: number | null
           completed_at: string | null
           created_at: string
+          day_number: number | null
           destination_address: string
           destination_lat: number
           destination_lng: number
@@ -518,7 +878,9 @@ export type Database = {
           estimated_duration_seconds: number | null
           estimated_price: number
           id: string
+          itinerary_item_id: string | null
           last_route_updated_at: string | null
+          leg_sequence: number | null
           passenger_id: string
           pickup_address: string
           pickup_lat: number
@@ -527,6 +889,7 @@ export type Database = {
           request_type: string
           route_version: number
           scheduled_at: string | null
+          service_booking_id: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["ride_status"]
           updated_at: string
@@ -538,6 +901,7 @@ export type Database = {
           actual_duration_seconds?: number | null
           completed_at?: string | null
           created_at?: string
+          day_number?: number | null
           destination_address: string
           destination_lat: number
           destination_lng: number
@@ -548,7 +912,9 @@ export type Database = {
           estimated_duration_seconds?: number | null
           estimated_price: number
           id?: string
+          itinerary_item_id?: string | null
           last_route_updated_at?: string | null
+          leg_sequence?: number | null
           passenger_id: string
           pickup_address: string
           pickup_lat: number
@@ -557,6 +923,7 @@ export type Database = {
           request_type?: string
           route_version?: number
           scheduled_at?: string | null
+          service_booking_id?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
           updated_at?: string
@@ -568,6 +935,7 @@ export type Database = {
           actual_duration_seconds?: number | null
           completed_at?: string | null
           created_at?: string
+          day_number?: number | null
           destination_address?: string
           destination_lat?: number
           destination_lng?: number
@@ -578,7 +946,9 @@ export type Database = {
           estimated_duration_seconds?: number | null
           estimated_price?: number
           id?: string
+          itinerary_item_id?: string | null
           last_route_updated_at?: string | null
+          leg_sequence?: number | null
           passenger_id?: string
           pickup_address?: string
           pickup_lat?: number
@@ -587,6 +957,7 @@ export type Database = {
           request_type?: string
           route_version?: number
           scheduled_at?: string | null
+          service_booking_id?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
           updated_at?: string
@@ -594,10 +965,219 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "rides_itinerary_item_id_fkey"
+            columns: ["itinerary_item_id"]
+            isOneToOne: false
+            referencedRelation: "booking_itinerary_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rides_service_booking_id_fkey"
+            columns: ["service_booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "rides_vehicle_id_fkey"
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_booking_events: {
+        Row: {
+          actor_user_id: string | null
+          booking_id: string
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          booking_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          booking_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_booking_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_bookings: {
+        Row: {
+          admin_notes: string | null
+          booked_by_user_id: string
+          booking_reference: string
+          created_at: string
+          deposit_amount: number | null
+          deposit_status: Database["public"]["Enums"]["deposit_status"]
+          end_at: string | null
+          estimated_total: number | null
+          id: string
+          journey_pattern: Database["public"]["Enums"]["journey_pattern"]
+          passenger_notes: string | null
+          quoted_total: number | null
+          requested_companion_count: number
+          service_type: Database["public"]["Enums"]["service_type"]
+          start_at: string | null
+          status: Database["public"]["Enums"]["booking_status"]
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          booked_by_user_id: string
+          booking_reference?: string
+          created_at?: string
+          deposit_amount?: number | null
+          deposit_status?: Database["public"]["Enums"]["deposit_status"]
+          end_at?: string | null
+          estimated_total?: number | null
+          id?: string
+          journey_pattern: Database["public"]["Enums"]["journey_pattern"]
+          passenger_notes?: string | null
+          quoted_total?: number | null
+          requested_companion_count?: number
+          service_type: Database["public"]["Enums"]["service_type"]
+          start_at?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          booked_by_user_id?: string
+          booking_reference?: string
+          created_at?: string
+          deposit_amount?: number | null
+          deposit_status?: Database["public"]["Enums"]["deposit_status"]
+          end_at?: string | null
+          estimated_total?: number | null
+          id?: string
+          journey_pattern?: Database["public"]["Enums"]["journey_pattern"]
+          passenger_notes?: string | null
+          quoted_total?: number | null
+          requested_companion_count?: number
+          service_type?: Database["public"]["Enums"]["service_type"]
+          start_at?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      service_quote_items: {
+        Row: {
+          description: string | null
+          id: string
+          label: string
+          line_total: number
+          quantity: number
+          quote_id: string
+          sort_order: number
+          unit_price: number
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          label: string
+          line_total?: number
+          quantity?: number
+          quote_id: string
+          sort_order?: number
+          unit_price?: number
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          label?: string
+          line_total?: number
+          quantity?: number
+          quote_id?: string
+          sort_order?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "service_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_quotes: {
+        Row: {
+          booking_id: string
+          created_at: string
+          created_by_user_id: string | null
+          currency: string
+          id: string
+          notes: string | null
+          quote_reference: string
+          status: Database["public"]["Enums"]["quote_status"]
+          subtotal: number
+          tax_amount: number
+          total: number
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          created_by_user_id?: string | null
+          currency?: string
+          id?: string
+          notes?: string | null
+          quote_reference?: string
+          status?: Database["public"]["Enums"]["quote_status"]
+          subtotal?: number
+          tax_amount?: number
+          total?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          currency?: string
+          id?: string
+          notes?: string | null
+          quote_reference?: string
+          status?: Database["public"]["Enums"]["quote_status"]
+          subtotal?: number
+          tax_amount?: number
+          total?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_quotes_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
             referencedColumns: ["id"]
           },
         ]
@@ -725,7 +1305,50 @@ export type Database = {
     }
     Enums: {
       app_role: "passenger" | "driver" | "admin"
+      assignment_status: "proposed" | "confirmed" | "cancelled" | "completed"
+      assistance_requirement_code:
+        | "boarding_assistance"
+        | "wheelchair_transfer"
+        | "door_to_door"
+        | "facility_escort"
+        | "hospital_assistance"
+        | "airport_assistance"
+        | "elderly_assistance"
+        | "luggage_assistance"
+        | "mobility_equipment"
+        | "communication_assistance"
+        | "other"
+      booking_status:
+        | "draft"
+        | "submitted"
+        | "awaiting_quote"
+        | "quoted"
+        | "accepted"
+        | "resources_assigned"
+        | "active"
+        | "completed"
+        | "cancelled"
+      deposit_status: "none" | "pending" | "paid" | "refunded" | "waived"
+      fleet_operational_status:
+        | "active"
+        | "maintenance"
+        | "out_of_service"
+        | "retired"
+      itinerary_item_type:
+        | "ride"
+        | "waiting"
+        | "appointment"
+        | "accommodation"
+        | "activity"
+        | "other"
+      journey_pattern:
+        | "one_way"
+        | "return"
+        | "wait_and_return"
+        | "recurring"
+        | "multi_day"
       payment_status: "pending" | "paid" | "failed" | "refunded"
+      quote_status: "draft" | "sent" | "accepted" | "rejected" | "expired"
       ride_status:
         | "requested"
         | "accepted"
@@ -734,6 +1357,11 @@ export type Database = {
         | "in_progress"
         | "completed"
         | "cancelled"
+      service_type:
+        | "transport"
+        | "assisted"
+        | "appointment"
+        | "extended_journey"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -862,7 +1490,55 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["passenger", "driver", "admin"],
+      assignment_status: ["proposed", "confirmed", "cancelled", "completed"],
+      assistance_requirement_code: [
+        "boarding_assistance",
+        "wheelchair_transfer",
+        "door_to_door",
+        "facility_escort",
+        "hospital_assistance",
+        "airport_assistance",
+        "elderly_assistance",
+        "luggage_assistance",
+        "mobility_equipment",
+        "communication_assistance",
+        "other",
+      ],
+      booking_status: [
+        "draft",
+        "submitted",
+        "awaiting_quote",
+        "quoted",
+        "accepted",
+        "resources_assigned",
+        "active",
+        "completed",
+        "cancelled",
+      ],
+      deposit_status: ["none", "pending", "paid", "refunded", "waived"],
+      fleet_operational_status: [
+        "active",
+        "maintenance",
+        "out_of_service",
+        "retired",
+      ],
+      itinerary_item_type: [
+        "ride",
+        "waiting",
+        "appointment",
+        "accommodation",
+        "activity",
+        "other",
+      ],
+      journey_pattern: [
+        "one_way",
+        "return",
+        "wait_and_return",
+        "recurring",
+        "multi_day",
+      ],
       payment_status: ["pending", "paid", "failed", "refunded"],
+      quote_status: ["draft", "sent", "accepted", "rejected", "expired"],
       ride_status: [
         "requested",
         "accepted",
@@ -871,6 +1547,12 @@ export const Constants = {
         "in_progress",
         "completed",
         "cancelled",
+      ],
+      service_type: [
+        "transport",
+        "assisted",
+        "appointment",
+        "extended_journey",
       ],
     },
   },
