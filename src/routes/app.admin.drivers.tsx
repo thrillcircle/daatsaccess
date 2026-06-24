@@ -96,7 +96,24 @@ function DriversPage() {
         if (r.driver_id) rMap[r.driver_id] = r;
       }
       setActiveRides(rMap);
+
+      // Load passenger profiles (role = passenger, not in driver_profiles)
+      const { data: passengerRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "passenger");
+      const passengerIds = (passengerRoles ?? []).map((r) => r.user_id);
+      if (passengerIds.length) {
+        const { data: pProfiles } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("user_id", passengerIds);
+        if (!cancelled) setPassengers((pProfiles ?? []) as Profile[]);
+      } else if (!cancelled) {
+        setPassengers([]);
+      }
     };
+
 
     load();
 
