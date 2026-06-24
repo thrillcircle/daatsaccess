@@ -48,11 +48,57 @@ function PassengerPage() {
   return (
     <AppShell title="Passenger" nav={nav}>
       <RideRequest userId={user?.id} />
+      <RatePrompt userId={user?.id} />
       <BecomeDriver userId={user?.id} hasDriverRole={!!roles?.includes("driver")} />
       <RideHistory userId={user?.id} />
     </AppShell>
   );
 }
+
+function RatePrompt({ userId }: { userId?: string }) {
+  const [ride, setRide] = useState<Ride | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("rides")
+        .select("*")
+        .eq("passenger_id", userId)
+        .eq("status", "completed")
+        .not("driver_id", "is", null)
+        .order("completed_at", { ascending: false })
+        .limit(5);
+      const list = (data ?? []) as Ride[];
+      if (!list.length) return;
+      const { data: reviews } = await supabase
+        .from("ride_reviews")
+        .select("ride_id")
+        .eq("passenger_id", userId)
+        .in("ride_id", list.map((r) => r.id));
+      const rated = new Set((reviews ?? []).map((r) => r.ride_id));
+      const next = list.find((r) => !rated.has(r.id));
+      if (!cancelled) setRide(next ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+  if (!ride) return null;
+  return (
+    <section className="mt-3 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+      <p className="text-sm font-medium">How was your last trip?</p>
+      <p className="mt-1 truncate text-xs text-muted-foreground">{ride.destination_address}</p>
+      <a
+        href={`/app/trip/${ride.id}`}
+        className="mt-3 inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90"
+      >
+        Rate your driver
+      </a>
+    </section>
+  );
+}
+
 
 function RideRequest({ userId }: { userId?: string }) {
   const route = useServerFn(computeRoute);
