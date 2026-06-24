@@ -37,7 +37,7 @@ type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 const STATUSES = ["active", "in_maintenance", "out_of_service", "retired"] as const;
 
-export const Route = createFileRoute("/app/admin/vehicles")({
+export const Route = createFileRoute("/app/admin/fleet")({
   head: () => ({ meta: [{ title: "Vehicles — Admin" }] }),
   component: VehiclesPage,
 });
