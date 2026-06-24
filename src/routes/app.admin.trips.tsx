@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
-import { Search, Star, KeyRound, Loader2, Eye, EyeOff, ShieldAlert, Check, Settings2, Phone, MessageSquare, ExternalLink, Car } from "lucide-react";
+import { Search, Star, KeyRound, Loader2, Eye, EyeOff, ShieldAlert, Check, Settings2, Phone, MessageSquare, ExternalLink, Car, History } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import {
