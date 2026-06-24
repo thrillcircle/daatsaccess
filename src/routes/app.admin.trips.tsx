@@ -21,6 +21,7 @@ type FilterKey =
   | "requested"
   | "accepted"
   | "driver_arriving"
+  | "arrived"
   | "in_progress"
   | "completed"
   | "cancelled";
@@ -30,10 +31,12 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "requested", label: "Requested" },
   { key: "accepted", label: "Accepted" },
   { key: "driver_arriving", label: "Driver arriving" },
+  { key: "arrived", label: "Arrived" },
   { key: "in_progress", label: "In progress" },
   { key: "completed", label: "Completed" },
   { key: "cancelled", label: "Cancelled" },
 ];
+
 
 export const Route = createFileRoute("/app/admin/trips")({
   head: () => ({ meta: [{ title: "Trips — Admin" }] }),
