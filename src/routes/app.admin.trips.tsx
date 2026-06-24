@@ -29,7 +29,7 @@ type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type RideStatus = Database["public"]["Enums"]["ride_status"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
 type Profile = { user_id: string; full_name: string | null; phone: string | null };
-type Vehicle = { user_id: string; vehicle_model: string | null; license_plate: string | null; vehicle_type: string | null };
+type Vehicle = { user_id: string; vehicle_model: string | null; license_plate: string | null; vehicle_type: string | null; is_available: boolean };
 type FleetVehicle = Database["public"]["Tables"]["vehicle_profiles"]["Row"];
 type PaymentRow = { ride_id: string; status: PaymentStatus; amount: number; payment_method: string | null };
 type Review = { ride_id: string; rating: number; comment: string | null };
@@ -291,7 +291,7 @@ function AdminTripsPage() {
         if (driverIds.length) {
           const { data: vs } = await supabase
             .from("driver_profiles")
-            .select("user_id, vehicle_model, license_plate, vehicle_type")
+            .select("user_id, vehicle_model, license_plate, vehicle_type, is_available")
             .in("user_id", driverIds);
           if (!cancelled) setVehicles(new Map(((vs ?? []) as Vehicle[]).map((v) => [v.user_id, v])));
         } else {
@@ -527,13 +527,19 @@ function TripRow({
   onChanged: () => void;
 }) {
   const fleetAlerts = fleetVehicle ? getVehicleAlerts(fleetVehicle) : [];
-  const vehicleLabel = fleetVehicle
-    ? `${fleetVehicle.vehicle_name} · ${fleetVehicle.license_plate}`
-    : vehicle
-    ? [vehicle.vehicle_model, vehicle.license_plate].filter(Boolean).join(" · ") || "—"
-    : ride.driver_id
-    ? "—"
-    : "Unassigned";
+  const vehicleModel = fleetVehicle ? `${fleetVehicle.vehicle_name ?? ""} ${fleetVehicle.model ?? ""}`.trim() || (fleetVehicle.vehicle_name ?? "—") : vehicle?.vehicle_model ?? null;
+  const vehicleType = fleetVehicle?.vehicle_type ?? vehicle?.vehicle_type ?? null;
+  const vehiclePlate = fleetVehicle?.license_plate ?? vehicle?.license_plate ?? null;
+  const vehicleAssignmentStatus: "fleet" | "driver" | "unassigned" = fleetVehicle
+    ? "fleet"
+    : vehicle && (vehicle.vehicle_model || vehicle.license_plate)
+    ? "driver"
+    : "unassigned";
+  const driverAvailability: "available" | "offline" | "none" = vehicle
+    ? vehicle.is_available
+      ? "available"
+      : "offline"
+    : "none";
 
   return (
     <li className="space-y-2 px-4 py-3">
@@ -560,7 +566,33 @@ function TripRow({
           label="Driver"
           value={driver?.full_name ?? (ride.driver_id ? "Assigned" : "Unassigned")}
         />
-        <Field label="Vehicle" value={vehicleLabel} />
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Driver availability</div>
+          <div className="text-xs">
+            {driverAvailability === "available" ? (
+              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Available</Badge>
+            ) : driverAvailability === "offline" ? (
+              <Badge variant="secondary">Offline</Badge>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </div>
+        </div>
+        <Field label="Vehicle model" value={vehicleModel ?? "Unassigned"} />
+        <Field label="Vehicle type" value={vehicleType ?? "—"} />
+        <Field label="License plate" value={vehiclePlate ?? "—"} />
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Vehicle assignment</div>
+          <div className="text-xs">
+            {vehicleAssignmentStatus === "fleet" ? (
+              <Badge className="bg-sky-500/15 text-sky-700 dark:text-sky-300">Fleet vehicle</Badge>
+            ) : vehicleAssignmentStatus === "driver" ? (
+              <Badge variant="outline">Driver's vehicle</Badge>
+            ) : (
+              <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">Unassigned</Badge>
+            )}
+          </div>
+        </div>
 
         {variant === "scheduled" && (
           <>
@@ -643,12 +675,26 @@ function TripRow({
         <Badge variant="outline" className="font-mono text-[10px]">
           {ride.id.slice(0, 8)}
         </Badge>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
             <Link to="/app/trip/$rideId" params={{ rideId: ride.id }}>
               <ExternalLink className="mr-1 h-3 w-3" /> Details
             </Link>
           </Button>
+          {ride.driver_id && (
+            <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+              <Link to="/app/admin/drivers" search={{ status: "all", q: ride.driver_id }}>
+                <ExternalLink className="mr-1 h-3 w-3" /> Driver
+              </Link>
+            </Button>
+          )}
+          {(ride.vehicle_id || vehicle?.license_plate) && (
+            <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+              <Link to="/app/admin/fleet">
+                <Car className="mr-1 h-3 w-3" /> Vehicle
+              </Link>
+            </Button>
+          )}
           <AdminActionsDialog
             ride={ride}
             passenger={passenger}

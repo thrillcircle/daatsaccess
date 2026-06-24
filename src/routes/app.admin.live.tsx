@@ -88,6 +88,38 @@ function fmtAgo(iso: string | null | undefined) {
   return `${Math.round(diff / 3600)}h ago`;
 }
 
+function FreshnessBadge({ iso }: { iso: string | null | undefined }) {
+  if (!iso) {
+    return (
+      <Badge variant="outline" className="border-muted text-[10px] text-muted-foreground">
+        Location unavailable
+      </Badge>
+    );
+  }
+  const diffMin = (Date.now() - new Date(iso).getTime()) / 60_000;
+  if (diffMin <= 5) {
+    return (
+      <Badge className="bg-emerald-500/15 text-[10px] text-emerald-700 dark:text-emerald-300">
+        Live · {fmtAgo(iso)}
+      </Badge>
+    );
+  }
+  if (diffMin <= 15) {
+    return (
+      <Badge className="bg-amber-500/15 text-[10px] text-amber-700 dark:text-amber-300">
+        Delayed · {fmtAgo(iso)}
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="border-destructive/40 text-[10px] text-destructive">
+      Offline · {fmtAgo(iso)}
+    </Badge>
+  );
+}
+
+
+
 function LivePage() {
   const { user } = useAuth();
   const { roles, loading: rolesLoading } = useUserRoles(user?.id);
@@ -369,13 +401,34 @@ function LivePage() {
 
                 <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs">
                   <PersonCell label="Passenger" name={pax?.full_name} phone={pax?.phone} />
-                  <PersonCell label="Driver" name={drv?.full_name ?? "Unassigned"} phone={drv?.phone} />
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Driver</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-medium">
+                        {drv?.full_name ?? "Unassigned"}
+                      </span>
+                      {veh ? (
+                        veh.is_available ? (
+                          <Badge className="bg-emerald-500/15 text-[10px] text-emerald-700 dark:text-emerald-300">Available</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px]">Offline</Badge>
+                        )
+                      ) : null}
+                    </div>
+                    {drv?.phone && (
+                      <p className="truncate text-[11px] text-muted-foreground">{drv.phone}</p>
+                    )}
+                  </div>
                 </div>
 
-                {veh && (veh.vehicle_model || veh.license_plate) && (
+                {veh && (veh.vehicle_model || veh.license_plate) ? (
                   <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
                     <Car className="h-3 w-3" />
                     {[veh.vehicle_model, veh.vehicle_type, veh.license_plate].filter(Boolean).join(" · ")}
+                  </p>
+                ) : (
+                  <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                    <Car className="h-3 w-3" /> Vehicle: Unassigned
                   </p>
                 )}
 
@@ -388,7 +441,7 @@ function LivePage() {
                       <Pencil className="h-3 w-3" /> edited {fmtAgo(change.created_at)}
                     </span>
                   )}
-                  <span>last loc: {fmtAgo(lastLoc)}</span>
+                  <FreshnessBadge iso={lastLoc} />
                   {drvLoc && (
                     <span className="font-mono">
                       driver @ {drvLoc.latitude.toFixed(3)}, {drvLoc.longitude.toFixed(3)}
