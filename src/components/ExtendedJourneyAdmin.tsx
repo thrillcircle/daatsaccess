@@ -171,7 +171,7 @@ export function ExtendedJourneyAdminPanel({
         total,
         notes: notes.trim() || null,
         valid_until: validUntil ? new Date(validUntil + "T23:59:59").toISOString() : null,
-        status: sendNow ? "sent" : "draft",
+        status: (sendNow ? "sent" : "draft") as "sent" | "draft",
       };
       if (qid) {
         const { error } = await supabase.from("service_quotes").update(payload).eq("id", qid);
