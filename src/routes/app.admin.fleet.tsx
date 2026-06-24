@@ -267,11 +267,15 @@ function VehicleRow({
   vehicle: v,
   driverName,
   drivers,
+  tripStats,
+  assignedNow,
   onChanged,
 }: {
   vehicle: Vehicle;
   driverName: string;
   drivers: Profile[];
+  tripStats: VehicleTripStats;
+  assignedNow: boolean;
   onChanged: () => void;
 }) {
   const alerts = getVehicleAlerts(v);
@@ -287,6 +291,23 @@ function VehicleRow({
     retired: "bg-muted text-muted-foreground",
   };
 
+  const odo = Number(v.current_odometer_km ?? 0);
+  const lastKm = v.last_service_km != null ? Number(v.last_service_km) : null;
+  const dueKm = v.next_service_due_km != null ? Number(v.next_service_due_km) : null;
+  const interval = Number(v.service_interval_km ?? 0);
+  let servicePct: number | null = null;
+  if (lastKm != null && interval > 0) {
+    servicePct = Math.max(0, Math.min(100, ((odo - lastKm) / interval) * 100));
+  } else if (dueKm != null && interval > 0) {
+    servicePct = Math.max(0, Math.min(100, ((odo - (dueKm - interval)) / interval) * 100));
+  }
+
+  const lifecycleStatus = assignedNow ? "assigned" : v.status;
+  const lifecycleColor: Record<string, string> = {
+    ...statusColor,
+    assigned: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  };
+
   return (
     <div className={`rounded-xl border bg-card p-4 ${ringClass}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -294,7 +315,9 @@ function VehicleRow({
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">{v.vehicle_name}</span>
             <Badge variant="outline" className="font-mono">{v.license_plate}</Badge>
-            <Badge className={statusColor[v.status] ?? ""}>{v.status.replace(/_/g, " ")}</Badge>
+            <Badge className={lifecycleColor[lifecycleStatus] ?? ""}>
+              {lifecycleStatus.replace(/_/g, " ")}
+            </Badge>
             {v.wheelchair_accessible && (
               <Badge variant="secondary" className="gap-1"><Accessibility className="h-3 w-3" /> Accessible</Badge>
             )}
@@ -313,17 +336,45 @@ function VehicleRow({
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-        <Stat label="Odometer" value={`${Number(v.current_odometer_km).toLocaleString()} km`} />
+        <Stat label="Odometer" value={`${odo.toLocaleString()} km`} />
         <Stat
           label="Next service"
-          value={v.next_service_due_km != null ? `${Number(v.next_service_due_km).toLocaleString()} km` : "—"}
+          value={dueKm != null ? `${dueKm.toLocaleString()} km` : "—"}
         />
+        <Stat label="Service interval" value={interval ? `${interval.toLocaleString()} km` : "—"} />
+        <Stat label="Last service" value={v.last_service_date ?? (lastKm != null ? `${lastKm.toLocaleString()} km` : "—")} />
         <Stat label="License" value={v.license_disc_expiry_date ?? "—"} />
         <Stat label="Insurance" value={v.insurance_expiry_date ?? "—"} />
         <Stat label="Roadworthy" value={v.roadworthy_expiry_date ?? "—"} />
-        <Stat label="Last service" value={v.last_service_date ?? "—"} />
-        <Stat label="Service interval" value={`${Number(v.service_interval_km).toLocaleString()} km`} />
         <Stat label="VIN" value={v.vin_number ?? "—"} />
+      </div>
+
+      {servicePct != null && (
+        <div className="mt-3">
+          <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>Service progress</span>
+            <span className="font-medium text-foreground">{servicePct.toFixed(0)}%</span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={
+                "h-full " +
+                (servicePct >= 100
+                  ? "bg-destructive"
+                  : servicePct >= 90
+                  ? "bg-amber-500"
+                  : "bg-emerald-500")
+              }
+              style={{ width: `${servicePct}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+        <Stat label="Upcoming trips" value={String(tripStats.upcoming)} />
+        <Stat label="Completed trips" value={String(tripStats.completed)} />
+        <Stat label="Est. km driven" value={`${Math.round(tripStats.estimatedKm).toLocaleString()} km`} />
       </div>
 
       {alerts.length > 0 && (
@@ -357,14 +408,21 @@ function VehicleRow({
         <OdometerDialog vehicle={v} onSaved={onChanged}>
           <Button size="sm" variant="outline"><Gauge className="mr-1 h-3.5 w-3.5" /> Odometer</Button>
         </OdometerDialog>
+        <RecordServiceDialog vehicle={v} onSaved={onChanged}>
+          <Button size="sm" variant="outline"><Wrench className="mr-1 h-3.5 w-3.5" /> Record service</Button>
+        </RecordServiceDialog>
         <NoteDialog vehicle={v} onSaved={onChanged}>
           <Button size="sm" variant="outline"><StickyNote className="mr-1 h-3.5 w-3.5" /> Note</Button>
         </NoteDialog>
+        <VehicleTripsDialog vehicle={v}>
+          <Button size="sm" variant="ghost"><ExternalLink className="mr-1 h-3.5 w-3.5" /> Trips</Button>
+        </VehicleTripsDialog>
         <StatusButtons vehicle={v} onSaved={onChanged} />
       </div>
     </div>
   );
 }
+
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
