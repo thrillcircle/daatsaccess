@@ -180,6 +180,8 @@ export type Database = {
       }
       booking_itinerary_items: {
         Row: {
+          actual_end_at: string | null
+          actual_start_at: string | null
           address: string | null
           booking_id: string
           created_at: string
@@ -192,9 +194,12 @@ export type Database = {
           planned_end_at: string | null
           planned_start_at: string | null
           sequence_number: number
+          status: string
           title: string | null
         }
         Insert: {
+          actual_end_at?: string | null
+          actual_start_at?: string | null
           address?: string | null
           booking_id: string
           created_at?: string
@@ -207,9 +212,12 @@ export type Database = {
           planned_end_at?: string | null
           planned_start_at?: string | null
           sequence_number?: number
+          status?: string
           title?: string | null
         }
         Update: {
+          actual_end_at?: string | null
+          actual_start_at?: string | null
           address?: string | null
           booking_id?: string
           created_at?: string
@@ -222,6 +230,7 @@ export type Database = {
           planned_end_at?: string | null
           planned_start_at?: string | null
           sequence_number?: number
+          status?: string
           title?: string | null
         }
         Relationships: [
@@ -1034,8 +1043,10 @@ export type Database = {
           estimated_total: number | null
           id: string
           journey_pattern: Database["public"]["Enums"]["journey_pattern"]
+          parent_booking_id: string | null
           passenger_notes: string | null
           quoted_total: number | null
+          recurrence_rule: Json | null
           requested_companion_count: number
           service_type: Database["public"]["Enums"]["service_type"]
           start_at: string | null
@@ -1054,8 +1065,10 @@ export type Database = {
           estimated_total?: number | null
           id?: string
           journey_pattern: Database["public"]["Enums"]["journey_pattern"]
+          parent_booking_id?: string | null
           passenger_notes?: string | null
           quoted_total?: number | null
+          recurrence_rule?: Json | null
           requested_companion_count?: number
           service_type: Database["public"]["Enums"]["service_type"]
           start_at?: string | null
@@ -1074,8 +1087,10 @@ export type Database = {
           estimated_total?: number | null
           id?: string
           journey_pattern?: Database["public"]["Enums"]["journey_pattern"]
+          parent_booking_id?: string | null
           passenger_notes?: string | null
           quoted_total?: number | null
+          recurrence_rule?: Json | null
           requested_companion_count?: number
           service_type?: Database["public"]["Enums"]["service_type"]
           start_at?: string | null
@@ -1083,7 +1098,15 @@ export type Database = {
           timezone?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "service_bookings_parent_booking_id_fkey"
+            columns: ["parent_booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_quote_items: {
         Row: {
