@@ -850,14 +850,16 @@ function BookingDetailDialog({
               <Button size="sm" variant="outline" disabled={busy} onClick={() => setStatus("accepted")}>Mark as accepted</Button>
             ) : null}
             <Button size="sm" variant="outline" disabled={busy} onClick={confirmResources}>Confirm resources</Button>
-            {booking.service_type === "assisted" && !ride ? (
-              <Button size="sm" disabled={busy || !driverId} onClick={createLinkedRide}>Create linked ride</Button>
+            {canCompleteService ? (
+              <Button size="sm" disabled={busy} onClick={completeService}>Mark service completed</Button>
             ) : null}
             {booking.status !== "cancelled" && booking.status !== "completed" ? (
               <Button size="sm" variant="destructive" disabled={busy} onClick={() => setStatus("cancelled")}>Cancel booking</Button>
             ) : null}
           </div>
-          <p className="text-[11px] text-muted-foreground">Creating a linked ride keeps the existing PIN and trip-status lifecycle in charge of the actual transport.</p>
+          <p className="text-[11px] text-muted-foreground">
+            Each ride leg uses the existing PIN and trip-status lifecycle. Service is complete only once every ride leg and waiting step is finished.
+          </p>
         </section>
 
         <DialogFooter>
