@@ -232,6 +232,35 @@ function PassengerBookingsPage() {
                     </Link>
                   ) : null}
                 </div>
+                {b.status === "quoted" && q ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        const { error: qErr } = await supabase.from("service_quotes").update({ status: "accepted" }).eq("id", q.id);
+                        if (qErr) { toast.error(qErr.message); return; }
+                        const { error: bErr } = await supabase.from("service_bookings").update({ status: "accepted", quoted_total: q.total }).eq("id", b.id);
+                        if (bErr) { toast.error(bErr.message); return; }
+                        await supabase.from("service_booking_events").insert({ booking_id: b.id, actor_user_id: user!.id, event_type: "quote_accepted", payload: { quote_id: q.id } as never });
+                        toast.success("Quote accepted");
+                      }}
+                    >
+                      Accept quote
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        const { error: qErr } = await supabase.from("service_quotes").update({ status: "declined" }).eq("id", q.id);
+                        if (qErr) { toast.error(qErr.message); return; }
+                        await supabase.from("service_booking_events").insert({ booking_id: b.id, actor_user_id: user!.id, event_type: "quote_declined", payload: { quote_id: q.id } as never });
+                        toast.success("Quote declined");
+                      }}
+                    >
+                      Decline
+                    </Button>
+                  </div>
+                ) : null}
               </article>
             );
           })}
