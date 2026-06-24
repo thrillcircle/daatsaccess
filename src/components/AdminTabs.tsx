@@ -1,11 +1,16 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, Activity, Users } from "lucide-react";
 
-const TABS = [
+const TABS: ReadonlyArray<{
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+}> = [
   { to: "/app/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/app/admin/live", label: "Live Ops", icon: Activity },
   { to: "/app/admin/drivers", label: "Drivers", icon: Users },
-] as const;
+];
 
 export function AdminTabs() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
