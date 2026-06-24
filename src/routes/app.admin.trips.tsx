@@ -291,7 +291,7 @@ function AdminTripsPage() {
         if (driverIds.length) {
           const { data: vs } = await supabase
             .from("driver_profiles")
-            .select("user_id, vehicle_model, license_plate, vehicle_type")
+            .select("user_id, vehicle_model, license_plate, vehicle_type, is_available")
             .in("user_id", driverIds);
           if (!cancelled) setVehicles(new Map(((vs ?? []) as Vehicle[]).map((v) => [v.user_id, v])));
         } else {
