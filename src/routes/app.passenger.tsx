@@ -171,19 +171,26 @@ function RideRequest({ userId }: { userId?: string }) {
     };
   }, [pickupPt, destPt, route]);
 
-  // Load + subscribe to active ride
+  // Load + subscribe to active ride. A scheduled ride only becomes "current"
+  // once its scheduled time has arrived (or it's a "now" request).
   useEffect(() => {
     if (!userId) return;
     let unsub: (() => void) | undefined;
+    const isCurrent = (r: Ride) =>
+      ["requested", "accepted", "driver_arriving", "arrived", "in_progress"].includes(r.status) &&
+      (r.request_type !== "scheduled" ||
+        (r.scheduled_at != null && new Date(r.scheduled_at).getTime() <= Date.now()));
     (async () => {
+      const nowIso = new Date().toISOString();
       const { data } = await supabase
         .from("rides")
         .select("*")
         .eq("passenger_id", userId)
         .in("status", ["requested", "accepted", "driver_arriving", "arrived", "in_progress"])
+        .or(`request_type.eq.now,scheduled_at.lte.${nowIso}`)
         .order("created_at", { ascending: false })
         .limit(1);
-      setActiveRide(data?.[0] ?? null);
+      setActiveRide((data?.[0] as Ride | undefined) ?? null);
 
       const ch = supabase
         .channel("passenger-rides-" + userId)
@@ -193,15 +200,8 @@ function RideRequest({ userId }: { userId?: string }) {
           (payload) => {
             const r = payload.new as Ride;
             if (!r) return;
-            if (
-              ["requested", "accepted", "driver_arriving", "arrived", "in_progress"].includes(
-                r.status,
-              )
-            ) {
-              setActiveRide(r);
-            } else {
-              setActiveRide(null);
-            }
+            if (isCurrent(r)) setActiveRide(r);
+            else setActiveRide(null);
           },
         )
         .subscribe();
@@ -214,6 +214,10 @@ function RideRequest({ userId }: { userId?: string }) {
 
   async function onRequest() {
     if (!userId || !pickupPt || !destPt || distanceKm == null || price == null) return;
+    if (mode === "scheduled" && !scheduleValid) {
+      toast.error("Pick a future date and time");
+      return;
+    }
     setSubmitting(true);
     try {
       const { data, error } = await supabase
@@ -231,7 +235,10 @@ function RideRequest({ userId }: { userId?: string }) {
           distance_km: distanceKm,
           estimated_price: price,
           estimated_duration_seconds: durationMin != null ? durationMin * 60 : null,
+          request_type: mode,
+          scheduled_at: mode === "scheduled" && scheduleDate ? scheduleDate.toISOString() : null,
         })
+
         .select()
         .single();
       if (error) throw error;
