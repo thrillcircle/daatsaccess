@@ -523,7 +523,7 @@ function TripHistoryPage() {
 
           {/* Desktop inline filters */}
           <div className="hidden flex-wrap items-center gap-2 lg:flex">
-            <FilterControls search={search} navigate={navigate} drivers={allDrivers} vehicles={allFleet} />
+            <FilterControls search={search} onUpdate={(patch) => navigate({ search: (p) => ({ ...p, ...patch }) })} drivers={allDrivers} vehicles={allFleet} />
             <Button
               variant="ghost"
               size="sm"
