@@ -4,10 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AppShell, NAV_ICONS } from "@/components/AppShell";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
+import { Pencil } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
+type RideChange = Database["public"]["Tables"]["ride_change_log"]["Row"];
 
 export const Route = createFileRoute("/app/admin")({
   head: () => ({ meta: [{ title: "Admin — Access" }] }),
