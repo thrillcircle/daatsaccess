@@ -256,6 +256,47 @@ export type Database = {
           },
         ]
       }
+      ride_reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          driver_id: string
+          id: string
+          passenger_id: string
+          rating: number
+          ride_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          driver_id: string
+          id?: string
+          passenger_id: string
+          rating: number
+          ride_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          driver_id?: string
+          id?: string
+          passenger_id?: string
+          rating?: number
+          ride_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_reviews_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ride_status_events: {
         Row: {
           changed_by: string
@@ -314,7 +355,9 @@ export type Database = {
           pickup_lat: number
           pickup_lng: number
           pickup_place_id: string | null
+          request_type: string
           route_version: number
+          scheduled_at: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["ride_status"]
           updated_at: string
@@ -341,7 +384,9 @@ export type Database = {
           pickup_lat: number
           pickup_lng: number
           pickup_place_id?: string | null
+          request_type?: string
           route_version?: number
+          scheduled_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
           updated_at?: string
@@ -368,7 +413,9 @@ export type Database = {
           pickup_lat?: number
           pickup_lng?: number
           pickup_place_id?: string | null
+          request_type?: string
           route_version?: number
+          scheduled_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
           updated_at?: string
