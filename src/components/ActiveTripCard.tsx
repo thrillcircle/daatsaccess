@@ -229,6 +229,8 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
         <Row icon={<Navigation className="h-4 w-4 text-primary" />} label="To" value={ride.destination_address} />
       </dl>
 
+      {ride.driver_id && <PassengerStartPin rideId={ride.id} status={ride.status} />}
+
       <EditTripButton ride={ride} />
 
       {onCancel && ride.status !== "in_progress" && ride.status !== "arrived" && (
