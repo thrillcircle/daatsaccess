@@ -88,6 +88,38 @@ function fmtAgo(iso: string | null | undefined) {
   return `${Math.round(diff / 3600)}h ago`;
 }
 
+function FreshnessBadge({ iso }: { iso: string | null | undefined }) {
+  if (!iso) {
+    return (
+      <Badge variant="outline" className="border-muted text-[10px] text-muted-foreground">
+        Location unavailable
+      </Badge>
+    );
+  }
+  const diffMin = (Date.now() - new Date(iso).getTime()) / 60_000;
+  if (diffMin <= 5) {
+    return (
+      <Badge className="bg-emerald-500/15 text-[10px] text-emerald-700 dark:text-emerald-300">
+        Live · {fmtAgo(iso)}
+      </Badge>
+    );
+  }
+  if (diffMin <= 15) {
+    return (
+      <Badge className="bg-amber-500/15 text-[10px] text-amber-700 dark:text-amber-300">
+        Delayed · {fmtAgo(iso)}
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="border-destructive/40 text-[10px] text-destructive">
+      Offline · {fmtAgo(iso)}
+    </Badge>
+  );
+}
+
+
+
 function LivePage() {
   const { user } = useAuth();
   const { roles, loading: rolesLoading } = useUserRoles(user?.id);
