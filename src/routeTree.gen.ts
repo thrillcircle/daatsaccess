@@ -19,6 +19,7 @@ import { Route as AppAdminRouteImport } from './routes/app.admin'
 import { Route as AppTripRideIdRouteImport } from './routes/app.trip.$rideId'
 import { Route as AppAdminVehiclesRouteImport } from './routes/app.admin.vehicles'
 import { Route as AppAdminTripsRouteImport } from './routes/app.admin.trips'
+import { Route as AppAdminTripHistoryRouteImport } from './routes/app.admin.trip-history'
 import { Route as AppAdminLiveRouteImport } from './routes/app.admin.live'
 import { Route as AppAdminDriversRouteImport } from './routes/app.admin.drivers'
 
@@ -72,6 +73,11 @@ const AppAdminTripsRoute = AppAdminTripsRouteImport.update({
   path: '/trips',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AppAdminTripHistoryRoute = AppAdminTripHistoryRouteImport.update({
+  id: '/trip-history',
+  path: '/trip-history',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppAdminLiveRoute = AppAdminLiveRouteImport.update({
   id: '/live',
   path: '/live',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/app/profile': typeof AppProfileRoute
   '/app/admin/drivers': typeof AppAdminDriversRoute
   '/app/admin/live': typeof AppAdminLiveRoute
+  '/app/admin/trip-history': typeof AppAdminTripHistoryRoute
   '/app/admin/trips': typeof AppAdminTripsRoute
   '/app/admin/vehicles': typeof AppAdminVehiclesRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/app/profile': typeof AppProfileRoute
   '/app/admin/drivers': typeof AppAdminDriversRoute
   '/app/admin/live': typeof AppAdminLiveRoute
+  '/app/admin/trip-history': typeof AppAdminTripHistoryRoute
   '/app/admin/trips': typeof AppAdminTripsRoute
   '/app/admin/vehicles': typeof AppAdminVehiclesRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/app/profile': typeof AppProfileRoute
   '/app/admin/drivers': typeof AppAdminDriversRoute
   '/app/admin/live': typeof AppAdminLiveRoute
+  '/app/admin/trip-history': typeof AppAdminTripHistoryRoute
   '/app/admin/trips': typeof AppAdminTripsRoute
   '/app/admin/vehicles': typeof AppAdminVehiclesRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/admin/drivers'
     | '/app/admin/live'
+    | '/app/admin/trip-history'
     | '/app/admin/trips'
     | '/app/admin/vehicles'
     | '/app/trip/$rideId'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/admin/drivers'
     | '/app/admin/live'
+    | '/app/admin/trip-history'
     | '/app/admin/trips'
     | '/app/admin/vehicles'
     | '/app/trip/$rideId'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/admin/drivers'
     | '/app/admin/live'
+    | '/app/admin/trip-history'
     | '/app/admin/trips'
     | '/app/admin/vehicles'
     | '/app/trip/$rideId'
@@ -249,6 +261,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminTripsRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/app/admin/trip-history': {
+      id: '/app/admin/trip-history'
+      path: '/trip-history'
+      fullPath: '/app/admin/trip-history'
+      preLoaderRoute: typeof AppAdminTripHistoryRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
     '/app/admin/live': {
       id: '/app/admin/live'
       path: '/live'
@@ -269,6 +288,7 @@ declare module '@tanstack/react-router' {
 interface AppAdminRouteChildren {
   AppAdminDriversRoute: typeof AppAdminDriversRoute
   AppAdminLiveRoute: typeof AppAdminLiveRoute
+  AppAdminTripHistoryRoute: typeof AppAdminTripHistoryRoute
   AppAdminTripsRoute: typeof AppAdminTripsRoute
   AppAdminVehiclesRoute: typeof AppAdminVehiclesRoute
 }
@@ -276,6 +296,7 @@ interface AppAdminRouteChildren {
 const AppAdminRouteChildren: AppAdminRouteChildren = {
   AppAdminDriversRoute: AppAdminDriversRoute,
   AppAdminLiveRoute: AppAdminLiveRoute,
+  AppAdminTripHistoryRoute: AppAdminTripHistoryRoute,
   AppAdminTripsRoute: AppAdminTripsRoute,
   AppAdminVehiclesRoute: AppAdminVehiclesRoute,
 }
