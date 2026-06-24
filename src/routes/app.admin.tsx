@@ -216,6 +216,17 @@ function AdminPage() {
     };
   }, [isAdmin]);
 
+  const filteredRides = useMemo(() => {
+    const list = rides;
+    switch (selected) {
+      case "requested": return list.filter((r) => r.status === "requested");
+      case "scheduled": return list.filter((r) => r.request_type === "scheduled" && (r.status === "requested" || r.status === "accepted"));
+      case "active": return list.filter((r) => (ACTIVE_STATUSES as readonly string[]).includes(r.status));
+      case "completed": return list.filter((r) => r.status === "completed");
+      case "cancelled": return list.filter((r) => r.status === "cancelled");
+      default: return list;
+    }
+  }, [rides, selected]);
 
   if (rolesLoading) {
     return (
@@ -238,17 +249,6 @@ function AdminPage() {
     );
   }
 
-  const filteredRides = useMemo(() => {
-    const list = rides;
-    switch (selected) {
-      case "requested": return list.filter((r) => r.status === "requested");
-      case "scheduled": return list.filter((r) => r.request_type === "scheduled" && (r.status === "requested" || r.status === "accepted"));
-      case "active": return list.filter((r) => (ACTIVE_STATUSES as readonly string[]).includes(r.status));
-      case "completed": return list.filter((r) => r.status === "completed");
-      case "cancelled": return list.filter((r) => r.status === "cancelled");
-      default: return list;
-    }
-  }, [rides, selected]);
   const recentTrips = filteredRides.slice(0, 10);
   const selectedLabel = ({
     all: "All trips",
