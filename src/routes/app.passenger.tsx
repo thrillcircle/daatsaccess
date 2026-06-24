@@ -113,9 +113,21 @@ function RideRequest({ userId }: { userId?: string }) {
   const [activeRide, setActiveRide] = useState<Ride | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [mode, setMode] = useState<"now" | "scheduled">("now");
+  // Local datetime string in user's browser timezone (Africa/Johannesburg for ZA users).
+  const [scheduleLocal, setScheduleLocal] = useState<string>("");
+
+  const scheduleDate = mode === "scheduled" && scheduleLocal ? new Date(scheduleLocal) : null;
+  const scheduleValid =
+    mode === "now"
+      ? true
+      : !!scheduleDate &&
+        !Number.isNaN(scheduleDate.getTime()) &&
+        scheduleDate.getTime() > Date.now() + 60_000; // at least 1 minute in future
 
   const price = distanceKm != null ? estimatePrice(distanceKm) : null;
-  const canRequest = !!(pickupPt && destPt && distanceKm != null);
+  const canRequest = !!(pickupPt && destPt && distanceKm != null) && scheduleValid;
+
 
   // Soft-bias autocomplete around the passenger's current location (no prompt — only if cached).
   useEffect(() => {
