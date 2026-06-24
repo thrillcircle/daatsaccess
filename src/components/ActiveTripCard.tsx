@@ -9,6 +9,7 @@ import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { LiveTripMap } from "@/components/LiveTripMap";
 import { useRideLiveLocations } from "@/hooks/use-ride-live-locations";
 import { EditTripDialog } from "@/components/EditTripDialog";
+import { PassengerStartPin } from "@/components/PassengerStartPin";
 import {
   getRideDriverDetails,
   type DriverDetails,
