@@ -32,7 +32,6 @@ import { acknowledgeRideChange } from "@/lib/ride-edit.functions";
 import {
   acceptRide,
   markArrived,
-  startTrip,
   completeTrip,
   startScheduledPickup,
 } from "@/lib/ride-driver.functions";
@@ -40,6 +39,7 @@ import {
   getRidePassengerDetails,
   type PassengerDetails,
 } from "@/lib/driver-trip.functions";
+import { StartTripPinDialog } from "@/components/StartTripPinDialog";
 
 const PICKUP_WINDOW_MS = 30 * 60 * 1000;
 const isFarFutureScheduled = (r: Ride) =>
@@ -442,9 +442,9 @@ function OpenRidesList({ rides }: { rides: Ride[]; driverId: string }) {
 
 function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | null) => void }) {
   const arriveFn = useServerFn(markArrived);
-  const startFn = useServerFn(startTrip);
   const completeFn = useServerFn(completeTrip);
   const [busy, setBusy] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
   // Track whether the last attempt to open Google Maps was blocked, so we can
   // surface a large fallback "Open Google Maps Navigation" button.
   const [navBlocked, setNavBlocked] = useState(false);
@@ -472,22 +472,17 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
     }
   }
 
-  async function onStart() {
-    setBusy(true);
-    // Open Maps to the destination synchronously inside the click.
-    const win = openMapsNav(ride.destination_lat, ride.destination_lng);
-    try {
-      const r = await startFn({ data: { rideId: ride.id } });
-      setNavBlocked(!win);
-      onUpdate(r as Ride);
-      toast.success("Trip started — navigating to destination");
-    } catch (e) {
-      win?.close();
-      toast.error(e instanceof Error ? e.message : "Could not start trip");
-    } finally {
-      setBusy(false);
-    }
+  // PIN dialog opens here; on successful verification we refetch the row.
+  async function onPinStarted() {
+    openMapsNav(ride.destination_lat, ride.destination_lng);
+    const { data: fresh } = await supabase
+      .from("rides")
+      .select("*")
+      .eq("id", ride.id)
+      .maybeSingle();
+    if (fresh) onUpdate(fresh as Ride);
   }
+
 
   async function onComplete() {
     setBusy(true);
@@ -656,9 +651,25 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
         </Button>
       )}
       {ride.status === "arrived" && (
-        <Button className="mt-4 w-full" size="lg" onClick={onStart} disabled={busy}>
-          Start trip
-        </Button>
+        <>
+          <Button
+            className="mt-4 w-full"
+            size="lg"
+            onClick={() => setPinOpen(true)}
+            disabled={busy}
+          >
+            Enter passenger PIN to start trip
+          </Button>
+          <p className="mt-1 text-center text-xs text-muted-foreground">
+            Ask the passenger for their 4-digit trip PIN before starting.
+          </p>
+          <StartTripPinDialog
+            ride={ride}
+            open={pinOpen}
+            onOpenChange={setPinOpen}
+            onStarted={onPinStarted}
+          />
+        </>
       )}
       {ride.status === "in_progress" && (
         <Button className="mt-4 w-full" size="lg" onClick={onComplete} disabled={busy}>

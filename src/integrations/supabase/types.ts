@@ -259,6 +259,67 @@ export type Database = {
           },
         ]
       }
+      ride_pin_attempts: {
+        Row: {
+          attempted_at: string
+          driver_id: string
+          id: string
+          ride_id: string
+          success: boolean
+        }
+        Insert: {
+          attempted_at?: string
+          driver_id: string
+          id?: string
+          ride_id: string
+          success: boolean
+        }
+        Update: {
+          attempted_at?: string
+          driver_id?: string
+          id?: string
+          ride_id?: string
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_pin_attempts_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ride_pins: {
+        Row: {
+          created_at: string
+          pin: string
+          ride_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          pin: string
+          ride_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          pin?: string
+          ride_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_pins_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ride_ratings: {
         Row: {
           comment: string | null
@@ -489,8 +550,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_reset_ride_pin: { Args: { _ride_id: string }; Returns: Json }
+      generate_ride_pin: { Args: never; Returns: string }
       notify_approaching_scheduled_rides: { Args: never; Returns: undefined }
       short_addr: { Args: { t: string }; Returns: string }
+      verify_ride_start_pin: {
+        Args: { _pin: string; _ride_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "passenger" | "driver" | "admin"

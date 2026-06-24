@@ -9,7 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
-import { Search, Star } from "lucide-react";
+import { Search, Star, KeyRound, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { adminResetRidePin } from "@/lib/ride-pin.functions";
 import type { Database } from "@/integrations/supabase/types";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
@@ -344,12 +347,65 @@ function TripRow({
         </div>
       )}
 
+      {ride.driver_id &&
+        !["completed", "cancelled"].includes(ride.status) && (
+          <AdminPinRow rideId={ride.id} />
+        )}
+
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
         <Badge variant="outline" className="font-mono text-[10px]">
           {ride.id.slice(0, 8)}
         </Badge>
       </p>
     </li>
+  );
+}
+
+function AdminPinRow({ rideId }: { rideId: string }) {
+  const [pin, setPin] = useState<string | null | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const resetFn = useServerFn(adminResetRidePin);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("ride_pins")
+      .select("pin")
+      .eq("ride_id", rideId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setPin(data?.pin ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [rideId]);
+
+  async function onReset() {
+    setBusy(true);
+    try {
+      const r = await resetFn({ data: { rideId } });
+      setPin(r.pin);
+      toast.success("PIN reset and failed attempts cleared");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Reset failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-md border border-dashed bg-secondary/40 px-2.5 py-2 text-xs">
+      <span className="flex items-center gap-1.5 text-muted-foreground">
+        <KeyRound className="h-3.5 w-3.5" /> Start PIN
+        <span className="ml-1 font-mono text-base font-semibold tracking-widest text-foreground">
+          {pin === undefined ? "…" : (pin ?? "—")}
+        </span>
+      </span>
+      <Button size="sm" variant="ghost" onClick={onReset} disabled={busy}>
+        {busy && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}Reset
+      </Button>
+    </div>
   );
 }
 

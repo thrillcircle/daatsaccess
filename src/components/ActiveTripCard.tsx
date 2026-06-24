@@ -9,6 +9,7 @@ import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { LiveTripMap } from "@/components/LiveTripMap";
 import { useRideLiveLocations } from "@/hooks/use-ride-live-locations";
 import { EditTripDialog } from "@/components/EditTripDialog";
+import { PassengerStartPin } from "@/components/PassengerStartPin";
 import {
   getRideDriverDetails,
   type DriverDetails,
@@ -227,6 +228,8 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
         <Row icon={<MapPin className="h-4 w-4 text-primary" />} label="From" value={ride.pickup_address} />
         <Row icon={<Navigation className="h-4 w-4 text-primary" />} label="To" value={ride.destination_address} />
       </dl>
+
+      {ride.driver_id && <PassengerStartPin rideId={ride.id} status={ride.status} />}
 
       <EditTripButton ride={ride} />
 
