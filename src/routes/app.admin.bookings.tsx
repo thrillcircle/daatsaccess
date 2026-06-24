@@ -62,6 +62,10 @@ type Itinerary = {
   longitude: number | null;
   notes: string | null;
   planned_start_at: string | null;
+  planned_end_at: string | null;
+  actual_start_at: string | null;
+  actual_end_at: string | null;
+  status: string;
   day_number: number;
   sequence_number: number;
 };
@@ -71,7 +75,7 @@ type VehicleAssign = { id: string; booking_id: string; fleet_vehicle_id: string;
 type CompanionAssign = { id: string; booking_id: string; companion_id: string; status: string };
 type FleetVehicle = { id: string; registration_number: string; make: string | null; model: string | null; passenger_capacity: number; wheelchair_capacity: number; operational_status: string; is_active: boolean };
 type Companion = { id: string; full_name: string; photo_url: string | null; admin_approved: boolean; is_available: boolean };
-type Ride = { id: string; service_booking_id: string | null; status: string; driver_id: string | null };
+type Ride = { id: string; service_booking_id: string | null; itinerary_item_id: string | null; status: string; driver_id: string | null };
 type Profile = { user_id: string; full_name: string | null; phone: string | null };
 
 const ALL_STATUSES: (BookingStatus | "all")[] = [
@@ -149,7 +153,7 @@ function AdminBookingsPage() {
           supabase.from("booking_driver_assignments").select("*").in("booking_id", ids),
           supabase.from("booking_vehicle_assignments").select("*").in("booking_id", ids),
           supabase.from("booking_companion_assignments").select("*").in("booking_id", ids),
-          supabase.from("rides").select("id,service_booking_id,status,driver_id").in("service_booking_id", ids),
+          supabase.from("rides").select("id,service_booking_id,itinerary_item_id,status,driver_id").in("service_booking_id", ids),
           supabase.from("user_roles").select("user_id").eq("role", "driver"),
           supabase.from("fleet_vehicles").select("*").eq("is_active", true).order("registration_number"),
           supabase.from("companion_profiles").select("*").order("full_name"),
@@ -384,9 +388,14 @@ function BookingDetailDialog({
   const q = quotes.find((x) => x.booking_id === booking.id);
   const ride = rides.find((r) => r.service_booking_id === booking.id);
   const bookerProfile = bookers.find((p) => p.user_id === booking.booked_by_user_id);
-  const rideItem = it.find((i) => i.item_type === "ride");
+  const rideItems = it.filter((i) => i.item_type === "ride");
+  const waitingItems = it.filter((i) => i.item_type === "waiting");
+  const bookingRides = rides.filter((r) => r.service_booking_id === booking.id);
+  const rideForItem = (itemId: string) => bookingRides.find((r) => r.itinerary_item_id === itemId);
+  // Legacy: first ride item (used for the existing single-ride summary).
+  const rideItem = rideItems[0] ?? null;
   let parsedDest: { address: string; lat: number; lng: number } | null = null;
-  let parsedMeta: { distanceKm?: number; durationMin?: number; estimatedTransport?: number; requestType?: "now" | "scheduled"; scheduledAt?: string | null } = {};
+  let parsedMeta: { distanceKm?: number; durationMin?: number; estimatedTransport?: number; requestType?: "now" | "scheduled"; scheduledAt?: string | null; facilityName?: string } = {};
   if (rideItem?.notes) {
     try {
       const j = JSON.parse(rideItem.notes);
@@ -394,6 +403,26 @@ function BookingDetailDialog({
       parsedMeta = j;
     } catch { /* ignore */ }
   }
+  function parseItem(item: Itinerary): {
+    dest: { address: string; lat: number; lng: number } | null;
+    meta: { distanceKm?: number; durationMin?: number; estimatedTransport?: number; requestType?: "now" | "scheduled"; scheduledAt?: string | null; facilityName?: string };
+  } {
+    if (!item.notes) return { dest: null, meta: {} };
+    try {
+      const j = JSON.parse(item.notes);
+      return { dest: j.destination ?? null, meta: j };
+    } catch {
+      return { dest: null, meta: {} };
+    }
+  }
+  const allRidesComplete =
+    rideItems.length > 0 &&
+    rideItems.every((ri) => {
+      const r = rideForItem(ri.id);
+      return r && r.status === "completed";
+    });
+  const allWaitingComplete = waitingItems.every((wi) => wi.status === "completed");
+  const canCompleteService = allRidesComplete && allWaitingComplete && booking.status !== "completed" && booking.status !== "cancelled";
 
   async function logEvent(eventType: string, payload: Record<string, unknown>) {
     await supabase.from("service_booking_events").insert({
@@ -513,51 +542,99 @@ function BookingDetailDialog({
     } finally { setBusy(false); }
   }
 
-  async function createLinkedRide() {
-    if (!rideItem || !parsedDest) { toast.error("No itinerary route to use"); return; }
+  async function createLinkedRideForItem(item: Itinerary, legSequence: number) {
+    const { dest, meta } = parseItem(item);
+    if (!dest) { toast.error("This leg has no destination"); return; }
     if (!driverId) { toast.error("Assign a driver first"); return; }
     setBusy(true);
     try {
-      const distanceKm = Number(parsedMeta.distanceKm ?? 0);
-      const transport = Number(parsedMeta.estimatedTransport ?? booking!.estimated_total ?? 0);
-      const requestType = parsedMeta.requestType === "scheduled" ? "scheduled" : "now";
-      // Step 1: insert as 'requested' without driver to satisfy validation
+      const distanceKm = Number(meta.distanceKm ?? 0);
+      const transport = Number(meta.estimatedTransport ?? 0);
+      const requestType = meta.requestType === "scheduled" ? "scheduled" : "now";
       const { data: ins, error: insErr } = await supabase
         .from("rides")
         .insert({
           passenger_id: booking!.booked_by_user_id,
-          pickup_address: rideItem.address ?? "",
-          pickup_lat: rideItem.latitude ?? 0,
-          pickup_lng: rideItem.longitude ?? 0,
-          destination_address: parsedDest.address,
-          destination_lat: parsedDest.lat,
-          destination_lng: parsedDest.lng,
+          pickup_address: item.address ?? "",
+          pickup_lat: item.latitude ?? 0,
+          pickup_lng: item.longitude ?? 0,
+          destination_address: dest.address,
+          destination_lat: dest.lat,
+          destination_lng: dest.lng,
           distance_km: distanceKm,
           estimated_price: transport,
-          estimated_duration_seconds: parsedMeta.durationMin != null ? Math.round(Number(parsedMeta.durationMin) * 60) : null,
+          estimated_duration_seconds: meta.durationMin != null ? Math.round(Number(meta.durationMin) * 60) : null,
           request_type: requestType,
-          scheduled_at: parsedMeta.scheduledAt ?? null,
+          scheduled_at: meta.scheduledAt ?? null,
           service_booking_id: booking!.id,
-          itinerary_item_id: rideItem.id,
-          leg_sequence: 1,
-          day_number: 1,
+          itinerary_item_id: item.id,
+          leg_sequence: legSequence,
+          day_number: item.day_number,
         })
         .select().single();
       if (insErr) throw insErr;
-      // Step 2: assign driver (admin bypasses transition checks)
       const { error: updErr } = await supabase
         .from("rides")
         .update({ driver_id: driverId, status: "accepted", accepted_at: new Date().toISOString() })
         .eq("id", ins.id);
       if (updErr) throw updErr;
-      await supabase.from("service_bookings").update({ status: "active" }).eq("id", booking!.id);
-      await logEvent("ride_created", { ride_id: ins.id });
-      toast.success("Ride created and assigned");
+      if (booking!.status !== "active") {
+        await supabase.from("service_bookings").update({ status: "active" }).eq("id", booking!.id);
+      }
+      await logEvent("ride_created", { ride_id: ins.id, itinerary_item_id: item.id, leg_sequence: legSequence });
+      toast.success(`Ride leg ${legSequence} created and assigned`);
       onChanged();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create ride");
     } finally { setBusy(false); }
   }
+
+  async function markWaiting(item: Itinerary, phase: "start" | "end") {
+    setBusy(true);
+    try {
+      const now = new Date().toISOString();
+      const patch =
+        phase === "start"
+          ? { actual_start_at: now, status: "in_progress" }
+          : { actual_end_at: now, status: "completed" };
+      const { error } = await supabase.from("booking_itinerary_items").update(patch).eq("id", item.id);
+      if (error) throw error;
+      await logEvent(phase === "start" ? "waiting_started" : "waiting_ended", { itinerary_item_id: item.id });
+      // Notify booker
+      await supabase.from("notifications").insert({
+        user_id: booking!.booked_by_user_id,
+        type: phase === "start" ? "appointment_waiting_started" : "appointment_waiting_ended",
+        title: phase === "start" ? "Your team is waiting" : "Waiting ended — return on the way",
+        body: phase === "start"
+          ? `The vehicle and team are waiting at ${item.address ?? "the facility"}.`
+          : `Your return ride is being dispatched.`,
+      });
+      toast.success(phase === "start" ? "Waiting started" : "Waiting ended");
+      onChanged();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally { setBusy(false); }
+  }
+
+  async function completeService() {
+    setBusy(true);
+    try {
+      const { error } = await supabase.from("service_bookings").update({ status: "completed" }).eq("id", booking!.id);
+      if (error) throw error;
+      await logEvent("service_completed", {});
+      await supabase.from("notifications").insert({
+        user_id: booking!.booked_by_user_id,
+        type: "appointment_service_completed",
+        title: "Appointment service completed",
+        body: `Booking ${booking!.booking_reference} is complete.`,
+      });
+      toast.success("Service marked complete");
+      onChanged();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally { setBusy(false); }
+  }
+
 
   async function setStatus(status: BookingStatus) {
     setBusy(true);
@@ -615,16 +692,77 @@ function BookingDetailDialog({
         </section>
 
         <section className="rounded-lg border p-3 text-sm">
-          <h4 className="font-semibold flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Route</h4>
-          {ride ? (
-            <p>Linked ride <Link to="/app/trip/$rideId" params={{ rideId: ride.id }} className="text-primary underline">{ride.id.slice(0, 8)}</Link> · {ride.status.replace("_", " ")}</p>
-          ) : rideItem ? (
-            <div className="mt-1 space-y-0.5 text-xs">
-              <p><span className="text-muted-foreground">Pickup:</span> {rideItem.address}</p>
-              {parsedDest ? <p><span className="text-muted-foreground">Destination:</span> {parsedDest.address}</p> : null}
-              {parsedMeta.distanceKm != null ? <p><span className="text-muted-foreground">Estimate:</span> {Number(parsedMeta.distanceKm).toFixed(2)} km · {formatZAR(Number(parsedMeta.estimatedTransport ?? 0))} transport</p> : null}
-            </div>
-          ) : <p className="text-xs text-muted-foreground">No route yet.</p>}
+          <h4 className="font-semibold flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Itinerary</h4>
+          {it.length === 0 ? (
+            <p className="mt-1 text-xs text-muted-foreground">No itinerary items yet.</p>
+          ) : (
+            <ol className="mt-2 space-y-2">
+              {it.map((item, idx) => {
+                const parsed = parseItem(item);
+                const linkedRide = item.item_type === "ride" ? rideForItem(item.id) : null;
+                const legSeq = it.filter((x) => x.item_type === "ride" && x.sequence_number <= item.sequence_number).length;
+                return (
+                  <li key={item.id} className="rounded-md border bg-background/40 p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium uppercase text-muted-foreground">
+                          Day {item.day_number} · Step {item.sequence_number} · {item.item_type}
+                        </p>
+                        <p className="text-sm">{item.title ?? "—"}</p>
+                        {item.address ? <p className="text-[11px] text-muted-foreground">From: {item.address}</p> : null}
+                        {parsed.dest ? <p className="text-[11px] text-muted-foreground">To: {parsed.dest.address}</p> : null}
+                        {item.planned_start_at ? (
+                          <p className="text-[11px] text-muted-foreground">
+                            Planned: {new Date(item.planned_start_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "short", timeStyle: "short" })}
+                            {item.planned_end_at ? ` → ${new Date(item.planned_end_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", timeStyle: "short" })}` : ""}
+                          </p>
+                        ) : null}
+                        {item.actual_start_at ? (
+                          <p className="text-[11px] text-emerald-600">
+                            Actual: {new Date(item.actual_start_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", timeStyle: "short" })}
+                            {item.actual_end_at ? ` → ${new Date(item.actual_end_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", timeStyle: "short" })}` : ""}
+                          </p>
+                        ) : null}
+                      </div>
+                      <Badge variant="outline" className="shrink-0 text-[10px]">{item.status}</Badge>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {item.item_type === "ride" ? (
+                        linkedRide ? (
+                          <>
+                            <Badge variant="secondary" className="text-[10px]">Ride {linkedRide.status.replace("_", " ")}</Badge>
+                            <Button asChild size="sm" variant="outline">
+                              <Link to="/app/trip/$rideId" params={{ rideId: linkedRide.id }}>Open trip</Link>
+                            </Button>
+                          </>
+                        ) : (
+                          <Button size="sm" disabled={busy || !driverId} onClick={() => createLinkedRideForItem(item, legSeq)}>
+                            Create ride leg {legSeq}
+                          </Button>
+                        )
+                      ) : null}
+                      {item.item_type === "waiting" ? (
+                        <>
+                          {!item.actual_start_at ? (
+                            <Button size="sm" disabled={busy} onClick={() => markWaiting(item, "start")}>Mark waiting started</Button>
+                          ) : !item.actual_end_at ? (
+                            <Button size="sm" disabled={busy} onClick={() => markWaiting(item, "end")}>Mark waiting ended</Button>
+                          ) : (
+                            <Badge variant="secondary" className="text-[10px]">Wait complete</Badge>
+                          )}
+                        </>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+          {/* Legacy single-route summary stays for transport bookings without itinerary destination metadata */}
+          {!it.length && ride ? (
+            <p className="mt-2 text-xs">Linked ride <Link to="/app/trip/$rideId" params={{ rideId: ride.id }} className="text-primary underline">{ride.id.slice(0, 8)}</Link> · {ride.status.replace("_", " ")}</p>
+          ) : null}
         </section>
 
         <section className="grid gap-3 rounded-lg border p-3">
@@ -712,14 +850,16 @@ function BookingDetailDialog({
               <Button size="sm" variant="outline" disabled={busy} onClick={() => setStatus("accepted")}>Mark as accepted</Button>
             ) : null}
             <Button size="sm" variant="outline" disabled={busy} onClick={confirmResources}>Confirm resources</Button>
-            {booking.service_type === "assisted" && !ride ? (
-              <Button size="sm" disabled={busy || !driverId} onClick={createLinkedRide}>Create linked ride</Button>
+            {canCompleteService ? (
+              <Button size="sm" disabled={busy} onClick={completeService}>Mark service completed</Button>
             ) : null}
             {booking.status !== "cancelled" && booking.status !== "completed" ? (
               <Button size="sm" variant="destructive" disabled={busy} onClick={() => setStatus("cancelled")}>Cancel booking</Button>
             ) : null}
           </div>
-          <p className="text-[11px] text-muted-foreground">Creating a linked ride keeps the existing PIN and trip-status lifecycle in charge of the actual transport.</p>
+          <p className="text-[11px] text-muted-foreground">
+            Each ride leg uses the existing PIN and trip-status lifecycle. Service is complete only once every ride leg and waiting step is finished.
+          </p>
         </section>
 
         <DialogFooter>

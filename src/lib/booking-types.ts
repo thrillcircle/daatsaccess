@@ -48,3 +48,30 @@ export function bookingStatusVariant(status: BookingStatus): "default" | "second
   if (status === "awaiting_quote" || status === "quoted") return "secondary";
   return "outline";
 }
+
+// ============ Appointment journey options (additive, UI-only) ============
+export type AppointmentPattern = "dropoff" | "dropoff_collect" | "wait_return" | "recurring";
+
+export const APPOINTMENT_PATTERN_LABEL: Record<AppointmentPattern, string> = {
+  dropoff: "Drop-off only",
+  dropoff_collect: "Drop-off and later collection",
+  wait_return: "Wait and return",
+  recurring: "Recurring appointment",
+};
+
+export const APPOINTMENT_PATTERN_DESCRIPTION: Record<AppointmentPattern, string> = {
+  dropoff: "We drop you at the facility — you arrange your own return.",
+  dropoff_collect: "We drop you off, then a separate return ride collects you when you're done.",
+  wait_return: "The team waits at the facility while you're seen, then takes you home.",
+  recurring: "Repeat the same appointment booking weekly or on a custom schedule.",
+};
+
+export type RecurrenceFrequency = "weekly" | "biweekly" | "monthly" | "custom";
+
+export type RecurrenceRule = {
+  frequency: RecurrenceFrequency;
+  interval: number; // weeks or months between occurrences
+  weekdays?: number[]; // 0-6, Sun..Sat (weekly/biweekly/custom only)
+  end_date?: string | null;
+  occurrences?: number | null;
+};

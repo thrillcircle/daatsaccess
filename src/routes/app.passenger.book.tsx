@@ -30,11 +30,12 @@ const SERVICES = [
   },
   {
     key: "appointment",
-    href: "/app/passenger/book" as const,
+    href: "/app/passenger/book/appointment" as const,
     title: "Access Appointment",
     icon: CalendarClock,
-    description: "Drop-off, wait at your appointment and return when you're done.",
-    available: false,
+    description:
+      "Accessible transport and support for healthcare visits, assessments, physiotherapy, checkups and medical-facility appointments.",
+    available: true,
   },
   {
     key: "extended",
