@@ -295,6 +295,27 @@ function AdminTripsPage() {
           setVehicles(new Map());
         }
 
+        // Fleet vehicles assigned to these rides (rides.vehicle_id).
+        const fleetIds = Array.from(new Set(list.map((r) => r.vehicle_id).filter((v): v is string => !!v)));
+        if (fleetIds.length) {
+          const { data: fvs } = await supabase
+            .from("vehicle_profiles")
+            .select("*")
+            .in("id", fleetIds);
+          if (!cancelled) {
+            const fm = new Map<string, FleetVehicle>();
+            for (const r of list) {
+              if (!r.vehicle_id) continue;
+              const v = (fvs ?? []).find((x) => x.id === r.vehicle_id);
+              if (v) fm.set(r.id, v as FleetVehicle);
+            }
+            setFleetVehicles(fm);
+          }
+        } else {
+          setFleetVehicles(new Map());
+        }
+
+
         if (list.length) {
           const rideIds = list.map((r) => r.id);
           const { data: pays } = await supabase
