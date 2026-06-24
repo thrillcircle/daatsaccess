@@ -16,6 +16,8 @@ import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppPassengerRouteImport } from './routes/app.passenger'
 import { Route as AppDriverRouteImport } from './routes/app.driver'
 import { Route as AppAdminRouteImport } from './routes/app.admin'
+import { Route as AppAdminLiveRouteImport } from './routes/app.admin.live'
+import { Route as AppAdminDriversRouteImport } from './routes/app.admin.drivers'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -52,34 +54,50 @@ const AppAdminRoute = AppAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminLiveRoute = AppAdminLiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminDriversRoute = AppAdminDriversRouteImport.update({
+  id: '/drivers',
+  path: '/drivers',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
-  '/app/admin': typeof AppAdminRoute
+  '/app/admin': typeof AppAdminRouteWithChildren
   '/app/driver': typeof AppDriverRoute
   '/app/passenger': typeof AppPassengerRoute
   '/app/profile': typeof AppProfileRoute
+  '/app/admin/drivers': typeof AppAdminDriversRoute
+  '/app/admin/live': typeof AppAdminLiveRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
-  '/app/admin': typeof AppAdminRoute
+  '/app/admin': typeof AppAdminRouteWithChildren
   '/app/driver': typeof AppDriverRoute
   '/app/passenger': typeof AppPassengerRoute
   '/app/profile': typeof AppProfileRoute
+  '/app/admin/drivers': typeof AppAdminDriversRoute
+  '/app/admin/live': typeof AppAdminLiveRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
-  '/app/admin': typeof AppAdminRoute
+  '/app/admin': typeof AppAdminRouteWithChildren
   '/app/driver': typeof AppDriverRoute
   '/app/passenger': typeof AppPassengerRoute
   '/app/profile': typeof AppProfileRoute
+  '/app/admin/drivers': typeof AppAdminDriversRoute
+  '/app/admin/live': typeof AppAdminLiveRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +109,8 @@ export interface FileRouteTypes {
     | '/app/driver'
     | '/app/passenger'
     | '/app/profile'
+    | '/app/admin/drivers'
+    | '/app/admin/live'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +120,8 @@ export interface FileRouteTypes {
     | '/app/driver'
     | '/app/passenger'
     | '/app/profile'
+    | '/app/admin/drivers'
+    | '/app/admin/live'
   id:
     | '__root__'
     | '/'
@@ -109,6 +131,8 @@ export interface FileRouteTypes {
     | '/app/driver'
     | '/app/passenger'
     | '/app/profile'
+    | '/app/admin/drivers'
+    | '/app/admin/live'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -168,18 +192,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/admin/live': {
+      id: '/app/admin/live'
+      path: '/live'
+      fullPath: '/app/admin/live'
+      preLoaderRoute: typeof AppAdminLiveRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/drivers': {
+      id: '/app/admin/drivers'
+      path: '/drivers'
+      fullPath: '/app/admin/drivers'
+      preLoaderRoute: typeof AppAdminDriversRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
   }
 }
 
+interface AppAdminRouteChildren {
+  AppAdminDriversRoute: typeof AppAdminDriversRoute
+  AppAdminLiveRoute: typeof AppAdminLiveRoute
+}
+
+const AppAdminRouteChildren: AppAdminRouteChildren = {
+  AppAdminDriversRoute: AppAdminDriversRoute,
+  AppAdminLiveRoute: AppAdminLiveRoute,
+}
+
+const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
+  AppAdminRouteChildren,
+)
+
 interface AppRouteChildren {
-  AppAdminRoute: typeof AppAdminRoute
+  AppAdminRoute: typeof AppAdminRouteWithChildren
   AppDriverRoute: typeof AppDriverRoute
   AppPassengerRoute: typeof AppPassengerRoute
   AppProfileRoute: typeof AppProfileRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAdminRoute: AppAdminRoute,
+  AppAdminRoute: AppAdminRouteWithChildren,
   AppDriverRoute: AppDriverRoute,
   AppPassengerRoute: AppPassengerRoute,
   AppProfileRoute: AppProfileRoute,

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AppShell, NAV_ICONS } from "@/components/AppShell";
+import { AdminTabs } from "@/components/AdminTabs";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
@@ -134,7 +135,9 @@ function AdminPage() {
 
   return (
     <AppShell title="Admin" nav={nav}>
+      <AdminTabs />
       <section className="grid grid-cols-2 gap-3">
+
         <Metric label="Users" value={metrics?.users ?? "—"} />
         <Metric label="Drivers" value={metrics?.drivers ?? "—"} />
         <Metric label="Total trips" value={metrics?.trips ?? "—"} />
