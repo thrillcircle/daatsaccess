@@ -186,17 +186,23 @@ function RideRequest({ userId }: { userId?: string }) {
     }
   }
 
-  async function onCancel() {
+  async function performCancel() {
     if (!activeRide) return;
+    setCancelling(true);
     const { error } = await supabase
       .from("rides")
       .update({ status: "cancelled" })
       .eq("id", activeRide.id);
-    if (error) toast.error(error.message);
-    else {
-      setActiveRide(null);
-      toast.success("Ride cancelled");
+    setCancelling(false);
+    if (error) {
+      toast.error(error.message, {
+        action: { label: "Retry", onClick: () => void performCancel() },
+      });
+      return;
     }
+    setConfirmCancel(false);
+    setActiveRide(null);
+    toast.success("Ride cancelled");
   }
 
   // Share pickup position only while driver is en route (before pickup).
@@ -214,7 +220,29 @@ function RideRequest({ userId }: { userId?: string }) {
   if (activeRide) {
     return (
       <>
-        <ActiveTripCard ride={activeRide} onCancel={onCancel} />
+        <ActiveTripCard ride={activeRide} onCancel={() => setConfirmCancel(true)} />
+        <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel this ride?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Your driver will be notified. You can request a new ride right after.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={cancelling}>Keep ride</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  void performCancel();
+                }}
+                disabled={cancelling}
+              >
+                {cancelling ? "Cancelling…" : "Cancel ride"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {sharePickup && (
           <div className="mt-3 flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground">
             <Radio className={"h-3.5 w-3.5 " + (passengerLive.status === "watching" ? "text-primary" : "")} />
