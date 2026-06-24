@@ -39,11 +39,11 @@ const SERVICES = [
   },
   {
     key: "extended",
-    href: "/app/passenger/book" as const,
+    href: "/app/passenger/book/extended" as const,
     title: "Access Extended Journey",
     icon: Plane,
-    description: "Multi-day journeys with accommodation and itinerary support.",
-    available: false,
+    description: "Premium accessible multi-day travel with a dedicated vehicle, driver and companion team.",
+    available: true,
   },
 ];
 
