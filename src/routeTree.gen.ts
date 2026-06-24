@@ -29,6 +29,7 @@ import { Route as AppAdminDriversRouteImport } from './routes/app.admin.drivers'
 import { Route as AppAdminBookingsRouteImport } from './routes/app.admin.bookings'
 import { Route as AppPassengerBookTransportRouteImport } from './routes/app.passenger.book.transport'
 import { Route as AppPassengerBookAssistedRouteImport } from './routes/app.passenger.book.assisted'
+import { Route as AppPassengerBookAppointmentRouteImport } from './routes/app.passenger.book.appointment'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -132,6 +133,12 @@ const AppPassengerBookAssistedRoute =
     path: '/assisted',
     getParentRoute: () => AppPassengerBookRoute,
   } as any)
+const AppPassengerBookAppointmentRoute =
+  AppPassengerBookAppointmentRouteImport.update({
+    id: '/appointment',
+    path: '/appointment',
+    getParentRoute: () => AppPassengerBookRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/app/passenger/bookings': typeof AppPassengerBookingsRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
   '/app/admin/': typeof AppAdminIndexRoute
+  '/app/passenger/book/appointment': typeof AppPassengerBookAppointmentRoute
   '/app/passenger/book/assisted': typeof AppPassengerBookAssistedRoute
   '/app/passenger/book/transport': typeof AppPassengerBookTransportRoute
 }
@@ -173,6 +181,7 @@ export interface FileRoutesByTo {
   '/app/passenger/bookings': typeof AppPassengerBookingsRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
   '/app/admin': typeof AppAdminIndexRoute
+  '/app/passenger/book/appointment': typeof AppPassengerBookAppointmentRoute
   '/app/passenger/book/assisted': typeof AppPassengerBookAssistedRoute
   '/app/passenger/book/transport': typeof AppPassengerBookTransportRoute
 }
@@ -196,6 +205,7 @@ export interface FileRoutesById {
   '/app/passenger/bookings': typeof AppPassengerBookingsRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
   '/app/admin/': typeof AppAdminIndexRoute
+  '/app/passenger/book/appointment': typeof AppPassengerBookAppointmentRoute
   '/app/passenger/book/assisted': typeof AppPassengerBookAssistedRoute
   '/app/passenger/book/transport': typeof AppPassengerBookTransportRoute
 }
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/app/passenger/bookings'
     | '/app/trip/$rideId'
     | '/app/admin/'
+    | '/app/passenger/book/appointment'
     | '/app/passenger/book/assisted'
     | '/app/passenger/book/transport'
   fileRoutesByTo: FileRoutesByTo
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/app/passenger/bookings'
     | '/app/trip/$rideId'
     | '/app/admin'
+    | '/app/passenger/book/appointment'
     | '/app/passenger/book/assisted'
     | '/app/passenger/book/transport'
   id:
@@ -263,6 +275,7 @@ export interface FileRouteTypes {
     | '/app/passenger/bookings'
     | '/app/trip/$rideId'
     | '/app/admin/'
+    | '/app/passenger/book/appointment'
     | '/app/passenger/book/assisted'
     | '/app/passenger/book/transport'
   fileRoutesById: FileRoutesById
@@ -415,6 +428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPassengerBookAssistedRouteImport
       parentRoute: typeof AppPassengerBookRoute
     }
+    '/app/passenger/book/appointment': {
+      id: '/app/passenger/book/appointment'
+      path: '/appointment'
+      fullPath: '/app/passenger/book/appointment'
+      preLoaderRoute: typeof AppPassengerBookAppointmentRouteImport
+      parentRoute: typeof AppPassengerBookRoute
+    }
   }
 }
 
@@ -445,11 +465,13 @@ const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
 )
 
 interface AppPassengerBookRouteChildren {
+  AppPassengerBookAppointmentRoute: typeof AppPassengerBookAppointmentRoute
   AppPassengerBookAssistedRoute: typeof AppPassengerBookAssistedRoute
   AppPassengerBookTransportRoute: typeof AppPassengerBookTransportRoute
 }
 
 const AppPassengerBookRouteChildren: AppPassengerBookRouteChildren = {
+  AppPassengerBookAppointmentRoute: AppPassengerBookAppointmentRoute,
   AppPassengerBookAssistedRoute: AppPassengerBookAssistedRoute,
   AppPassengerBookTransportRoute: AppPassengerBookTransportRoute,
 }

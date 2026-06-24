@@ -62,6 +62,10 @@ type Itinerary = {
   longitude: number | null;
   notes: string | null;
   planned_start_at: string | null;
+  planned_end_at: string | null;
+  actual_start_at: string | null;
+  actual_end_at: string | null;
+  status: string;
   day_number: number;
   sequence_number: number;
 };
