@@ -1,7 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
 import { estimatePrice } from "@/lib/pricing";
+
+type RideUpdate = Database["public"]["Tables"]["rides"]["Update"];
+type Json = Database["public"]["Tables"]["ride_change_log"]["Insert"]["new_values"];
 
 const PointSchema = z.object({
   address: z.string().min(3).max(300),
@@ -117,7 +121,7 @@ export const updateRideTrip = createServerFn({ method: "POST" })
       data.durationMin != null ? data.durationMin * 60 : null;
 
     // Update the ride row (RLS scopes this to the passenger).
-    const updatePayload: Record<string, unknown> = {
+    const updatePayload: RideUpdate = {
       distance_km: data.distanceKm,
       estimated_price: newPrice,
       estimated_duration_seconds:
@@ -161,15 +165,13 @@ export const updateRideTrip = createServerFn({ method: "POST" })
         ride_id: ride.id,
         changed_by: userId,
         change_type: changeType,
-        previous_values: previousValues,
-        new_values: newValues,
+        previous_values: previousValues as Json,
+        new_values: newValues as Json,
         route_version: newVersion,
       })
       .select()
       .single();
     if (logErr) {
-      // Best-effort revert isn't safe (driver may have already seen the new ride);
-      // surface the error so the UI can retry the log entry.
       throw new Error(`Ride updated but change log failed: ${logErr.message}`);
     }
 
