@@ -96,19 +96,28 @@ function DriverPage() {
       });
   }, [user]);
 
-  // Active ride for this driver
+  // Active ride for this driver. Far-future scheduled rides that the driver
+  // has accepted remain "accepted" until pickup nears — they are surfaced
+  // separately in the Upcoming scheduled trips list, not as the active ride.
   useEffect(() => {
     if (!user) return;
     let unsub: (() => void) | undefined;
+    const pickActive = (r: Ride | null | undefined): Ride | null => {
+      if (!r) return null;
+      if (!["accepted", "driver_arriving", "arrived", "in_progress"].includes(r.status))
+        return null;
+      if (r.status === "accepted" && isFarFutureScheduled(r)) return null;
+      return r;
+    };
     (async () => {
       const { data } = await supabase
         .from("rides")
         .select("*")
         .eq("driver_id", user.id)
-        .in("status", ["accepted", "driver_arriving", "in_progress"])
-        .order("created_at", { ascending: false })
-        .limit(1);
-      setActiveRide(data?.[0] ?? null);
+        .in("status", ["accepted", "driver_arriving", "arrived", "in_progress"])
+        .order("created_at", { ascending: false });
+      const list = (data ?? []) as Ride[];
+      setActiveRide(list.map(pickActive).find((r): r is Ride => r != null) ?? null);
 
       const ch = supabase
         .channel("driver-active-" + user.id)
@@ -117,7 +126,8 @@ function DriverPage() {
           { event: "*", schema: "public", table: "rides", filter: `driver_id=eq.${user.id}` },
           (payload) => {
             const r = payload.new as Ride;
-            if (r && ["accepted", "driver_arriving", "in_progress"].includes(r.status)) setActiveRide(r);
+            const picked = pickActive(r);
+            if (picked) setActiveRide(picked);
             else setActiveRide(null);
           },
         )
