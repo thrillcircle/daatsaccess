@@ -225,6 +225,39 @@ function AdminTripsPage() {
           setDrivers(new Map());
         }
 
+        const driverIds = Array.from(new Set(list.map((r) => r.driver_id).filter((v): v is string => !!v)));
+        if (driverIds.length) {
+          const { data: vs } = await supabase
+            .from("driver_profiles")
+            .select("user_id, vehicle_model, license_plate, vehicle_type")
+            .in("user_id", driverIds);
+          if (!cancelled) setVehicles(new Map(((vs ?? []) as Vehicle[]).map((v) => [v.user_id, v])));
+        } else {
+          setVehicles(new Map());
+        }
+
+        if (list.length) {
+          const rideIds = list.map((r) => r.id);
+          const { data: pays } = await supabase
+            .from("payments")
+            .select("ride_id, status, amount, payment_method")
+            .in("ride_id", rideIds);
+          if (!cancelled) {
+            setPayments(
+              new Map(((pays ?? []) as PaymentRow[]).map((p) => [p.ride_id, p])),
+            );
+          }
+        } else {
+          setPayments(new Map());
+        }
+
+        if (active === "completed" && list.length) {
+          const rideIds = list.map((r) => r.id);
+          const { data: revs } = await supabase
+            .from("ride_reviews")
+            .select("ride_id, rating, comment")
+            .in("ride_id", rideIds);
+
         if (active === "completed" && list.length) {
           const rideIds = list.map((r) => r.id);
           const { data: revs } = await supabase
