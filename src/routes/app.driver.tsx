@@ -211,12 +211,16 @@ function DriverPage() {
       {activeRide ? (
         <ActiveRideCard ride={activeRide} onUpdate={setActiveRide} />
       ) : profile.is_available ? (
-        <OpenRidesList rides={openRides} driverId={user!.id} />
+        <>
+          <OpenRidesList rides={openRides.filter((r) => r.request_type !== "scheduled")} driverId={user!.id} />
+          <ScheduledOpenRequests driverId={user!.id} online={profile.is_available} />
+        </>
       ) : (
         <div className="mt-4 rounded-2xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
           You're offline. Go online to see ride requests.
         </div>
       )}
+      <UpcomingScheduledTrips driverId={user!.id} onActivate={setActiveRide} />
       <DriverHistory driverId={user!.id} />
 
     </AppShell>
