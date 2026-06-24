@@ -530,6 +530,7 @@ export type Database = {
           started_at: string | null
           status: Database["public"]["Enums"]["ride_status"]
           updated_at: string
+          vehicle_id: string | null
         }
         Insert: {
           accepted_at?: string | null
@@ -559,6 +560,7 @@ export type Database = {
           started_at?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
           updated_at?: string
+          vehicle_id?: string | null
         }
         Update: {
           accepted_at?: string | null
@@ -588,8 +590,17 @@ export type Database = {
           started_at?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
           updated_at?: string
+          vehicle_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rides_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
