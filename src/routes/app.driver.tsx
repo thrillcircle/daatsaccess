@@ -357,9 +357,10 @@ function OpenRidesList({ rides }: { rides: Ride[]; driverId: string }) {
               <p className="text-xs text-muted-foreground">{Number(r.distance_km).toFixed(1)} km</p>
             </div>
           </div>
-          <Button className="w-full" onClick={() => accept(r)}>
+          <Button className="w-full" onClick={() => onAccept(r)}>
             Accept ride
           </Button>
+
         </div>
       ))}
     </section>
