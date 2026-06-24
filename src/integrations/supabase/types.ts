@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_trip_notes: {
+        Row: {
+          admin_id: string
+          created_at: string
+          id: string
+          is_emergency: boolean
+          note: string
+          ride_id: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          id?: string
+          is_emergency?: boolean
+          note: string
+          ride_id: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          id?: string
+          is_emergency?: boolean
+          note?: string
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_trip_notes_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_profiles: {
         Row: {
           created_at: string

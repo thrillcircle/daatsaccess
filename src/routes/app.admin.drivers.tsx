@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
@@ -8,13 +8,22 @@ import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Phone, Car, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Phone, Car, Search, MessageSquare, History, UserPlus, UserMinus, Power, ExternalLink, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
-
 
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
+
+type DriverStats = {
+  completed: number;
+  cancelled: number;
+  upcoming: number;
+  totalKm: number;
+};
 
 const ACTIVE: Database["public"]["Enums"]["ride_status"][] = [
   "requested",
@@ -87,6 +96,8 @@ function DriversPage() {
   const [drivers, setDrivers] = useState<DriverProfile[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [activeRides, setActiveRides] = useState<Record<string, Ride>>({});
+  const [stats, setStats] = useState<Record<string, DriverStats>>({});
+  const [unassignedRides, setUnassignedRides] = useState<Ride[]>([]);
   const [passengers, setPassengers] = useState<Profile[]>([]);
   const [queryInput, setQueryInput] = useState(search.q);
 
@@ -115,7 +126,7 @@ function DriversPage() {
       setDrivers(ds);
 
       const userIds = ds.map((d) => d.user_id);
-      const [profRes, ridesRes] = await Promise.all([
+      const [profRes, ridesRes, allRidesRes, unassignedRes] = await Promise.all([
         userIds.length
           ? supabase.from("profiles").select("*").in("user_id", userIds)
           : Promise.resolve({ data: [] as Profile[] }),
@@ -126,6 +137,19 @@ function DriversPage() {
               .in("driver_id", userIds)
               .in("status", ACTIVE)
           : Promise.resolve({ data: [] as Ride[] }),
+        userIds.length
+          ? supabase
+              .from("rides")
+              .select("driver_id, status, distance_km, actual_distance_km, scheduled_at, request_type")
+              .in("driver_id", userIds)
+          : Promise.resolve({ data: [] as Pick<Ride, "driver_id" | "status" | "distance_km" | "actual_distance_km" | "scheduled_at" | "request_type">[] }),
+        supabase
+          .from("rides")
+          .select("*")
+          .is("driver_id", null)
+          .eq("status", "requested")
+          .order("created_at", { ascending: false })
+          .limit(50),
       ]);
       if (cancelled) return;
 
@@ -138,6 +162,33 @@ function DriversPage() {
         if (r.driver_id) rMap[r.driver_id] = r;
       }
       setActiveRides(rMap);
+
+      const sMap: Record<string, DriverStats> = {};
+      for (const uid of userIds) sMap[uid] = { completed: 0, cancelled: 0, upcoming: 0, totalKm: 0 };
+      const nowTs = Date.now();
+      for (const row of (allRidesRes.data ?? []) as Array<Pick<Ride, "driver_id" | "status" | "distance_km" | "actual_distance_km" | "scheduled_at" | "request_type">>) {
+        if (!row.driver_id) continue;
+        const s = sMap[row.driver_id];
+        if (!s) continue;
+        if (row.status === "completed") {
+          s.completed += 1;
+          s.totalKm += Number(row.actual_distance_km ?? row.distance_km ?? 0);
+        } else if (row.status === "cancelled") {
+          s.cancelled += 1;
+        }
+        if (
+          row.request_type === "scheduled" &&
+          row.scheduled_at &&
+          new Date(row.scheduled_at).getTime() > nowTs &&
+          (row.status === "requested" || row.status === "accepted")
+        ) {
+          s.upcoming += 1;
+        }
+      }
+      setStats(sMap);
+
+      setUnassignedRides(((unassignedRes.data ?? []) as Ride[]));
+
 
       const { data: passengerRoles } = await supabase
         .from("user_roles")
@@ -311,9 +362,9 @@ function DriversPage() {
 
       <ul className="space-y-3">
         {filteredDrivers.map((d) => {
-
           const prof = profiles[d.user_id];
           const ride = activeRides[d.user_id];
+          const driverStats = stats[d.user_id] ?? { completed: 0, cancelled: 0, upcoming: 0, totalKm: 0 };
           const updatedTs = d.location_updated_at
             ? new Date(d.location_updated_at).getTime()
             : 0;
@@ -375,6 +426,45 @@ function DriversPage() {
                   )}
                 </div>
               </div>
+
+              <div className="mt-2 grid grid-cols-4 gap-1 border-t pt-2 text-center text-[11px]">
+                <StatCell label="Completed" value={driverStats.completed.toString()} />
+                <StatCell label="Cancelled" value={driverStats.cancelled.toString()} />
+                <StatCell label="Upcoming" value={driverStats.upcoming.toString()} />
+                <StatCell label="Total km" value={driverStats.totalKm.toFixed(0)} />
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <ToggleAvailableButton driver={d} />
+                <AssignTripDialog
+                  driver={d}
+                  driverName={prof?.full_name ?? null}
+                  unassignedRides={unassignedRides}
+                />
+                {ride && <UnassignButton ride={ride} />}
+                <TripHistoryDialog driverId={d.user_id} driverName={prof?.full_name ?? null} />
+                {prof?.phone && (
+                  <>
+                    <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                      <a href={`tel:${prof.phone}`}>
+                        <Phone className="mr-1 h-3 w-3" /> Call
+                      </a>
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                      <a href={`sms:${prof.phone}`}>
+                        <MessageSquare className="mr-1 h-3 w-3" /> SMS
+                      </a>
+                    </Button>
+                  </>
+                )}
+                {ride && (
+                  <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+                    <Link to="/app/trip/$rideId" params={{ rideId: ride.id }}>
+                      <ExternalLink className="mr-1 h-3 w-3" /> View trip
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </li>
           );
         })}
@@ -416,3 +506,207 @@ function DriversPage() {
     </AppShell>
   );
 }
+
+function StatCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-xs font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function ToggleAvailableButton({ driver }: { driver: DriverProfile }) {
+  const [busy, setBusy] = useState(false);
+  const next = !driver.is_available;
+  return (
+    <Button
+      size="sm"
+      variant={driver.is_available ? "secondary" : "default"}
+      className="h-7 text-xs"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        const { error } = await supabase
+          .from("driver_profiles")
+          .update({ is_available: next })
+          .eq("user_id", driver.user_id);
+        setBusy(false);
+        if (error) toast.error(error.message);
+        else toast.success(`Marked ${next ? "available" : "unavailable"}`);
+      }}
+    >
+      {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Power className="mr-1 h-3 w-3" />}
+      {driver.is_available ? "Set unavailable" : "Set available"}
+    </Button>
+  );
+}
+
+function AssignTripDialog({
+  driver,
+  driverName,
+  unassignedRides,
+}: {
+  driver: DriverProfile;
+  driverName: string | null;
+  unassignedRides: Ride[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string>("");
+  const [busy, setBusy] = useState(false);
+
+  async function assign() {
+    if (!selected) return;
+    setBusy(true);
+    const { error } = await supabase
+      .from("rides")
+      .update({
+        driver_id: driver.user_id,
+        status: "accepted",
+        accepted_at: new Date().toISOString(),
+      })
+      .eq("id", selected);
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Driver assigned");
+      setOpen(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 text-xs">
+          <UserPlus className="mr-1 h-3 w-3" /> Assign trip
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Assign trip to {driverName ?? "driver"}</DialogTitle>
+          <DialogDescription>
+            Pick an unassigned trip request to assign to this driver.
+          </DialogDescription>
+        </DialogHeader>
+        {unassignedRides.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No unassigned trip requests right now.</p>
+        ) : (
+          <Select value={selected} onValueChange={setSelected}>
+            <SelectTrigger className="text-xs">
+              <SelectValue placeholder="Select a trip" />
+            </SelectTrigger>
+            <SelectContent>
+              {unassignedRides.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.pickup_address.slice(0, 30)} → {r.destination_address.slice(0, 30)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <DialogFooter>
+          <Button size="sm" disabled={!selected || busy} onClick={assign}>
+            {busy && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}Assign
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function UnassignButton({ ride }: { ride: Ride }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="h-7 text-xs"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        const { error } = await supabase
+          .from("rides")
+          .update({ driver_id: null, status: "requested", accepted_at: null })
+          .eq("id", ride.id);
+        setBusy(false);
+        if (error) toast.error(error.message);
+        else toast.success("Driver unassigned");
+      }}
+    >
+      {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <UserMinus className="mr-1 h-3 w-3" />}
+      Unassign current
+    </Button>
+  );
+}
+
+function TripHistoryDialog({
+  driverId,
+  driverName,
+}: {
+  driverId: string;
+  driverName: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const [history, setHistory] = useState<Ride[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    (async () => {
+      const { data } = await supabase
+        .from("rides")
+        .select("*")
+        .eq("driver_id", driverId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setHistory((data ?? []) as Ride[]);
+      setLoading(false);
+    })();
+  }, [open, driverId]);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 text-xs">
+          <History className="mr-1 h-3 w-3" /> History
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Trip history — {driverName ?? "driver"}</DialogTitle>
+          <DialogDescription>Last 50 trips assigned to this driver.</DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto">
+          {loading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
+          ) : !history.length ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No trips yet.</p>
+          ) : (
+            <ul className="divide-y">
+              {history.map((r) => (
+                <li key={r.id} className="py-2 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate font-medium">{r.destination_address}</span>
+                    <RideStatusBadge status={r.status} />
+                  </div>
+                  <p className="truncate text-muted-foreground">From {r.pickup_address}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {new Date(r.created_at).toLocaleString(undefined, {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
+                    {" · "}
+                    {Number(r.actual_distance_km ?? r.distance_km ?? 0).toFixed(1)} km
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
