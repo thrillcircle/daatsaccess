@@ -442,9 +442,9 @@ function OpenRidesList({ rides }: { rides: Ride[]; driverId: string }) {
 
 function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | null) => void }) {
   const arriveFn = useServerFn(markArrived);
-  const startFn = useServerFn(startTrip);
   const completeFn = useServerFn(completeTrip);
   const [busy, setBusy] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
   // Track whether the last attempt to open Google Maps was blocked, so we can
   // surface a large fallback "Open Google Maps Navigation" button.
   const [navBlocked, setNavBlocked] = useState(false);
@@ -472,22 +472,17 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
     }
   }
 
-  async function onStart() {
-    setBusy(true);
-    // Open Maps to the destination synchronously inside the click.
-    const win = openMapsNav(ride.destination_lat, ride.destination_lng);
-    try {
-      const r = await startFn({ data: { rideId: ride.id } });
-      setNavBlocked(!win);
-      onUpdate(r as Ride);
-      toast.success("Trip started — navigating to destination");
-    } catch (e) {
-      win?.close();
-      toast.error(e instanceof Error ? e.message : "Could not start trip");
-    } finally {
-      setBusy(false);
-    }
+  // PIN dialog opens here; on successful verification we refetch the row.
+  async function onPinStarted() {
+    openMapsNav(ride.destination_lat, ride.destination_lng);
+    const { data: fresh } = await supabase
+      .from("rides")
+      .select("*")
+      .eq("id", ride.id)
+      .maybeSingle();
+    if (fresh) onUpdate(fresh as Ride);
   }
+
 
   async function onComplete() {
     setBusy(true);
