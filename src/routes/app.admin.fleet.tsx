@@ -951,3 +951,208 @@ function TripsSection({ title, trips }: { title: string; trips: VehicleTrip[] })
 // Used by other admin surfaces to link in
 export { Link };
 
+// ============================================================
+// Driver Vehicles section — sourced from driver_profiles
+// ============================================================
+
+function fmtAgo(iso: string | null) {
+  if (!iso) return "never";
+  const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (s < 60) return `${Math.round(s)}s ago`;
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  return `${Math.round(s / 86400)}d ago`;
+}
+
+function DriverVehiclesSection({ isAdmin }: { isAdmin: boolean }) {
+  const { vehicles, loading, refresh } = useDriverVehicles(isAdmin);
+
+  return (
+    <div className="mb-6">
+      <div className="mb-2 flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold">Driver Vehicles</h2>
+          <p className="text-xs text-muted-foreground">
+            Vehicles linked to driver profiles. Records owned by non-drivers need admin review.
+          </p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
+          <Loader2 className="mx-auto mb-2 h-4 w-4 animate-spin" /> Loading driver vehicles…
+        </div>
+      ) : vehicles.length === 0 ? (
+        <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
+          No driver vehicle records found.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 text-left">Vehicle</th>
+                <th className="px-3 py-2 text-left">Type</th>
+                <th className="px-3 py-2 text-left">Plate</th>
+                <th className="px-3 py-2 text-left">Assigned driver</th>
+                <th className="px-3 py-2 text-left">Availability</th>
+                <th className="px-3 py-2 text-left">Location</th>
+                <th className="px-3 py-2 text-left">Last update</th>
+                <th className="px-3 py-2 text-left">Fleet status</th>
+                <th className="px-3 py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vehicles.map((v) => (
+                <DriverVehicleRow key={v.id} v={v} onChanged={refresh} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DriverVehicleRow({ v, onChanged }: { v: DriverVehicle; onChanged: () => void }) {
+  const hasLocation = v.current_lat != null && v.current_lng != null;
+  const locationLive =
+    hasLocation && v.location_updated_at &&
+    Date.now() - new Date(v.location_updated_at).getTime() < 90_000;
+
+  const fleetReady = v.isValidDriver;
+  return (
+    <tr className="border-t">
+      <td className="px-3 py-2 font-medium">{v.vehicle_model ?? "—"}</td>
+      <td className="px-3 py-2">{v.vehicle_type ?? "—"}</td>
+      <td className="px-3 py-2 font-mono text-xs">{v.license_plate ?? "—"}</td>
+      <td className="px-3 py-2">
+        {v.isValidDriver ? (
+          <div>
+            <div className="font-medium">{v.ownerName ?? v.user_id.slice(0, 8)}</div>
+            {v.ownerPhone && <div className="text-xs text-muted-foreground">{v.ownerPhone}</div>}
+          </div>
+        ) : (
+          <div>
+            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">
+              Unassigned
+            </Badge>
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              Linked to {v.ownerRole}: {v.ownerName ?? v.user_id.slice(0, 8)}
+            </div>
+          </div>
+        )}
+      </td>
+      <td className="px-3 py-2">
+        {v.isValidDriver ? (
+          v.is_available ? (
+            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Available</Badge>
+          ) : (
+            <Badge variant="secondary">Offline</Badge>
+          )
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </td>
+      <td className="px-3 py-2">
+        {hasLocation ? (
+          <Badge variant="outline" className={locationLive ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-300" : ""}>
+            {locationLive ? "Live" : "Stale"}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">No location</span>
+        )}
+      </td>
+      <td className="px-3 py-2 text-xs text-muted-foreground">{fmtAgo(v.location_updated_at)}</td>
+      <td className="px-3 py-2">
+        {fleetReady ? (
+          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+            <CheckCircle2 className="mr-1 h-3 w-3" /> Ready
+          </Badge>
+        ) : (
+          <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="mr-1 h-3 w-3" /> Needs Review
+          </Badge>
+        )}
+      </td>
+      <td className="px-3 py-2 text-right">
+        <ReassignDriverVehicleDialog v={v} onChanged={onChanged} />
+      </td>
+    </tr>
+  );
+}
+
+function ReassignDriverVehicleDialog({ v, onChanged }: { v: DriverVehicle; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const { drivers, loading } = useValidDrivers(open);
+  const [target, setTarget] = useState<string>("");
+  const [busy, setBusy] = useState(false);
+
+  const eligible = drivers.filter((d) => d.user_id !== v.user_id && !d.hasVehicle);
+
+  const submit = async () => {
+    if (!target) return;
+    setBusy(true);
+    const { error } = await supabase
+      .from("driver_profiles")
+      .update({ user_id: target })
+      .eq("id", v.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Vehicle reassigned");
+    setOpen(false);
+    onChanged();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline">
+          <UserPlus className="mr-1 h-3.5 w-3.5" />
+          {v.isValidDriver ? "Reassign" : "Assign driver"}
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{v.isValidDriver ? "Reassign vehicle" : "Assign vehicle to driver"}</DialogTitle>
+          <DialogDescription>
+            {v.vehicle_model ?? "Vehicle"} · {v.license_plate ?? "no plate"}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Label>Target driver</Label>
+          {loading ? (
+            <div className="text-sm text-muted-foreground">Loading drivers…</div>
+          ) : eligible.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No eligible drivers without an existing vehicle record. Free up a driver first.
+            </p>
+          ) : (
+            <Select value={target} onValueChange={setTarget}>
+              <SelectTrigger><SelectValue placeholder="Select a driver" /></SelectTrigger>
+              <SelectContent>
+                {eligible.map((d) => (
+                  <SelectItem key={d.user_id} value={d.user_id}>
+                    {d.full_name ?? d.user_id.slice(0, 8)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Only users with the driver role appear here. Reassignment moves this driver_profiles record to that user.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={submit} disabled={!target || busy}>
+            {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+            Confirm
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
