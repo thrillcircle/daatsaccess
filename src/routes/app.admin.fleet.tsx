@@ -30,6 +30,7 @@ import { Plus, Pencil, Gauge, Wrench, UserPlus, StickyNote, Loader2, Accessibili
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 import { getVehicleAlerts, highestSeverity } from "@/lib/vehicle-alerts";
+import { useDriverVehicles, useValidDrivers, type DriverVehicle } from "@/hooks/use-driver-vehicles";
 
 type Vehicle = Database["public"]["Tables"]["vehicle_profiles"]["Row"];
 type VehicleInsert = Database["public"]["Tables"]["vehicle_profiles"]["Insert"];
