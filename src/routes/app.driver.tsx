@@ -12,8 +12,11 @@ import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { formatZAR } from "@/lib/pricing";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
-import { MapPin, Navigation, AlertTriangle } from "lucide-react";
+import { MapPin, Navigation, AlertTriangle, Bell } from "lucide-react";
 import { useLiveLocation } from "@/hooks/use-live-location";
+import { useRideChanges } from "@/hooks/use-ride-changes";
+import { useServerFn } from "@tanstack/react-start";
+import { acknowledgeRideChange } from "@/lib/ride-edit.functions";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
@@ -391,6 +394,9 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Active ride
         </h2>
+        <RideStatusBadge status={ride.status} />
+      </div>
+      <TripChangeAlerts ride={ride} />
         <RideStatusBadge status={ride.status} />
       </div>
       <RouteMap
