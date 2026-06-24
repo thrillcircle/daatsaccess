@@ -18,6 +18,9 @@ import {
   adminAcknowledgePinAlert,
 } from "@/lib/ride-pin.functions";
 import type { Database } from "@/integrations/supabase/types";
+import { getVehicleAlerts } from "@/lib/vehicle-alerts";
+import { rankVehiclesForTrip, type Suitability } from "@/lib/vehicle-suitability";
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
