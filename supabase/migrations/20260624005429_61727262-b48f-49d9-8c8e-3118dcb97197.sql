@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.enforce_ride_changes() FROM PUBLIC, anon, authenticated;
