@@ -362,9 +362,9 @@ function DriversPage() {
 
       <ul className="space-y-3">
         {filteredDrivers.map((d) => {
-
           const prof = profiles[d.user_id];
           const ride = activeRides[d.user_id];
+          const driverStats = stats[d.user_id] ?? { completed: 0, cancelled: 0, upcoming: 0, totalKm: 0 };
           const updatedTs = d.location_updated_at
             ? new Date(d.location_updated_at).getTime()
             : 0;
@@ -425,6 +425,45 @@ function DriversPage() {
                     <p className="text-muted-foreground">Idle</p>
                   )}
                 </div>
+              </div>
+
+              <div className="mt-2 grid grid-cols-4 gap-1 border-t pt-2 text-center text-[11px]">
+                <StatCell label="Completed" value={driverStats.completed.toString()} />
+                <StatCell label="Cancelled" value={driverStats.cancelled.toString()} />
+                <StatCell label="Upcoming" value={driverStats.upcoming.toString()} />
+                <StatCell label="Total km" value={driverStats.totalKm.toFixed(0)} />
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <ToggleAvailableButton driver={d} />
+                <AssignTripDialog
+                  driver={d}
+                  driverName={prof?.full_name ?? null}
+                  unassignedRides={unassignedRides}
+                />
+                {ride && <UnassignButton ride={ride} />}
+                <TripHistoryDialog driverId={d.user_id} driverName={prof?.full_name ?? null} />
+                {prof?.phone && (
+                  <>
+                    <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                      <a href={`tel:${prof.phone}`}>
+                        <Phone className="mr-1 h-3 w-3" /> Call
+                      </a>
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                      <a href={`sms:${prof.phone}`}>
+                        <MessageSquare className="mr-1 h-3 w-3" /> SMS
+                      </a>
+                    </Button>
+                  </>
+                )}
+                {ride && (
+                  <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+                    <Link to="/app/trip/$rideId" params={{ rideId: ride.id }}>
+                      <ExternalLink className="mr-1 h-3 w-3" /> View trip
+                    </Link>
+                  </Button>
+                )}
               </div>
             </li>
           );
