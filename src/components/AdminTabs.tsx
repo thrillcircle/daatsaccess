@@ -22,7 +22,7 @@ export function AdminTabs() {
         return (
           <Link
             key={t.to}
-            to={t.to}
+            to={t.to as "/app/admin"}
             className={
               "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-colors " +
               (active
