@@ -619,6 +619,24 @@ function TripRow({
         </div>
       )}
 
+      {fleetAlerts.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {fleetAlerts.map((a, i) => (
+            <Badge
+              key={i}
+              className={
+                "text-[10px] " +
+                (a.severity === "urgent"
+                  ? "bg-destructive text-destructive-foreground"
+                  : "bg-amber-500/20 text-amber-800 dark:text-amber-200")
+              }
+            >
+              {a.label}
+            </Badge>
+          ))}
+        </div>
+      )}
+
       {ride.driver_id &&
         !["completed", "cancelled"].includes(ride.status) && (
           <AdminPinRow rideId={ride.id} />
@@ -639,10 +657,12 @@ function TripRow({
             passenger={passenger}
             driver={driver}
             vehicle={vehicle}
+            fleetVehicle={fleetVehicle}
             payment={payment}
             onChanged={onChanged}
           />
         </div>
+
       </div>
     </li>
   );
