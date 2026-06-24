@@ -271,12 +271,41 @@ function DriversPage() {
             </li>
           );
         })}
-        {!drivers.length && (
+        {!filteredDrivers.length && (
           <li className="rounded-2xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-            No drivers registered yet.
+            {drivers.length ? "No drivers match your search." : "No drivers registered yet."}
           </li>
         )}
       </ul>
+
+      <h3 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Passengers ({filteredPassengers.length}/{passengers.length})
+      </h3>
+      <ul className="space-y-2">
+        {filteredPassengers.map((p) => (
+          <li key={p.user_id} className="rounded-2xl border bg-card p-3 text-sm shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{p.full_name ?? "Unnamed"}</p>
+                {p.phone ? (
+                  <a href={`tel:${p.phone}`} className="inline-flex items-center gap-1 text-xs text-primary">
+                    <Phone className="h-3 w-3" /> {p.phone}
+                  </a>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No phone</p>
+                )}
+              </div>
+              <p className="font-mono text-[10px] text-muted-foreground">{p.user_id.slice(0, 8)}…</p>
+            </div>
+          </li>
+        ))}
+        {!filteredPassengers.length && (
+          <li className="rounded-2xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+            {passengers.length ? "No passengers match your search." : "No passengers registered yet."}
+          </li>
+        )}
+      </ul>
+
     </AppShell>
   );
 }
