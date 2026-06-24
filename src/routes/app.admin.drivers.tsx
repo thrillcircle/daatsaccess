@@ -6,8 +6,10 @@ import { AppShell, NAV_ICONS } from "@/components/AppShell";
 import { AdminTabs } from "@/components/AdminTabs";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Car } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Phone, Car, Search } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+
 
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -53,6 +55,9 @@ function DriversPage() {
   const [drivers, setDrivers] = useState<DriverProfile[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [activeRides, setActiveRides] = useState<Record<string, Ride>>({});
+  const [passengers, setPassengers] = useState<Profile[]>([]);
+  const [query, setQuery] = useState("");
+
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -91,7 +96,24 @@ function DriversPage() {
         if (r.driver_id) rMap[r.driver_id] = r;
       }
       setActiveRides(rMap);
+
+      // Load passenger profiles (role = passenger, not in driver_profiles)
+      const { data: passengerRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "passenger");
+      const passengerIds = (passengerRoles ?? []).map((r) => r.user_id);
+      if (passengerIds.length) {
+        const { data: pProfiles } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("user_id", passengerIds);
+        if (!cancelled) setPassengers((pProfiles ?? []) as Profile[]);
+      } else if (!cancelled) {
+        setPassengers([]);
+      }
     };
+
 
     load();
 
@@ -150,17 +172,39 @@ function DriversPage() {
   }
 
   const now = Date.now();
+  const q = query.trim().toLowerCase();
+  const matchProfile = (p: Profile | undefined, userId: string) => {
+    if (!q) return true;
+    return (
+      (p?.full_name?.toLowerCase().includes(q) ?? false) ||
+      (p?.phone?.toLowerCase().includes(q) ?? false) ||
+      userId.toLowerCase().includes(q)
+    );
+  };
+  const filteredDrivers = drivers.filter((d) => matchProfile(profiles[d.user_id], d.user_id));
+  const filteredPassengers = passengers.filter((p) => matchProfile(p, p.user_id));
 
   return (
     <AppShell title="Admin" nav={nav}>
       <AdminTabs />
 
+      <div className="relative mb-4">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name, phone, or user ID…"
+          className="pl-9"
+        />
+      </div>
+
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Drivers ({drivers.length})
+        Drivers ({filteredDrivers.length}/{drivers.length})
       </h3>
 
       <ul className="space-y-3">
-        {drivers.map((d) => {
+        {filteredDrivers.map((d) => {
+
           const prof = profiles[d.user_id];
           const ride = activeRides[d.user_id];
           const updatedTs = d.location_updated_at
@@ -227,12 +271,41 @@ function DriversPage() {
             </li>
           );
         })}
-        {!drivers.length && (
+        {!filteredDrivers.length && (
           <li className="rounded-2xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-            No drivers registered yet.
+            {drivers.length ? "No drivers match your search." : "No drivers registered yet."}
           </li>
         )}
       </ul>
+
+      <h3 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Passengers ({filteredPassengers.length}/{passengers.length})
+      </h3>
+      <ul className="space-y-2">
+        {filteredPassengers.map((p) => (
+          <li key={p.user_id} className="rounded-2xl border bg-card p-3 text-sm shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{p.full_name ?? "Unnamed"}</p>
+                {p.phone ? (
+                  <a href={`tel:${p.phone}`} className="inline-flex items-center gap-1 text-xs text-primary">
+                    <Phone className="h-3 w-3" /> {p.phone}
+                  </a>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No phone</p>
+                )}
+              </div>
+              <p className="font-mono text-[10px] text-muted-foreground">{p.user_id.slice(0, 8)}…</p>
+            </div>
+          </li>
+        ))}
+        {!filteredPassengers.length && (
+          <li className="rounded-2xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+            {passengers.length ? "No passengers match your search." : "No passengers registered yet."}
+          </li>
+        )}
+      </ul>
+
     </AppShell>
   );
 }

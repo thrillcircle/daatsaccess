@@ -31,11 +31,16 @@ function AdminPage() {
   }, [roles]);
 
   const [metrics, setMetrics] = useState<{
-    users: number;
+    passengers: number;
     drivers: number;
-    trips: number;
+    onlineDrivers: number;
+    active: number;
+    scheduled: number;
     completed: number;
+    cancelled: number;
     earnings: number;
+    ratingAvg: number | null;
+    ratingCount: number;
   } | null>(null);
   const [rides, setRides] = useState<Ride[]>([]);
   const [edits, setEdits] = useState<RideChange[]>([]);
@@ -46,31 +51,55 @@ function AdminPage() {
   useEffect(() => {
     if (!isAdmin) return;
     let cancelled = false;
-    (async () => {
-      const [profiles, drivers, allRides, recentEdits] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
+    const loadMetrics = async () => {
+      const [
+        passengersRes,
+        driversRes,
+        onlineRes,
+        activeRes,
+        scheduledRes,
+        completedRes,
+        cancelledRes,
+        allRides,
+        recentEdits,
+        ratingsRes,
+      ] = await Promise.all([
+        supabase.from("user_roles").select("user_id", { count: "exact", head: true }).eq("role", "passenger"),
         supabase.from("driver_profiles").select("id", { count: "exact", head: true }),
+        supabase.from("driver_profiles").select("id", { count: "exact", head: true }).eq("is_available", true),
+        supabase.from("rides").select("id", { count: "exact", head: true }).in("status", ["requested", "accepted", "driver_arriving", "arrived", "in_progress"]),
+        supabase.from("rides").select("id", { count: "exact", head: true }).eq("request_type", "scheduled").in("status", ["requested", "accepted"]),
+        supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "completed"),
+        supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
         supabase.from("rides").select("*").order("created_at", { ascending: false }).limit(50),
-        supabase
-          .from("ride_change_log")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(20),
+        supabase.from("ride_change_log").select("*").order("created_at", { ascending: false }).limit(20),
+        supabase.from("ride_ratings").select("rating"),
       ]);
       if (cancelled) return;
       const all = (allRides.data ?? []) as Ride[];
-      const completed = all.filter((r) => r.status === "completed");
-      const earnings = completed.reduce((acc, r) => acc + Number(r.estimated_price), 0);
+      const completedRides = all.filter((r) => r.status === "completed");
+      const earnings = completedRides.reduce((acc, r) => acc + Number(r.estimated_price ?? 0), 0);
+      const ratings = (ratingsRes.data ?? []) as { rating: number }[];
+      const ratingAvg = ratings.length
+        ? ratings.reduce((a, r) => a + Number(r.rating), 0) / ratings.length
+        : null;
       setMetrics({
-        users: profiles.count ?? 0,
-        drivers: drivers.count ?? 0,
-        trips: all.length,
-        completed: completed.length,
+        passengers: passengersRes.count ?? 0,
+        drivers: driversRes.count ?? 0,
+        onlineDrivers: onlineRes.count ?? 0,
+        active: activeRes.count ?? 0,
+        scheduled: scheduledRes.count ?? 0,
+        completed: completedRes.count ?? 0,
+        cancelled: cancelledRes.count ?? 0,
         earnings,
+        ratingAvg,
+        ratingCount: ratings.length,
       });
       setRides(all);
       setEdits((recentEdits.data ?? []) as RideChange[]);
-    })();
+    };
+    loadMetrics();
+
 
     const ridesCh = supabase
       .channel("admin-rides")
@@ -136,19 +165,30 @@ function AdminPage() {
   return (
     <AppShell title="Admin" nav={nav}>
       <AdminTabs />
-      <section className="grid grid-cols-2 gap-3">
-
-        <Metric label="Users" value={metrics?.users ?? "—"} />
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Metric label="Passengers" value={metrics?.passengers ?? "—"} />
         <Metric label="Drivers" value={metrics?.drivers ?? "—"} />
-        <Metric label="Total trips" value={metrics?.trips ?? "—"} />
+        <Metric label="Online drivers" value={metrics?.onlineDrivers ?? "—"} />
+        <Metric label="Active rides" value={metrics?.active ?? "—"} />
+        <Metric label="Scheduled" value={metrics?.scheduled ?? "—"} />
         <Metric label="Completed" value={metrics?.completed ?? "—"} />
-        <div className="col-span-2">
+        <Metric label="Cancelled" value={metrics?.cancelled ?? "—"} />
+        <Metric
+          label="Avg rating"
+          value={
+            metrics?.ratingAvg != null
+              ? `${metrics.ratingAvg.toFixed(2)}★ (${metrics.ratingCount})`
+              : "—"
+          }
+        />
+        <div className="col-span-2 sm:col-span-4">
           <Metric
-            label="Estimated earnings"
+            label="Estimated earnings (completed)"
             value={metrics ? formatZAR(metrics.earnings) : "—"}
           />
         </div>
       </section>
+
 
       <section className="mt-6">
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
