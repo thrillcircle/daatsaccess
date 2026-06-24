@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Car, User, ShieldCheck, LogOut, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { NotificationBell } from "@/components/NotificationBell";
 
 type NavItem = { to: string; label: string; icon: ReactNode };
 
