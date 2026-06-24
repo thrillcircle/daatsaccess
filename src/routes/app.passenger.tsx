@@ -347,45 +347,172 @@ function BecomeDriver({ userId, hasDriverRole }: { userId?: string; hasDriverRol
   );
 }
 
+type HistoryRow = Ride & {
+  driver?: { full_name: string | null } | null;
+  driver_vehicle?: {
+    vehicle_model: string | null;
+    vehicle_type: string | null;
+    license_plate: string | null;
+  } | null;
+  review?: { rating: number } | null;
+};
+
 function RideHistory({ userId }: { userId?: string }) {
-  const [rides, setRides] = useState<Ride[]>([]);
+  const [rides, setRides] = useState<HistoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     if (!userId) return;
-    supabase
-      .from("rides")
-      .select("*")
-      .eq("passenger_id", userId)
-      .in("status", ["completed", "cancelled"])
-      .order("created_at", { ascending: false })
-      .limit(20)
-      .then(({ data }) => setRides((data ?? []) as Ride[]));
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("rides")
+        .select("*")
+        .eq("passenger_id", userId)
+        .in("status", ["completed", "cancelled"])
+        .order("created_at", { ascending: false })
+        .limit(50);
+      const list = (data ?? []) as Ride[];
+      const driverIds = Array.from(
+        new Set(list.map((r) => r.driver_id).filter((v): v is string => !!v)),
+      );
+      const rideIds = list.map((r) => r.id);
+      const [profilesRes, vehiclesRes, reviewsRes] = await Promise.all([
+        driverIds.length
+          ? supabase.from("profiles").select("user_id, full_name").in("user_id", driverIds)
+          : Promise.resolve({ data: [] as { user_id: string; full_name: string | null }[] }),
+        driverIds.length
+          ? supabase
+              .from("driver_profiles")
+              .select("user_id, vehicle_model, vehicle_type, license_plate")
+              .in("user_id", driverIds)
+          : Promise.resolve({
+              data: [] as {
+                user_id: string;
+                vehicle_model: string | null;
+                vehicle_type: string | null;
+                license_plate: string | null;
+              }[],
+            }),
+        rideIds.length
+          ? supabase
+              .from("ride_reviews")
+              .select("ride_id, rating")
+              .eq("passenger_id", userId)
+              .in("ride_id", rideIds)
+          : Promise.resolve({ data: [] as { ride_id: string; rating: number }[] }),
+      ]);
+      const pMap = new Map((profilesRes.data ?? []).map((p) => [p.user_id, p]));
+      const vMap = new Map((vehiclesRes.data ?? []).map((v) => [v.user_id, v]));
+      const rMap = new Map((reviewsRes.data ?? []).map((r) => [r.ride_id, r]));
+      const enriched: HistoryRow[] = list.map((r) => ({
+        ...r,
+        driver: r.driver_id ? (pMap.get(r.driver_id) ?? null) : null,
+        driver_vehicle: r.driver_id ? (vMap.get(r.driver_id) ?? null) : null,
+        review: rMap.get(r.id) ?? null,
+      }));
+      if (!cancelled) {
+        setRides(enriched);
+        setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
-  if (!rides.length) return null;
   return (
     <section className="mt-4 rounded-2xl border bg-card p-4">
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         Trip history
       </h3>
-      <ul className="divide-y">
-        {rides.map((r) => (
-          <li key={r.id} className="py-3">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0 flex-1 pr-2">
-                <p className="truncate text-sm font-medium">{r.destination_address}</p>
-                <p className="truncate text-xs text-muted-foreground">{r.pickup_address}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-semibold">{formatZAR(Number(r.estimated_price))}</p>
-                <RideStatusBadge status={r.status} />
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {loading ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
+      ) : !rides.length ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          No completed trips yet. Your finished rides will show here.
+        </p>
+      ) : (
+        <ul className="divide-y">
+          {rides.map((r) => {
+            const travelSec =
+              r.actual_duration_seconds ??
+              (r.started_at && r.completed_at
+                ? Math.round(
+                    (new Date(r.completed_at).getTime() - new Date(r.started_at).getTime()) / 1000,
+                  )
+                : null);
+            const distKm = r.actual_distance_km ?? r.distance_km;
+            const distLabel =
+              r.actual_distance_km != null
+                ? `${Number(distKm).toFixed(1)} km`
+                : `${Number(distKm).toFixed(1)} km (est)`;
+            const tripDate = new Date(r.completed_at ?? r.created_at);
+            const vehicle = [
+              r.driver_vehicle?.vehicle_model,
+              r.driver_vehicle?.license_plate,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            return (
+              <li key={r.id} className="py-3">
+                <a
+                  href={`/app/trip/${r.id}`}
+                  className="block rounded-lg p-1 -m-1 hover:bg-muted/40 focus:bg-muted/40 focus:outline-none"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          {tripDate.toLocaleString(undefined, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}
+                        </p>
+                        <span className="rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {r.request_type === "scheduled" ? "Scheduled" : "Immediate"}
+                        </span>
+                        {r.review ? (
+                          <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
+                            ★ {r.review.rating}/5
+                          </span>
+                        ) : r.status === "completed" ? (
+                          <span className="text-[10px] text-muted-foreground">Not rated</span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 truncate text-sm font-medium">
+                        {r.destination_address}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        From {r.pickup_address}
+                      </p>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
+                        {r.driver?.full_name ?? "Driver"}
+                        {vehicle ? ` · ${vehicle}` : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {distLabel}
+                        {travelSec != null ? ` · ${Math.round(travelSec / 60)} min` : ""}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold">
+                        {formatZAR(Number(r.estimated_price))}
+                      </p>
+                      <RideStatusBadge status={r.status} />
+                    </div>
+                  </div>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }
+
 
 function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
