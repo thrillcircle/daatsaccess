@@ -708,6 +708,7 @@ function AdminActionsDialog({
   passenger,
   driver,
   vehicle,
+  fleetVehicle,
   payment,
   onChanged,
 }: {
@@ -715,6 +716,7 @@ function AdminActionsDialog({
   passenger: Profile | null;
   driver: Profile | null;
   vehicle: Vehicle | null;
+  fleetVehicle: FleetVehicle | null;
   payment: PaymentRow | null;
   onChanged: () => void;
 }) {
@@ -724,6 +726,9 @@ function AdminActionsDialog({
   const [selectedDriver, setSelectedDriver] = useState<string>(ride.driver_id ?? "");
   const [selectedStatus, setSelectedStatus] = useState<RideStatus>(ride.status);
   const [selectedPayment, setSelectedPayment] = useState<PaymentStatus | "">(payment?.status ?? "");
+  const [fleetRanked, setFleetRanked] = useState<Suitability[]>([]);
+  const [selectedFleet, setSelectedFleet] = useState<string>(ride.vehicle_id ?? "");
+
 
   useEffect(() => {
     if (!open) return;
