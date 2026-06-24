@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
-import { Search, Star, KeyRound, Loader2, Eye, EyeOff, ShieldAlert, Check, Settings2, Phone, MessageSquare, ExternalLink, Car } from "lucide-react";
+import { Search, Star, KeyRound, Loader2, Eye, EyeOff, ShieldAlert, Check, Settings2, Phone, MessageSquare, ExternalLink, Car, History } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -59,6 +59,16 @@ const VALID_FILTERS = new Set<FilterKey>(FILTERS.map((f) => f.key));
 const ACTIVE_STATUSES = ["requested", "accepted", "driver_arriving", "arrived", "in_progress"] as const;
 const PIN_LOCK_WINDOW_MIN = 15;
 const PIN_LOCK_THRESHOLD = 5;
+const PAGE_SIZE = 6;
+
+type StatusCounts = {
+  total: number;
+  scheduled: number;
+  active: number;
+  completed: number;
+  cancelled: number;
+};
+
 
 type TripsSearch = { status: FilterKey; q: string };
 
@@ -101,9 +111,17 @@ function AdminTripsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [hasMore, setHasMore] = useState(false);
+  const [counts, setCounts] = useState<StatusCounts | null>(null);
   const reload = () => setReloadKey((k) => k + 1);
 
   useEffect(() => setSearchInput(search.q), [search.q]);
+
+  // Reset pagination when filters change.
+  useEffect(() => {
+    setPageSize(PAGE_SIZE);
+  }, [active, debouncedSearch]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -115,6 +133,40 @@ function AdminTripsPage() {
     }, 300);
     return () => clearTimeout(t);
   }, [searchInput, navigate, search.q]);
+
+  // Status counts (unfiltered by search/status — always show totals).
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    (async () => {
+      const [total, scheduled, active, completed, cancelledQ] = await Promise.all([
+        supabase.from("rides").select("id", { count: "exact", head: true }),
+        supabase
+          .from("rides")
+          .select("id", { count: "exact", head: true })
+          .eq("request_type", "scheduled")
+          .in("status", ["requested", "accepted"]),
+        supabase
+          .from("rides")
+          .select("id", { count: "exact", head: true })
+          .in("status", ACTIVE_STATUSES as unknown as Ride["status"][]),
+        supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "completed"),
+        supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
+      ]);
+      if (cancelled) return;
+      setCounts({
+        total: total.count ?? 0,
+        scheduled: scheduled.count ?? 0,
+        active: active.count ?? 0,
+        completed: completed.count ?? 0,
+        cancelled: cancelledQ.count ?? 0,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, reloadKey]);
+
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -194,12 +246,15 @@ function AdminTripsPage() {
           : "created_at";
         const { data, error: err } = await query
           .order(orderCol, { ascending: active === "scheduled", nullsFirst: false })
-          .limit(100);
+          .limit(pageSize + 1);
         if (err) throw err;
 
         if (cancelled) return;
-        const list = (data ?? []) as Ride[];
+        const rows = (data ?? []) as Ride[];
+        setHasMore(rows.length > pageSize);
+        const list = rows.slice(0, pageSize);
         setRides(list);
+
 
         const personIds = Array.from(
           new Set(
@@ -275,7 +330,7 @@ function AdminTripsPage() {
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, active, debouncedSearch, reloadKey]);
+  }, [isAdmin, active, debouncedSearch, reloadKey, pageSize]);
 
   if (rolesLoading) {
     return (
@@ -302,6 +357,23 @@ function AdminTripsPage() {
   return (
     <AppShell title="Admin" nav={nav}>
       <AdminTabs />
+
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-5">
+          <CountChip label="Total" value={counts?.total ?? "—"} />
+          <CountChip label="Scheduled" value={counts?.scheduled ?? "—"} />
+          <CountChip label="Active" value={counts?.active ?? "—"} />
+          <CountChip label="Completed" value={counts?.completed ?? "—"} />
+          <CountChip label="Cancelled" value={counts?.cancelled ?? "—"} />
+        </div>
+        <Button asChild size="sm" variant="outline" className="h-8 text-xs">
+          <Link to="/app/admin/trip-history" search={{ status: "all", q: "", from: "", to: "" }}>
+            <History className="mr-1 h-3 w-3" /> Trip History
+          </Link>
+        </Button>
+      </div>
+
+
 
       <div className="relative mb-3">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -383,6 +455,24 @@ function AdminTripsPage() {
           ))
         )}
       </ul>
+
+      {!loading && rides.length > 0 && (
+        <div className="mt-3 flex justify-center">
+          {hasMore ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={() => setPageSize((s) => s + PAGE_SIZE)}
+            >
+              Load more
+            </Button>
+          ) : (
+            <span className="text-[11px] text-muted-foreground">No more trips</span>
+          )}
+        </div>
+      )}
+
     </AppShell>
   );
 }
@@ -1059,7 +1149,17 @@ function formatDuration(r: Ride): string {
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
+function CountChip({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg border bg-card px-2 py-1.5 text-center">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
 function Field({ label, value }: { label: string; value: string }) {
+
   return (
     <div className="min-w-0">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Activity, Users, ListOrdered, Car } from "lucide-react";
+import { LayoutDashboard, Activity, Users, ListOrdered, Car, History } from "lucide-react";
 
 const TABS: ReadonlyArray<{
   to: string;
@@ -9,10 +9,12 @@ const TABS: ReadonlyArray<{
 }> = [
   { to: "/app/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/app/admin/trips", label: "Trips", icon: ListOrdered },
+  { to: "/app/admin/trip-history", label: "History", icon: History },
   { to: "/app/admin/live", label: "Live Ops", icon: Activity },
   { to: "/app/admin/drivers", label: "Drivers", icon: Users },
   { to: "/app/admin/vehicles", label: "Vehicles", icon: Car },
 ];
+
 
 export function AdminTabs() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
