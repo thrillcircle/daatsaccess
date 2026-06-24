@@ -71,6 +71,8 @@ function AdminTripsPage() {
   const { user } = useAuth();
   const { roles, loading: rolesLoading } = useUserRoles(user?.id);
   const isAdmin = !!roles?.includes("admin");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/app/admin/trips" });
 
   const nav = useMemo(() => {
     const items = [];
@@ -80,108 +82,157 @@ function AdminTripsPage() {
     return items;
   }, [roles]);
 
-  const [active, setActive] = useState<FilterKey>("scheduled");
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const active = search.status;
+  const [searchInput, setSearchInput] = useState(search.q);
+  const [debouncedSearch, setDebouncedSearch] = useState(search.q);
   const [rides, setRides] = useState<Ride[]>([]);
   const [passengers, setPassengers] = useState<Map<string, Profile>>(new Map());
   const [drivers, setDrivers] = useState<Map<string, Profile>>(new Map());
   const [reviews, setReviews] = useState<Map<string, Review>>(new Map());
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => setSearchInput(search.q), [search.q]);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    const t = setTimeout(() => {
+      const trimmed = searchInput.trim();
+      setDebouncedSearch(trimmed);
+      if (trimmed !== search.q) {
+        navigate({ search: (p) => ({ ...p, q: trimmed }), replace: true });
+      }
+    }, 300);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [searchInput, navigate, search.q]);
 
   useEffect(() => {
     if (!isAdmin) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
-      // Resolve search-matched user ids first (by name or phone) so we can
-      // include them in the rides filter.
-      let userIdMatches: string[] | null = null;
-      const q = debouncedSearch;
-      if (q && q.length >= 2) {
-        const { data: profMatches } = await supabase
-          .from("profiles")
-          .select("user_id")
-          .or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`)
-          .limit(50);
-        userIdMatches = (profMatches ?? []).map((p) => p.user_id);
-      }
-
-      let query = supabase.from("rides").select("*");
-      if (active === "scheduled") {
-        query = query
-          .eq("request_type", "scheduled")
-          .in("status", ["requested", "accepted"]);
-      } else {
-        query = query.eq("status", active);
-      }
-
-      if (q) {
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(q);
-        const orParts: string[] = [
-          `pickup_address.ilike.%${q}%`,
-          `destination_address.ilike.%${q}%`,
-        ];
-        if (isUuid) orParts.push(`id.eq.${q}`);
-        if (userIdMatches && userIdMatches.length) {
-          const list = userIdMatches.join(",");
-          orParts.push(`passenger_id.in.(${list})`);
-          orParts.push(`driver_id.in.(${list})`);
+      setError(null);
+      try {
+        let userIdMatches: string[] | null = null;
+        const q = debouncedSearch;
+        if (q && q.length >= 2) {
+          const { data: profMatches } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`)
+            .limit(50);
+          userIdMatches = (profMatches ?? []).map((p) => p.user_id);
         }
-        query = query.or(orParts.join(","));
-      }
 
-      const orderCol = active === "scheduled" ? "scheduled_at" : active === "completed" ? "completed_at" : "created_at";
-      const { data } = await query.order(orderCol, { ascending: active === "scheduled", nullsFirst: false }).limit(100);
+        // PIN support required: active rides whose driver hit the failed
+        // attempt threshold inside the active lockout window. Admins can read
+        // ride_pin_attempts via RLS.
+        let pinRequiredIds: string[] | null = null;
+        if (active === "pin_required") {
+          const since = new Date(Date.now() - PIN_LOCK_WINDOW_MIN * 60_000).toISOString();
+          const { data: atts } = await supabase
+            .from("ride_pin_attempts")
+            .select("ride_id, success, attempted_at")
+            .gte("attempted_at", since)
+            .eq("success", false);
+          const counts = new Map<string, number>();
+          for (const a of atts ?? []) counts.set(a.ride_id, (counts.get(a.ride_id) ?? 0) + 1);
+          pinRequiredIds = Array.from(counts.entries())
+            .filter(([, n]) => n >= PIN_LOCK_THRESHOLD)
+            .map(([id]) => id);
+          if (!pinRequiredIds.length) {
+            setRides([]);
+            setPassengers(new Map());
+            setDrivers(new Map());
+            setReviews(new Map());
+            setLoading(false);
+            return;
+          }
+        }
 
-      if (cancelled) return;
-      const list = (data ?? []) as Ride[];
-      setRides(list);
+        let query = supabase.from("rides").select("*");
+        if (active === "scheduled") {
+          query = query
+            .eq("request_type", "scheduled")
+            .in("status", ["requested", "accepted"]);
+        } else if (active === "pin_required") {
+          query = query
+            .in("status", ACTIVE_STATUSES as unknown as Ride["status"][])
+            .in("id", pinRequiredIds!);
+        } else if (active !== "all") {
+          query = query.eq("status", active);
+        }
 
-      const personIds = Array.from(
-        new Set(
-          list
-            .flatMap((r) => [r.passenger_id, r.driver_id])
-            .filter((v): v is string => !!v),
-        ),
-      );
-      if (personIds.length) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("user_id, full_name, phone")
-          .in("user_id", personIds);
-        const m = new Map<string, Profile>(
-          ((profs ?? []) as Profile[]).map((p) => [p.user_id, p]),
+        if (q) {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(q);
+          const orParts: string[] = [
+            `pickup_address.ilike.%${q}%`,
+            `destination_address.ilike.%${q}%`,
+          ];
+          if (isUuid) orParts.push(`id.eq.${q}`);
+          if (userIdMatches && userIdMatches.length) {
+            const list = userIdMatches.join(",");
+            orParts.push(`passenger_id.in.(${list})`);
+            orParts.push(`driver_id.in.(${list})`);
+          }
+          query = query.or(orParts.join(","));
+        }
+
+        const orderCol =
+          active === "scheduled" ? "scheduled_at"
+          : active === "completed" ? "completed_at"
+          : "created_at";
+        const { data, error: err } = await query
+          .order(orderCol, { ascending: active === "scheduled", nullsFirst: false })
+          .limit(100);
+        if (err) throw err;
+
+        if (cancelled) return;
+        const list = (data ?? []) as Ride[];
+        setRides(list);
+
+        const personIds = Array.from(
+          new Set(
+            list
+              .flatMap((r) => [r.passenger_id, r.driver_id])
+              .filter((v): v is string => !!v),
+          ),
         );
-        if (!cancelled) {
-          setPassengers(m);
-          setDrivers(m);
-        }
-      } else {
-        setPassengers(new Map());
-        setDrivers(new Map());
-      }
-
-      if (active === "completed" && list.length) {
-        const rideIds = list.map((r) => r.id);
-        const { data: revs } = await supabase
-          .from("ride_reviews")
-          .select("ride_id, rating, comment")
-          .in("ride_id", rideIds);
-        if (!cancelled) {
-          setReviews(
-            new Map(((revs ?? []) as Review[]).map((r) => [r.ride_id, r])),
+        if (personIds.length) {
+          const { data: profs } = await supabase
+            .from("profiles")
+            .select("user_id, full_name, phone")
+            .in("user_id", personIds);
+          const m = new Map<string, Profile>(
+            ((profs ?? []) as Profile[]).map((p) => [p.user_id, p]),
           );
+          if (!cancelled) {
+            setPassengers(m);
+            setDrivers(m);
+          }
+        } else {
+          setPassengers(new Map());
+          setDrivers(new Map());
         }
-      } else {
-        setReviews(new Map());
+
+        if (active === "completed" && list.length) {
+          const rideIds = list.map((r) => r.id);
+          const { data: revs } = await supabase
+            .from("ride_reviews")
+            .select("ride_id, rating, comment")
+            .in("ride_id", rideIds);
+          if (!cancelled) {
+            setReviews(
+              new Map(((revs ?? []) as Review[]).map((r) => [r.ride_id, r])),
+            );
+          }
+        } else {
+          setReviews(new Map());
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load trips");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     })();
     return () => {
       cancelled = true;
@@ -207,6 +258,9 @@ function AdminTripsPage() {
     );
   }
 
+  const activeLabel = FILTERS.find((f) => f.key === active)?.label ?? "All";
+  const filtersApplied = active !== "all" || !!debouncedSearch;
+
   return (
     <AppShell title="Admin" nav={nav}>
       <AdminTabs />
@@ -214,9 +268,9 @@ function AdminTripsPage() {
       <div className="relative mb-3">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name, phone, ride ID, pickup or destination"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search name, phone, ride ID, plate, pickup or destination"
           className="pl-9"
         />
       </div>
@@ -228,12 +282,43 @@ function AdminTripsPage() {
             size="sm"
             variant={active === f.key ? "default" : "outline"}
             className="h-8 text-xs"
-            onClick={() => setActive(f.key)}
+            onClick={() =>
+              navigate({ search: (p) => ({ ...p, status: f.key }) })
+            }
           >
             {f.label}
           </Button>
         ))}
       </div>
+
+      <div className="mb-3 flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">
+          Showing <span className="font-medium text-foreground">{activeLabel}</span>
+          {debouncedSearch && (
+            <> matching "<span className="font-medium text-foreground">{debouncedSearch}</span>"</>
+          )}{" "}
+          · {rides.length} result{rides.length === 1 ? "" : "s"}
+        </span>
+        {filtersApplied && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs"
+            onClick={() => {
+              setSearchInput("");
+              navigate({ search: { status: "all", q: "" } });
+            }}
+          >
+            Clear filters
+          </Button>
+        )}
+      </div>
+
+      {error && (
+        <div className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {error}
+        </div>
+      )}
 
       <ul className="divide-y rounded-2xl border bg-card">
         {loading ? (
@@ -260,6 +345,7 @@ function AdminTripsPage() {
     </AppShell>
   );
 }
+
 
 function TripRow({
   ride,
