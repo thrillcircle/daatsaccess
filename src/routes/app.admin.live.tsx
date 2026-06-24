@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
-import { AppShell, NAV_ICONS } from "@/components/AppShell";
-import { AdminTabs } from "@/components/AdminTabs";
+import { AdminShell } from "@/components/AdminShell";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { LiveTripMap } from "@/components/LiveTripMap";
 import { Badge } from "@/components/ui/badge";
@@ -244,18 +243,18 @@ function LivePage() {
 
   if (rolesLoading) {
     return (
-      <AppShell title="Admin" nav={nav}>
+      <AdminShell title="Live Operations">
         <p className="text-sm text-muted-foreground">Loading…</p>
-      </AppShell>
+      </AdminShell>
     );
   }
   if (!isAdmin) {
     return (
-      <AppShell title="Admin" nav={nav}>
+      <AdminShell title="Live Operations">
         <div className="rounded-2xl border bg-card p-6 text-center">
           <h2 className="font-semibold">Admins only</h2>
         </div>
-      </AppShell>
+      </AdminShell>
     );
   }
 
@@ -265,9 +264,7 @@ function LivePage() {
   const onlineCount = onlineDrivers.length;
 
   return (
-    <AppShell title="Admin" nav={nav}>
-      <AdminTabs />
-
+    <AdminShell title="Live Operations">
       <div className="mb-3 grid grid-cols-3 gap-2 text-center text-xs">
         <Stat label="Active trips" value={rides.length} />
         <Stat label="Drivers online" value={onlineCount} />
@@ -437,7 +434,7 @@ function LivePage() {
           )}
         </ul>
       </section>
-    </AppShell>
+    </AdminShell>
   );
 }
 

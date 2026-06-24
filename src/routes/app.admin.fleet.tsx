@@ -2,8 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
-import { AppShell, NAV_ICONS } from "@/components/AppShell";
-import { AdminTabs } from "@/components/AdminTabs";
+import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -150,7 +149,7 @@ function VehiclesPage() {
     if (!rolesLoading && !isAdmin) navigate({ to: "/app" });
   }, [rolesLoading, isAdmin, navigate]);
 
-  if (rolesLoading) return <AppShell nav={[]}><div className="p-6 text-sm text-muted-foreground">Loading…</div></AppShell>;
+  if (rolesLoading) return <AdminShell title="Fleet"><div className="p-6 text-sm text-muted-foreground">Loading…</div></AdminShell>;
   if (!isAdmin) return null;
 
   const driverName = (id: string | null) => {
@@ -175,10 +174,8 @@ function VehiclesPage() {
   );
 
   return (
-    <AppShell nav={nav}>
+    <AdminShell title="Fleet">
       <div className="mx-auto max-w-6xl p-4">
-        <AdminTabs />
-
         <div className="mb-4 flex items-center justify-between gap-2">
           <div>
             <h1 className="text-xl font-semibold">Fleet Management</h1>
@@ -224,7 +221,7 @@ function VehiclesPage() {
           </div>
         )}
       </div>
-    </AppShell>
+    </AdminShell>
   );
 }
 
