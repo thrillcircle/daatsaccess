@@ -7,16 +7,24 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RouteMap } from "@/components/RouteMap";
+import { LiveTripMap } from "@/components/LiveTripMap";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
-import { MapPin, Navigation, AlertTriangle, Bell } from "lucide-react";
+import { MapPin, Navigation, AlertTriangle, Bell, Phone, Clock, Pencil } from "lucide-react";
 import { useLiveLocation } from "@/hooks/use-live-location";
 import { useRideChanges } from "@/hooks/use-ride-changes";
+import { useRideLiveLocations } from "@/hooks/use-ride-live-locations";
 import { useServerFn } from "@tanstack/react-start";
 import { acknowledgeRideChange } from "@/lib/ride-edit.functions";
+import {
+  getRidePassengerDetails,
+  type PassengerDetails,
+} from "@/lib/driver-trip.functions";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
@@ -388,20 +396,80 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
     }
   }
 
+  // Passenger contact (active rides only — hidden after completion/cancel).
+  const fetchPassenger = useServerFn(getRidePassengerDetails);
+  const [passenger, setPassenger] = useState<PassengerDetails | null | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    setPassenger(undefined);
+    fetchPassenger({ data: { rideId: ride.id } })
+      .then((p) => !cancelled && setPassenger(p))
+      .catch(() => !cancelled && setPassenger(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [ride.id, ride.status, fetchPassenger]);
+
+  // Live positions for both participants on this ride.
+  const liveRows = useRideLiveLocations(ride.id);
+  const driverLive = liveRows.find((r) => r.user_role === "driver");
+  const passengerLive = liveRows.find((r) => r.user_role === "passenger");
+  const driverPos = driverLive
+    ? { lat: Number(driverLive.latitude), lng: Number(driverLive.longitude) }
+    : null;
+  const passengerPos = passengerLive
+    ? { lat: Number(passengerLive.latitude), lng: Number(passengerLive.longitude) }
+    : null;
+  const pickup = { lat: ride.pickup_lat, lng: ride.pickup_lng };
+  const destination = { lat: ride.destination_lat, lng: ride.destination_lng };
+  const beforePickup = ["accepted", "driver_arriving", "arrived"].includes(ride.status);
+  const inProgress = ride.status === "in_progress";
+
+  // Distance + ETA to pickup (simple 30 km/h urban estimate when no live route).
+  let distanceToPickupKm: number | null = null;
+  let etaToPickupMin: number | null = null;
+  if (driverPos && beforePickup) {
+    distanceToPickupKm = haversineKm(driverPos, pickup);
+    etaToPickupMin = Math.max(1, Math.round((distanceToPickupKm / 30) * 60));
+  }
+  const etaToDestMin =
+    ride.estimated_duration_seconds != null
+      ? Math.max(1, Math.round(ride.estimated_duration_seconds / 60))
+      : null;
+  const pickupEtaClock = etaToPickupMin != null ? clockIn(etaToPickupMin) : null;
+  const destEtaClock = etaToDestMin != null
+    ? clockIn((etaToPickupMin ?? 0) + etaToDestMin)
+    : null;
+
+  const wasEdited = (ride.route_version ?? 1) > 1;
+
   return (
     <section className="mt-4 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Active ride
         </h2>
-        <RideStatusBadge status={ride.status} />
+        <div className="flex items-center gap-2">
+          {wasEdited && (
+            <Badge variant="outline" className="gap-1">
+              <Pencil className="h-3 w-3" /> Edited · v{ride.route_version}
+            </Badge>
+          )}
+          <RideStatusBadge status={ride.status} />
+        </div>
       </div>
       <TripChangeAlerts ride={ride} />
-      <RouteMap
-        origin={{ lat: ride.pickup_lat, lng: ride.pickup_lng }}
-        destination={{ lat: ride.destination_lat, lng: ride.destination_lng }}
+      <LiveTripMap
+        pickup={pickup}
+        destination={destination}
+        driver={driverPos}
+        passenger={passengerPos}
+        phase={inProgress ? "inProgress" : "beforePickup"}
         className="h-48"
       />
+
+      <PassengerCard passenger={passenger} />
+
       <dl className="mt-3 space-y-2 text-sm">
         <p className="flex items-start gap-2">
           <MapPin className="mt-0.5 h-4 w-4 text-primary" />
@@ -411,11 +479,43 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
           <Navigation className="mt-0.5 h-4 w-4 text-primary" />
           <span className="truncate">{ride.destination_address}</span>
         </p>
-        <div className="flex items-center justify-between pt-2">
-          <span className="text-muted-foreground">Fare</span>
-          <span className="font-semibold">{formatZAR(Number(ride.estimated_price))}</span>
+
+        <div className="grid grid-cols-2 gap-2 rounded-lg bg-secondary px-3 py-2 text-xs">
+          {beforePickup && (
+            <Stat
+              label="To pickup"
+              value={
+                distanceToPickupKm != null
+                  ? `${distanceToPickupKm.toFixed(1)} km · ~${etaToPickupMin} min`
+                  : "Waiting for GPS…"
+              }
+            />
+          )}
+          <Stat
+            label={beforePickup ? "Pickup ETA" : "Trip time"}
+            value={
+              beforePickup
+                ? pickupEtaClock ?? "—"
+                : etaToDestMin != null
+                  ? `~${etaToDestMin} min`
+                  : "—"
+            }
+          />
+          <Stat
+            label="Drop-off ETA"
+            value={destEtaClock ?? (etaToDestMin != null ? `~${etaToDestMin} min` : "—")}
+          />
+          <Stat label="Fare" value={formatZAR(Number(ride.estimated_price))} />
         </div>
+
+        {wasEdited && ride.last_route_updated_at && (
+          <p className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            Route last edited {timeAgo(ride.last_route_updated_at)}
+          </p>
+        )}
       </dl>
+
       {nextStatus[ride.status] && (
         <Button className="mt-4 w-full" size="lg" onClick={advance}>
           {nextLabel[ride.status]}
@@ -428,6 +528,83 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
       )}
     </section>
   );
+}
+
+function PassengerCard({
+  passenger,
+}: {
+  passenger: PassengerDetails | null | undefined;
+}) {
+  if (passenger === undefined) {
+    return (
+      <div className="mt-3 flex items-center gap-3 rounded-xl border bg-background p-3">
+        <Skeleton className="h-10 w-10 rounded-full" />
+        <Skeleton className="h-4 w-1/2" />
+      </div>
+    );
+  }
+  if (!passenger) return null;
+  return (
+    <div className="mt-3 flex items-center gap-3 rounded-xl border bg-background p-3">
+      <Avatar className="h-10 w-10">
+        {passenger.avatarUrl && (
+          <AvatarImage src={passenger.avatarUrl} alt={passenger.fullName ?? "Passenger"} />
+        )}
+        <AvatarFallback>
+          {(passenger.fullName ?? "P").slice(0, 1).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">
+          {passenger.fullName ?? "Your passenger"}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">
+          {passenger.phone ?? "No phone on file"}
+        </p>
+      </div>
+      {passenger.phone && (
+        <Button asChild size="sm" variant="outline" className="shrink-0">
+          <a href={`tel:${passenger.phone}`} aria-label={`Call ${passenger.fullName ?? "passenger"}`}>
+            <Phone className="h-4 w-4" />
+          </a>
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium">{value}</p>
+    </div>
+  );
+}
+
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function clockIn(minutes: number) {
+  const d = new Date(Date.now() + minutes * 60_000);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function timeAgo(iso: string) {
+  const diff = Math.max(0, Date.now() - new Date(iso).getTime());
+  if (diff < 60_000) return "just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
+  return `${Math.floor(diff / 3_600_000)}h ago`;
 }
 
 function TripChangeAlerts({ ride }: { ride: Ride }) {
