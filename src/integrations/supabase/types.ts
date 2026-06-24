@@ -141,6 +141,38 @@ export type Database = {
           },
         ]
       }
+      pin_access_audit: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string
+          id: string
+          ride_id: string
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string
+          id?: string
+          ride_id: string
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string
+          id?: string
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pin_access_audit_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -550,7 +582,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_acknowledge_pin_alert: { Args: { _ride_id: string }; Returns: Json }
       admin_reset_ride_pin: { Args: { _ride_id: string }; Returns: Json }
+      admin_view_ride_pin: { Args: { _ride_id: string }; Returns: Json }
       generate_ride_pin: { Args: never; Returns: string }
       notify_approaching_scheduled_rides: { Args: never; Returns: undefined }
       short_addr: { Args: { t: string }; Returns: string }
