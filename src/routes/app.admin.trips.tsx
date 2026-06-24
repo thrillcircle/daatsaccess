@@ -9,10 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
-import { Search, Star, KeyRound, Loader2 } from "lucide-react";
+import { Search, Star, KeyRound, Loader2, Eye, EyeOff, ShieldAlert, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { adminResetRidePin } from "@/lib/ride-pin.functions";
+import {
+  adminResetRidePin,
+  adminViewRidePin,
+  adminAcknowledgePinAlert,
+} from "@/lib/ride-pin.functions";
 import type { Database } from "@/integrations/supabase/types";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
