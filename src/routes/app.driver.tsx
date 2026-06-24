@@ -11,6 +11,14 @@ import { LiveTripMap } from "@/components/LiveTripMap";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
 import { toast } from "sonner";
