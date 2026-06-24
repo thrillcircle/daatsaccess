@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
-import { Search, Star, KeyRound, Loader2, Eye, EyeOff, ShieldAlert, Check } from "lucide-react";
+import { Search, Star, KeyRound, Loader2, Eye, EyeOff, ShieldAlert, Check, Settings2, Phone, MessageSquare, ExternalLink, Car } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -18,6 +18,9 @@ import {
   adminAcknowledgePinAlert,
 } from "@/lib/ride-pin.functions";
 import type { Database } from "@/integrations/supabase/types";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type Profile = { user_id: string; full_name: string | null; phone: string | null };
