@@ -1,0 +1,1 @@
+CREATE POLICY "admins manage driver profiles" ON public.driver_profiles FOR ALL TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(), 'admin'::app_role));
