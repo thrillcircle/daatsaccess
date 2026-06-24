@@ -17,31 +17,35 @@ Access is a mobile-first ride-hailing MVP for South Africa.
 The current MVP includes:
 
 - Passenger registration and authentication
-- Passenger ride requests
-- Pickup and destination selection
+- Passenger ride requests (immediate and scheduled)
+- Pickup and destination selection with Google Places autocomplete
 - Route, distance, and duration calculation
 - Estimated fare calculation
+- Active-trip editing (pickup before driver arrives, destination through in-progress)
 - Driver onboarding and vehicle details
 - Driver online/offline availability
 - Available ride requests
-- Driver ride acceptance
-- Ride-status updates
-- Passenger trip history
+- Atomic driver ride acceptance
+- Ride-status updates across the full lifecycle (requested → accepted → driver_arriving → arrived → in_progress → completed)
+- Live driver location sharing and live trip map for the passenger
+- Passenger trip history (completed and cancelled)
 - Driver trip and earnings history
-- Basic admin dashboard
-- Realtime ride-status updates
+- Driver ratings and reviews submitted by the passenger
+- In-app notifications (driver accepted, trip edited, trip approaching, trip completed, review submitted, cancellation)
+- Admin dashboard with live operations, trip filtering across all statuses, and user/driver search
+- Realtime ride-status, location, and change-log updates
+- Profile photo, name and phone editing backed by the private `avatars` storage bucket
 
 The following features are not included yet:
 
 - Payment-gateway integration
 - WhatsApp integration
-- Automated notifications
-- Driver ratings
-- Passenger ratings
-- Scheduled rides
+- Push notifications (in-app notifications only)
+- Passenger ratings (driver-rating only)
 - Advanced proximity-based driver matching
 - Automatic driver dispatch
 - Production-ready identity and document verification
+
 
 ## Database tables
 
