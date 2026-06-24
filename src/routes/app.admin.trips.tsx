@@ -95,9 +95,13 @@ function AdminTripsPage() {
   const [rides, setRides] = useState<Ride[]>([]);
   const [passengers, setPassengers] = useState<Map<string, Profile>>(new Map());
   const [drivers, setDrivers] = useState<Map<string, Profile>>(new Map());
+  const [vehicles, setVehicles] = useState<Map<string, Vehicle>>(new Map());
+  const [payments, setPayments] = useState<Map<string, PaymentRow>>(new Map());
   const [reviews, setReviews] = useState<Map<string, Review>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = () => setReloadKey((k) => k + 1);
 
   useEffect(() => setSearchInput(search.q), [search.q]);
 
