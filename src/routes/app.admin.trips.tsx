@@ -108,6 +108,8 @@ function AdminTripsPage() {
   const [vehicles, setVehicles] = useState<Map<string, Vehicle>>(new Map());
   const [payments, setPayments] = useState<Map<string, PaymentRow>>(new Map());
   const [reviews, setReviews] = useState<Map<string, Review>>(new Map());
+  const [fleetVehicles, setFleetVehicles] = useState<Map<string, FleetVehicle>>(new Map());
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
