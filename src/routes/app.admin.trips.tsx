@@ -949,6 +949,75 @@ function AdminActionsDialog({
             </Button>
           </div>
 
+          {/* Assign fleet vehicle (suitability-ranked) */}
+          <div className="space-y-1">
+            <Label className="text-xs">Assign fleet vehicle</Label>
+            <Select value={selectedFleet || "__none"} onValueChange={(v) => setSelectedFleet(v === "__none" ? "" : v)}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Select a vehicle" />
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                <SelectItem value="__none">Unassigned</SelectItem>
+                {fleetRanked.length === 0 && (
+                  <SelectItem value="__empty" disabled>
+                    No fleet vehicles
+                  </SelectItem>
+                )}
+                {fleetRanked.map((s) => {
+                  const v = s.vehicle;
+                  const tag = s.suitable
+                    ? s.warnings.length
+                      ? " ⚠"
+                      : " ✓"
+                    : " ✕";
+                  return (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.vehicle_name} · {v.license_plate}
+                      {v.passenger_capacity != null ? ` · ${v.passenger_capacity} pax` : ""}
+                      {v.wheelchair_accessible ? " · WC" : ""}
+                      {tag}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            {(() => {
+              const picked = fleetRanked.find((s) => s.vehicle.id === selectedFleet);
+              if (!picked) return null;
+              return (
+                <div className="flex flex-wrap gap-1">
+                  {picked.blocking.map((r, i) => (
+                    <Badge key={`b${i}`} variant="destructive" className="text-[10px]">{r.label}</Badge>
+                  ))}
+                  {picked.warnings.map((r, i) => (
+                    <Badge key={`w${i}`} className="bg-amber-500/20 text-amber-800 text-[10px] dark:text-amber-200">
+                      {r.label}
+                    </Badge>
+                  ))}
+                  {picked.suitable && picked.warnings.length === 0 && (
+                    <Badge variant="secondary" className="text-[10px]">Suitable</Badge>
+                  )}
+                </div>
+              );
+            })()}
+            <Button
+              size="sm"
+              disabled={busy || terminal || selectedFleet === (ride.vehicle_id ?? "")}
+              onClick={onAssignFleetVehicle}
+              className="h-8 text-xs"
+            >
+              {busy && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+              {selectedFleet ? "Assign vehicle" : "Clear vehicle"}
+            </Button>
+            <p className="text-[10px] text-muted-foreground">
+              {fleetVehicle
+                ? `Currently: ${fleetVehicle.vehicle_name} · ${fleetVehicle.license_plate}`
+                : "No fleet vehicle assigned to this trip."}
+            </p>
+          </div>
+
+
+
           {/* Change status */}
           <div className="space-y-1">
             <Label className="text-xs">Change status</Label>
