@@ -59,6 +59,16 @@ const VALID_FILTERS = new Set<FilterKey>(FILTERS.map((f) => f.key));
 const ACTIVE_STATUSES = ["requested", "accepted", "driver_arriving", "arrived", "in_progress"] as const;
 const PIN_LOCK_WINDOW_MIN = 15;
 const PIN_LOCK_THRESHOLD = 5;
+const PAGE_SIZE = 6;
+
+type StatusCounts = {
+  total: number;
+  scheduled: number;
+  active: number;
+  completed: number;
+  cancelled: number;
+};
+
 
 type TripsSearch = { status: FilterKey; q: string };
 
