@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Gauge, Wrench, UserPlus, StickyNote, Loader2, Accessibility } from "lucide-react";
+import { Plus, Pencil, Gauge, Wrench, UserPlus, StickyNote, Loader2, Accessibility, ExternalLink, ShieldCheck, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 import { getVehicleAlerts, highestSeverity } from "@/lib/vehicle-alerts";
@@ -36,11 +36,28 @@ type VehicleInsert = Database["public"]["Tables"]["vehicle_profiles"]["Insert"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 const STATUSES = ["active", "in_maintenance", "out_of_service", "retired"] as const;
+const ACTIVE_RIDE_STATUSES = ["requested", "accepted", "driver_arriving", "arrived", "in_progress"] as const;
+
+type FleetStats = {
+  total: number;
+  available: number;
+  assignedToday: number;
+  inMaintenance: number;
+  serviceDueSoon: number;
+  expiredDocs: number;
+};
+
+type VehicleTripStats = {
+  upcoming: number;
+  completed: number;
+  estimatedKm: number;
+};
 
 export const Route = createFileRoute("/app/admin/fleet")({
-  head: () => ({ meta: [{ title: "Vehicles — Admin" }] }),
+  head: () => ({ meta: [{ title: "Fleet — Admin" }] }),
   component: VehiclesPage,
 });
+
 
 function VehiclesPage() {
   const { user } = useAuth();
