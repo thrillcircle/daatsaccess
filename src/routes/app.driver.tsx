@@ -562,19 +562,45 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
         )}
       </dl>
 
-      {nextStatus[ride.status] && (
-        <Button className="mt-4 w-full" size="lg" onClick={advance}>
-          {nextLabel[ride.status]}
+      {navBlocked && (
+        <Button
+          className="mt-3 w-full"
+          size="lg"
+          variant="secondary"
+          onClick={() => {
+            const win = launchNav();
+            if (win) toast.success("Opened Google Maps");
+          }}
+        >
+          <ExternalLink className="mr-2 h-4 w-4" />
+          Open Google Maps Navigation to {navTarget.label}
+        </Button>
+      )}
+
+      {(ride.status === "accepted" || ride.status === "driver_arriving") && (
+        <Button className="mt-4 w-full" size="lg" onClick={onArrived} disabled={busy}>
+          I've arrived at pickup
+        </Button>
+      )}
+      {ride.status === "arrived" && (
+        <Button className="mt-4 w-full" size="lg" onClick={onStart} disabled={busy}>
+          Start trip
+        </Button>
+      )}
+      {ride.status === "in_progress" && (
+        <Button className="mt-4 w-full" size="lg" onClick={onComplete} disabled={busy}>
+          Complete trip
         </Button>
       )}
       {ride.status !== "in_progress" && (
-        <Button variant="outline" className="mt-2 w-full" onClick={cancel}>
+        <Button variant="outline" className="mt-2 w-full" onClick={cancel} disabled={busy}>
           Cancel
         </Button>
       )}
     </section>
   );
 }
+
 
 function PassengerCard({
   passenger,
