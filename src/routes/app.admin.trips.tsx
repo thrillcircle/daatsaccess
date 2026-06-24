@@ -27,8 +27,10 @@ type RideStatus = Database["public"]["Enums"]["ride_status"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
 type Profile = { user_id: string; full_name: string | null; phone: string | null };
 type Vehicle = { user_id: string; vehicle_model: string | null; license_plate: string | null; vehicle_type: string | null };
+type FleetVehicle = Database["public"]["Tables"]["vehicle_profiles"]["Row"];
 type PaymentRow = { ride_id: string; status: PaymentStatus; amount: number; payment_method: string | null };
 type Review = { ride_id: string; rating: number; comment: string | null };
+
 
 type FilterKey =
   | "all"
