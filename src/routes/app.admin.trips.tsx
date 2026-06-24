@@ -358,6 +358,23 @@ function AdminTripsPage() {
     <AppShell title="Admin" nav={nav}>
       <AdminTabs />
 
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-5">
+          <CountChip label="Total" value={counts?.total ?? "—"} />
+          <CountChip label="Scheduled" value={counts?.scheduled ?? "—"} />
+          <CountChip label="Active" value={counts?.active ?? "—"} />
+          <CountChip label="Completed" value={counts?.completed ?? "—"} />
+          <CountChip label="Cancelled" value={counts?.cancelled ?? "—"} />
+        </div>
+        <Button asChild size="sm" variant="outline" className="h-8 text-xs">
+          <Link to="/app/admin/trip-history" search={{ status: "all", q: "", from: "", to: "" }}>
+            <History className="mr-1 h-3 w-3" /> Trip History
+          </Link>
+        </Button>
+      </div>
+
+
+
       <div className="relative mb-3">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
