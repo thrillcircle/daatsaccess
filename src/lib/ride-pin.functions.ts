@@ -48,3 +48,49 @@ export const adminResetRidePin = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return result as { status: "reset"; pin: string };
   });
+
+export type AdminViewPinResult = {
+  pin: string;
+  ride_id: string;
+  status: string;
+  passenger_name: string | null;
+  driver_name: string | null;
+};
+
+/**
+ * Admin-only: reveal the 4-digit PIN for an active ride and write a
+ * `pin_viewed` audit entry. Enforced inside `public.admin_view_ride_pin`.
+ */
+export const adminViewRidePin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ rideId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }): Promise<AdminViewPinResult> => {
+    const { data: result, error } = await context.supabase.rpc(
+      "admin_view_ride_pin",
+      { _ride_id: data.rideId },
+    );
+    if (error) throw new Error(error.message);
+    return result as AdminViewPinResult;
+  });
+
+/**
+ * Admin-only: acknowledge any open 5th-attempt PIN alerts for a ride.
+ * Marks the admin's own `pin_failed_attempt_limit` notifications read and
+ * writes an `alert_acknowledged` audit row. Does NOT unlock verification
+ * or change the PIN.
+ */
+export const adminAcknowledgePinAlert = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ rideId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: result, error } = await context.supabase.rpc(
+      "admin_acknowledge_pin_alert",
+      { _ride_id: data.rideId },
+    );
+    if (error) throw new Error(error.message);
+    return result as { acknowledged: number };
+  });
