@@ -238,8 +238,46 @@ function PassengerBookingsPage() {
                   ) : null}
                   <div><dt className="text-muted-foreground">Quote</dt><dd>{q ? `${q.status} · ${formatZAR(Number(q.total))}` : "—"}</dd></div>
                   <div><dt className="text-muted-foreground">Estimated</dt><dd>{b.estimated_total != null ? formatZAR(Number(b.estimated_total)) : "—"}</dd></div>
+                  {b.service_type === "extended_journey" ? (
+                    <>
+                      {b.end_at ? <div className="col-span-2"><dt className="text-muted-foreground">Ends</dt><dd>{new Date(b.end_at).toLocaleDateString("en-ZA", { dateStyle: "medium" })}</dd></div> : null}
+                      <div><dt className="text-muted-foreground">Deposit</dt><dd>{b.deposit_amount != null ? `${formatZAR(Number(b.deposit_amount))} · ${b.deposit_status}` : b.deposit_status}</dd></div>
+                      <div><dt className="text-muted-foreground">Companions</dt><dd>{comps.length ? comps.map((c) => c.full_name).join(", ") : `${b.requested_companion_count} requested`}</dd></div>
+                    </>
+                  ) : null}
                   {ride ? <div className="col-span-2"><dt className="text-muted-foreground">Ride status</dt><dd>{ride.status.replace("_", " ")}</dd></div> : null}
                 </dl>
+
+                {b.service_type === "extended_journey" && q ? (
+                  <details className="mt-2 rounded-lg border bg-background/40 p-2 text-xs">
+                    <summary className="cursor-pointer font-medium">Quote breakdown ({quoteItems.filter((qi) => qi.quote_id === q.id).length} line items)</summary>
+                    <ul className="mt-2 space-y-1">
+                      {quoteItems.filter((qi) => qi.quote_id === q.id).map((qi) => (
+                        <li key={qi.id} className="flex justify-between gap-2">
+                          <span className="truncate">{qi.label} × {Number(qi.quantity)}</span>
+                          <span className="font-mono">{formatZAR(Number(qi.line_total))}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {q.valid_until ? <p className="mt-2 text-[11px] text-muted-foreground">Valid until {new Date(q.valid_until).toLocaleDateString("en-ZA")}</p> : null}
+                    {q.notes ? <p className="mt-1 text-[11px] text-muted-foreground">{q.notes}</p> : null}
+                  </details>
+                ) : null}
+
+                {b.service_type === "extended_journey" && itinerary.some((i) => i.booking_id === b.id) ? (
+                  <details className="mt-2 rounded-lg border bg-background/40 p-2 text-xs">
+                    <summary className="cursor-pointer font-medium">Itinerary</summary>
+                    <ol className="mt-2 space-y-1">
+                      {itinerary.filter((i) => i.booking_id === b.id).map((i) => (
+                        <li key={i.id}>
+                          <span className="font-medium">Day {i.day_number} · {i.item_type}:</span> {i.title ?? "—"}
+                          {i.address ? ` · ${i.address}` : ""}
+                          {" · "}<span className="text-muted-foreground">{i.status}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                ) : null}
 
                 <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-secondary/60 px-3 py-2 text-xs">
                   <span className="min-w-0 truncate"><span className="font-medium">Next:</span> {nextAction}</span>
