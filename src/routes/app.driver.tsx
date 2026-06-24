@@ -397,8 +397,6 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
         <RideStatusBadge status={ride.status} />
       </div>
       <TripChangeAlerts ride={ride} />
-        <RideStatusBadge status={ride.status} />
-      </div>
       <RouteMap
         origin={{ lat: ride.pickup_lat, lng: ride.pickup_lng }}
         destination={{ lat: ride.destination_lat, lng: ride.destination_lng }}
@@ -429,5 +427,81 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
         </Button>
       )}
     </section>
+  );
+}
+
+function TripChangeAlerts({ ride }: { ride: Ride }) {
+  const changes = useRideChanges(ride.id);
+  const ack = useServerFn(acknowledgeRideChange);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const pending = changes.filter((c) => !c.acknowledged_by_driver_at);
+  if (!pending.length) return null;
+
+  async function onAck(id: string) {
+    setBusy(id);
+    try {
+      await ack({ data: { changeId: id } });
+      toast.success("Acknowledged — drive to the updated stop");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not acknowledge");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="mb-3 space-y-2">
+      {pending.map((c) => {
+        const prev = (c.previous_values ?? {}) as Record<string, unknown>;
+        const next = (c.new_values ?? {}) as Record<string, unknown>;
+        return (
+          <div
+            key={c.id}
+            className="rounded-xl border border-warning bg-warning/10 p-3 text-sm"
+          >
+            <div className="mb-2 flex items-center gap-2 font-medium">
+              <Bell className="h-4 w-4" />
+              Trip updated by passenger
+            </div>
+            <ul className="space-y-1 text-xs">
+              {"pickup_address" in next && (
+                <li>
+                  <span className="text-muted-foreground">Pickup: </span>
+                  <span className="line-through opacity-70">
+                    {String(prev.pickup_address ?? "")}
+                  </span>{" "}
+                  → <span className="font-medium">{String(next.pickup_address)}</span>
+                </li>
+              )}
+              {"destination_address" in next && (
+                <li>
+                  <span className="text-muted-foreground">Destination: </span>
+                  <span className="line-through opacity-70">
+                    {String(prev.destination_address ?? "")}
+                  </span>{" "}
+                  →{" "}
+                  <span className="font-medium">{String(next.destination_address)}</span>
+                </li>
+              )}
+              {"estimated_price" in next && (
+                <li className="text-muted-foreground">
+                  New fare: {formatZAR(Number(next.estimated_price))} ·{" "}
+                  {Number(next.distance_km ?? 0).toFixed(2)} km
+                </li>
+              )}
+            </ul>
+            <Button
+              size="sm"
+              className="mt-2 w-full"
+              onClick={() => onAck(c.id)}
+              disabled={busy === c.id}
+            >
+              {busy === c.id ? "Acknowledging…" : "Acknowledge update"}
+            </Button>
+          </div>
+        );
+      })}
+    </div>
   );
 }
