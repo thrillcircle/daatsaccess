@@ -78,7 +78,7 @@ function AdminPage() {
       if (cancelled) return;
       const all = (allRides.data ?? []) as Ride[];
       const completedRides = all.filter((r) => r.status === "completed");
-      const earnings = completedRides.reduce((acc, r) => acc + Number(r.actual_fare ?? r.estimated_price ?? 0), 0);
+      const earnings = completedRides.reduce((acc, r) => acc + Number(r.estimated_price ?? 0), 0);
       const ratings = (ratingsRes.data ?? []) as { rating: number }[];
       const ratingAvg = ratings.length
         ? ratings.reduce((a, r) => a + Number(r.rating), 0) / ratings.length
