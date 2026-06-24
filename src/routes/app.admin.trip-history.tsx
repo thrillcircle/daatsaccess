@@ -384,6 +384,10 @@ function TripHistoryPage() {
     });
   };
 
+  const updateSearch = (patch: Partial<HistorySearch>) =>
+    navigate({ search: (p: HistorySearch) => ({ ...p, ...patch }) } as never);
+
+
   const exportCsv = () => {
     if (!rides.length) return;
     const header = [
