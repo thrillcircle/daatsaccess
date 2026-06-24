@@ -36,6 +36,9 @@ function ProfilePage() {
   return (
     <AppShell title="Profile" nav={nav}>
       {user ? <ProfileEditor userId={user.id} /> : null}
+      {user && roles?.includes("driver") ? (
+        <DriverVehicleEditor userId={user.id} />
+      ) : null}
     </AppShell>
   );
 }
