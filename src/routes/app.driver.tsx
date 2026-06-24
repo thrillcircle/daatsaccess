@@ -679,19 +679,38 @@ function timeAgo(iso: string) {
   return `${Math.floor(diff / 3_600_000)}h ago`;
 }
 
-function TripChangeAlerts({ ride }: { ride: Ride }) {
+function TripChangeAlerts({
+  ride,
+  passengerName,
+}: {
+  ride: Ride;
+  passengerName: string | null;
+}) {
   const changes = useRideChanges(ride.id);
   const ack = useServerFn(acknowledgeRideChange);
   const [busy, setBusy] = useState<string | null>(null);
 
   const pending = changes.filter((c) => !c.acknowledged_by_driver_at);
-  if (!pending.length) return null;
+  const current = pending[0];
+  // Force-open whenever a pending change exists so the driver cannot miss it.
+  const open = !!current;
 
-  async function onAck(id: string) {
-    setBusy(id);
+  async function onAck() {
+    if (!current) return;
+    setBusy(current.id);
     try {
-      await ack({ data: { changeId: id } });
-      toast.success("Acknowledged — drive to the updated stop");
+      await ack({ data: { changeId: current.id } });
+      const next = (current.new_values ?? {}) as Record<string, unknown>;
+      // Re-launch navigation to the updated stop. Pickup change before pickup;
+      // destination change once carrying the passenger.
+      if (ride.status === "in_progress" && "destination_address" in next) {
+        openMapsNav(ride.destination_lat, ride.destination_lng);
+      } else if ("pickup_address" in next) {
+        openMapsNav(ride.pickup_lat, ride.pickup_lng);
+      } else if ("destination_address" in next) {
+        openMapsNav(ride.destination_lat, ride.destination_lng);
+      }
+      toast.success("Acknowledged — navigation updated");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not acknowledge");
     } finally {
@@ -699,58 +718,84 @@ function TripChangeAlerts({ ride }: { ride: Ride }) {
     }
   }
 
+  if (!current) return null;
+  const prev = (current.previous_values ?? {}) as Record<string, unknown>;
+  const next = (current.new_values ?? {}) as Record<string, unknown>;
+  const who = passengerName ?? "the passenger";
+  const when = new Date(current.created_at).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const newDurationMin =
+    next.estimated_duration_seconds != null
+      ? Math.max(1, Math.round(Number(next.estimated_duration_seconds) / 60))
+      : null;
+
   return (
-    <div className="mb-3 space-y-2">
-      {pending.map((c) => {
-        const prev = (c.previous_values ?? {}) as Record<string, unknown>;
-        const next = (c.new_values ?? {}) as Record<string, unknown>;
-        return (
-          <div
-            key={c.id}
-            className="rounded-xl border border-warning bg-warning/10 p-3 text-sm"
-          >
-            <div className="mb-2 flex items-center gap-2 font-medium">
-              <Bell className="h-4 w-4" />
-              Trip updated by passenger
-            </div>
-            <ul className="space-y-1 text-xs">
-              {"pickup_address" in next && (
-                <li>
-                  <span className="text-muted-foreground">Pickup: </span>
-                  <span className="line-through opacity-70">
-                    {String(prev.pickup_address ?? "")}
-                  </span>{" "}
-                  → <span className="font-medium">{String(next.pickup_address)}</span>
-                </li>
-              )}
-              {"destination_address" in next && (
-                <li>
-                  <span className="text-muted-foreground">Destination: </span>
-                  <span className="line-through opacity-70">
-                    {String(prev.destination_address ?? "")}
-                  </span>{" "}
-                  →{" "}
-                  <span className="font-medium">{String(next.destination_address)}</span>
-                </li>
-              )}
-              {"estimated_price" in next && (
-                <li className="text-muted-foreground">
-                  New fare: {formatZAR(Number(next.estimated_price))} ·{" "}
-                  {Number(next.distance_km ?? 0).toFixed(2)} km
-                </li>
-              )}
-            </ul>
-            <Button
-              size="sm"
-              className="mt-2 w-full"
-              onClick={() => onAck(c.id)}
-              disabled={busy === c.id}
-            >
-              {busy === c.id ? "Acknowledging…" : "Acknowledge update"}
-            </Button>
+    <AlertDialog open={open}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-warning" />
+            Trip updated by {who}
+          </AlertDialogTitle>
+          <AlertDialogDescription>Changed at {when}</AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <div className="space-y-3 text-sm">
+          {"pickup_address" in next && (
+            <ChangeRow
+              label="Pickup"
+              oldValue={String(prev.pickup_address ?? "")}
+              newValue={String(next.pickup_address)}
+            />
+          )}
+          {"destination_address" in next && (
+            <ChangeRow
+              label="Destination"
+              oldValue={String(prev.destination_address ?? "")}
+              newValue={String(next.destination_address)}
+            />
+          )}
+          <div className="grid grid-cols-3 gap-2 rounded-lg bg-secondary px-3 py-2 text-xs">
+            <Stat label="Distance" value={`${Number(next.distance_km ?? 0).toFixed(1)} km`} />
+            <Stat label="ETA" value={newDurationMin != null ? `${newDurationMin} min` : "—"} />
+            <Stat label="Fare" value={formatZAR(Number(next.estimated_price ?? 0))} />
           </div>
-        );
-      })}
+        </div>
+
+        <AlertDialogFooter>
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={onAck}
+            disabled={busy === current.id}
+          >
+            {busy === current.id
+              ? "Acknowledging…"
+              : "Acknowledge and update navigation"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function ChangeRow({
+  label,
+  oldValue,
+  newValue,
+}: {
+  label: string;
+  oldValue: string;
+  newValue: string;
+}) {
+  return (
+    <div className="space-y-1 rounded-lg border p-3">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-xs line-through opacity-60">{oldValue || "—"}</p>
+      <p className="text-sm font-medium">{newValue}</p>
     </div>
   );
 }
+
