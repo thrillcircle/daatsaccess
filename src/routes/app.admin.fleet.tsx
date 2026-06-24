@@ -75,6 +75,8 @@ function VehiclesPage() {
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Profile[]>([]);
+  const [tripStats, setTripStats] = useState<Map<string, VehicleTripStats>>(new Map());
+  const [assignedToday, setAssignedToday] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [reloadTick, setReloadTick] = useState(0);
 
@@ -89,7 +91,8 @@ function VehiclesPage() {
       ]);
       if (cancelled) return;
       if (vRes.error) toast.error("Failed to load vehicles");
-      setVehicles(vRes.data ?? []);
+      const vehicleRows = vRes.data ?? [];
+      setVehicles(vehicleRows);
       const driverIds = (rRes.data ?? []).map((r) => r.user_id);
       let ds: Profile[] = [];
       if (driverIds.length) {
@@ -97,6 +100,45 @@ function VehiclesPage() {
         ds = pRes.data ?? [];
       }
       setDrivers(ds);
+
+      // Trip stats per vehicle.
+      const vIds = vehicleRows.map((v) => v.id);
+      if (vIds.length) {
+        const { data: rides } = await supabase
+          .from("rides")
+          .select("vehicle_id, status, distance_km, actual_distance_km, scheduled_at, created_at")
+          .in("vehicle_id", vIds);
+        const stats = new Map<string, VehicleTripStats>();
+        const todays = new Set<string>();
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+        for (const v of vehicleRows) stats.set(v.id, { upcoming: 0, completed: 0, estimatedKm: 0 });
+        for (const r of rides ?? []) {
+          if (!r.vehicle_id) continue;
+          const s = stats.get(r.vehicle_id);
+          if (!s) continue;
+          if (r.status === "completed") {
+            s.completed += 1;
+            s.estimatedKm += Number(r.actual_distance_km ?? r.distance_km ?? 0);
+          } else if ((ACTIVE_RIDE_STATUSES as readonly string[]).includes(r.status)) {
+            s.upcoming += 1;
+          }
+          const ref = r.scheduled_at ? new Date(r.scheduled_at) : new Date(r.created_at);
+          if (ref >= todayStart && ref <= todayEnd && r.status !== "cancelled") {
+            todays.add(r.vehicle_id);
+          }
+        }
+        if (!cancelled) {
+          setTripStats(stats);
+          setAssignedToday(todays);
+        }
+      } else {
+        setTripStats(new Map());
+        setAssignedToday(new Set());
+      }
+
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -117,15 +159,19 @@ function VehiclesPage() {
     return d?.full_name ?? id.slice(0, 8);
   };
 
-  const summary = vehicles.reduce(
+  const stats: FleetStats = vehicles.reduce<FleetStats>(
     (acc, v) => {
-      const a = getVehicleAlerts(v);
-      const sev = highestSeverity(a);
-      if (sev === "urgent") acc.urgent++;
-      else if (sev === "warning") acc.warning++;
+      acc.total++;
+      if (v.status === "active" && !assignedToday.has(v.id)) acc.available++;
+      if (assignedToday.has(v.id)) acc.assignedToday++;
+      if (v.status === "in_maintenance") acc.inMaintenance++;
+      const alerts = getVehicleAlerts(v);
+      if (alerts.some((a) => a.label === "Service due soon" || a.label === "Service overdue"))
+        acc.serviceDueSoon++;
+      if (alerts.some((a) => /expired/i.test(a.label))) acc.expiredDocs++;
       return acc;
     },
-    { urgent: 0, warning: 0 }
+    { total: 0, available: 0, assignedToday: 0, inMaintenance: 0, serviceDueSoon: 0, expiredDocs: 0 },
   );
 
   return (
@@ -135,11 +181,9 @@ function VehiclesPage() {
 
         <div className="mb-4 flex items-center justify-between gap-2">
           <div>
-            <h1 className="text-xl font-semibold">Vehicles</h1>
+            <h1 className="text-xl font-semibold">Fleet Management</h1>
             <p className="text-sm text-muted-foreground">
-              {vehicles.length} vehicle{vehicles.length === 1 ? "" : "s"}
-              {summary.urgent > 0 && <span className="ml-2 text-destructive">· {summary.urgent} urgent</span>}
-              {summary.warning > 0 && <span className="ml-2 text-amber-600">· {summary.warning} warning</span>}
+              Operations, safety, accessibility &amp; maintenance planning
             </p>
           </div>
           <VehicleDialog drivers={drivers} onSaved={refresh}>
@@ -147,9 +191,18 @@ function VehiclesPage() {
           </VehicleDialog>
         </div>
 
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <FleetStatCard label="Total" value={stats.total} />
+          <FleetStatCard label="Available" value={stats.available} accent="ok" />
+          <FleetStatCard label="Assigned today" value={stats.assignedToday} />
+          <FleetStatCard label="In maintenance" value={stats.inMaintenance} accent="warn" />
+          <FleetStatCard label="Service due" value={stats.serviceDueSoon} accent="warn" />
+          <FleetStatCard label="Expired docs" value={stats.expiredDocs} accent="bad" />
+        </div>
+
         {loading ? (
           <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
-            <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" /> Loading vehicles…
+            <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" /> Loading fleet…
           </div>
         ) : vehicles.length === 0 ? (
           <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
@@ -163,6 +216,8 @@ function VehiclesPage() {
                 vehicle={v}
                 driverName={driverName(v.assigned_driver_id)}
                 drivers={drivers}
+                tripStats={tripStats.get(v.id) ?? { upcoming: 0, completed: 0, estimatedKm: 0 }}
+                assignedNow={assignedToday.has(v.id)}
                 onChanged={refresh}
               />
             ))}
@@ -172,6 +227,41 @@ function VehiclesPage() {
     </AppShell>
   );
 }
+
+function FleetStatCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent?: "ok" | "warn" | "bad";
+}) {
+  const cls =
+    accent === "ok"
+      ? "border-emerald-500/30 bg-emerald-500/5"
+      : accent === "warn"
+      ? "border-amber-500/40 bg-amber-500/5"
+      : accent === "bad"
+      ? "border-destructive/40 bg-destructive/5"
+      : "";
+  const Icon =
+    accent === "ok" ? CheckCircle2 :
+    accent === "warn" ? AlertTriangle :
+    accent === "bad" ? AlertTriangle :
+    ShieldCheck;
+  return (
+    <div className={`rounded-lg border bg-card p-3 ${cls}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      </div>
+      <p className="mt-1 text-xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
+
 
 function VehicleRow({
   vehicle: v,
