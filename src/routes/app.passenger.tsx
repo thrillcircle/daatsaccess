@@ -58,7 +58,11 @@ function PassengerPage() {
   const { roles } = useUserRoles(user?.id);
 
   const nav = useMemo(() => {
-    const items = [{ to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger }];
+    const items = [
+      { to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger },
+      { to: "/app/passenger/book", label: "Book", icon: NAV_ICONS.Profile },
+      { to: "/app/passenger/bookings", label: "Bookings", icon: NAV_ICONS.Profile },
+    ];
     if (roles?.includes("driver")) items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
     if (roles?.includes("admin")) items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
     items.push({ to: "/app/profile", label: "Profile", icon: NAV_ICONS.Profile });

@@ -52,7 +52,7 @@ const SECTIONS: NavSection[] = [
     heading: "Operations",
     items: [
       { to: "/app/admin/passengers", label: "Passengers", icon: UserCircle2, soon: true },
-      { to: "/app/admin/bookings", label: "Bookings", icon: CalendarRange, soon: true },
+      { to: "/app/admin/bookings", label: "Service Bookings", icon: CalendarRange },
       { to: "/app/admin/support", label: "Support", icon: LifeBuoy, soon: true },
     ],
   },
