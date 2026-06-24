@@ -28,6 +28,7 @@ import { Route as AppAdminFleetRouteImport } from './routes/app.admin.fleet'
 import { Route as AppAdminDriversRouteImport } from './routes/app.admin.drivers'
 import { Route as AppAdminBookingsRouteImport } from './routes/app.admin.bookings'
 import { Route as AppPassengerBookTransportRouteImport } from './routes/app.passenger.book.transport'
+import { Route as AppPassengerBookExtendedRouteImport } from './routes/app.passenger.book.extended'
 import { Route as AppPassengerBookAssistedRouteImport } from './routes/app.passenger.book.assisted'
 import { Route as AppPassengerBookAppointmentRouteImport } from './routes/app.passenger.book.appointment'
 
@@ -127,6 +128,12 @@ const AppPassengerBookTransportRoute =
     path: '/transport',
     getParentRoute: () => AppPassengerBookRoute,
   } as any)
+const AppPassengerBookExtendedRoute =
+  AppPassengerBookExtendedRouteImport.update({
+    id: '/extended',
+    path: '/extended',
+    getParentRoute: () => AppPassengerBookRoute,
+  } as any)
 const AppPassengerBookAssistedRoute =
   AppPassengerBookAssistedRouteImport.update({
     id: '/assisted',
@@ -161,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/app/admin/': typeof AppAdminIndexRoute
   '/app/passenger/book/appointment': typeof AppPassengerBookAppointmentRoute
   '/app/passenger/book/assisted': typeof AppPassengerBookAssistedRoute
+  '/app/passenger/book/extended': typeof AppPassengerBookExtendedRoute
   '/app/passenger/book/transport': typeof AppPassengerBookTransportRoute
 }
 export interface FileRoutesByTo {
@@ -183,6 +191,7 @@ export interface FileRoutesByTo {
   '/app/admin': typeof AppAdminIndexRoute
   '/app/passenger/book/appointment': typeof AppPassengerBookAppointmentRoute
   '/app/passenger/book/assisted': typeof AppPassengerBookAssistedRoute
+  '/app/passenger/book/extended': typeof AppPassengerBookExtendedRoute
   '/app/passenger/book/transport': typeof AppPassengerBookTransportRoute
 }
 export interface FileRoutesById {
@@ -207,6 +216,7 @@ export interface FileRoutesById {
   '/app/admin/': typeof AppAdminIndexRoute
   '/app/passenger/book/appointment': typeof AppPassengerBookAppointmentRoute
   '/app/passenger/book/assisted': typeof AppPassengerBookAssistedRoute
+  '/app/passenger/book/extended': typeof AppPassengerBookExtendedRoute
   '/app/passenger/book/transport': typeof AppPassengerBookTransportRoute
 }
 export interface FileRouteTypes {
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/app/admin/'
     | '/app/passenger/book/appointment'
     | '/app/passenger/book/assisted'
+    | '/app/passenger/book/extended'
     | '/app/passenger/book/transport'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/app/admin'
     | '/app/passenger/book/appointment'
     | '/app/passenger/book/assisted'
+    | '/app/passenger/book/extended'
     | '/app/passenger/book/transport'
   id:
     | '__root__'
@@ -277,6 +289,7 @@ export interface FileRouteTypes {
     | '/app/admin/'
     | '/app/passenger/book/appointment'
     | '/app/passenger/book/assisted'
+    | '/app/passenger/book/extended'
     | '/app/passenger/book/transport'
   fileRoutesById: FileRoutesById
 }
@@ -421,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPassengerBookTransportRouteImport
       parentRoute: typeof AppPassengerBookRoute
     }
+    '/app/passenger/book/extended': {
+      id: '/app/passenger/book/extended'
+      path: '/extended'
+      fullPath: '/app/passenger/book/extended'
+      preLoaderRoute: typeof AppPassengerBookExtendedRouteImport
+      parentRoute: typeof AppPassengerBookRoute
+    }
     '/app/passenger/book/assisted': {
       id: '/app/passenger/book/assisted'
       path: '/assisted'
@@ -467,12 +487,14 @@ const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
 interface AppPassengerBookRouteChildren {
   AppPassengerBookAppointmentRoute: typeof AppPassengerBookAppointmentRoute
   AppPassengerBookAssistedRoute: typeof AppPassengerBookAssistedRoute
+  AppPassengerBookExtendedRoute: typeof AppPassengerBookExtendedRoute
   AppPassengerBookTransportRoute: typeof AppPassengerBookTransportRoute
 }
 
 const AppPassengerBookRouteChildren: AppPassengerBookRouteChildren = {
   AppPassengerBookAppointmentRoute: AppPassengerBookAppointmentRoute,
   AppPassengerBookAssistedRoute: AppPassengerBookAssistedRoute,
+  AppPassengerBookExtendedRoute: AppPassengerBookExtendedRoute,
   AppPassengerBookTransportRoute: AppPassengerBookTransportRoute,
 }
 
