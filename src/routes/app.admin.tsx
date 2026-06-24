@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AppShell, NAV_ICONS } from "@/components/AppShell";
+import { AdminTabs } from "@/components/AdminTabs";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
