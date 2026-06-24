@@ -40,31 +40,68 @@ function ProfilePage() {
   );
 }
 
+// E.164-ish, allows local SA formats too (07xxxxxxxx). 7–15 digits with optional leading +.
+const PHONE_RE = /^\+?[0-9 ()-]{7,20}$/;
+
+function normalizePhone(raw: string): string {
+  return raw.trim().replace(/\s+/g, " ");
+}
+
 function ProfileEditor({ userId }: { userId: string }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Load profile; create a safe empty row if missing (handle_new_user trigger
+  // normally inserts on signup, this is just a self-heal for legacy accounts).
   useEffect(() => {
-    supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .maybeSingle()
-      .then(async ({ data }) => {
-        setProfile(data);
-        setFullName(data?.full_name ?? "");
-        setPhone(data?.phone ?? "");
-        if (data?.avatar_url) {
-          await refreshAvatar(data.avatar_url);
-        }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setLoadError(null);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        setLoadError(error.message);
         setLoading(false);
-      });
+        return;
+      }
+      let row = data;
+      if (!row) {
+        const { data: created, error: insertErr } = await supabase
+          .from("profiles")
+          .insert({ user_id: userId })
+          .select()
+          .single();
+        if (cancelled) return;
+        if (insertErr) {
+          setLoadError(insertErr.message);
+          setLoading(false);
+          return;
+        }
+        row = created;
+      }
+      setProfile(row);
+      setFullName(row?.full_name ?? "");
+      setPhone(row?.phone ?? "");
+      if (row?.avatar_url) await refreshAvatar(row.avatar_url);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   async function refreshAvatar(path: string) {
@@ -74,21 +111,51 @@ function ProfileEditor({ userId }: { userId: string }) {
     setAvatarUrl(data?.signedUrl ?? null);
   }
 
+  function validate(): { name: string | null; phone: string | null; ok: boolean } {
+    const name = fullName.trim();
+    let nErr: string | null = null;
+    let pErr: string | null = null;
+    if (!name) nErr = "Name is required";
+    else if (name.length > 80) nErr = "Name must be 80 characters or fewer";
+    const p = normalizePhone(phone);
+    if (!p) pErr = "Phone is required";
+    else if (!PHONE_RE.test(p)) pErr = "Enter a valid phone number";
+    setNameError(nErr);
+    setPhoneError(pErr);
+    return { name: nErr, phone: pErr, ok: !nErr && !pErr };
+  }
+
   async function onSave() {
+    if (!validate().ok) return;
     setSaving(true);
-    const { error } = await supabase
+    const name = fullName.trim();
+    const p = normalizePhone(phone);
+    const { data, error } = await supabase
       .from("profiles")
-      .update({ full_name: fullName.trim() || null, phone: phone.trim() || null })
-      .eq("user_id", userId);
+      .update({ full_name: name, phone: p })
+      .eq("user_id", userId)
+      .select()
+      .single();
     setSaving(false);
-    if (error) toast.error(error.message);
-    else toast.success("Profile saved");
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setProfile(data);
+    setFullName(data.full_name ?? "");
+    setPhone(data.phone ?? "");
+    toast.success("Profile saved");
   }
 
   async function onAvatarChange(file: File) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Pick an image file");
+      toast.error("Please choose an image file (JPG, PNG, WebP)");
+      return;
+    }
+    const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!ALLOWED.includes(file.type)) {
+      toast.error("Unsupported image format");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -96,20 +163,34 @@ function ProfileEditor({ userId }: { userId: string }) {
       return;
     }
     setUploading(true);
+    const previousPath = profile?.avatar_url ?? null;
     try {
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${userId}/avatar-${Date.now()}.${ext}`;
+      const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const path = `${userId}/avatar-${Date.now()}.${ext || "jpg"}`;
       const { error: upErr } = await supabase.storage
         .from("avatars")
-        .upload(path, file, { cacheControl: "3600", upsert: true });
+        .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
       if (upErr) throw upErr;
-      const { error: profErr } = await supabase
+
+      const { data: updated, error: profErr } = await supabase
         .from("profiles")
         .update({ avatar_url: path })
-        .eq("user_id", userId);
-      if (profErr) throw profErr;
+        .eq("user_id", userId)
+        .select()
+        .single();
+      if (profErr) {
+        // Rollback the orphaned upload so storage stays tidy.
+        await supabase.storage.from("avatars").remove([path]);
+        throw profErr;
+      }
+
+      // Best-effort: remove the previous avatar object now that the new one is live.
+      if (previousPath && previousPath !== path) {
+        await supabase.storage.from("avatars").remove([previousPath]);
+      }
+
+      setProfile(updated);
       await refreshAvatar(path);
-      setProfile((p) => (p ? { ...p, avatar_url: path } : p));
       toast.success("Photo updated");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
@@ -119,7 +200,25 @@ function ProfileEditor({ userId }: { userId: string }) {
   }
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return (
+      <section className="space-y-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading profile…
+        </div>
+      </section>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <section className="space-y-3 rounded-2xl border border-destructive/40 bg-destructive/5 p-4">
+        <p className="text-sm font-medium text-destructive">Couldn't load your profile</p>
+        <p className="text-xs text-muted-foreground">{loadError}</p>
+        <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+          Try again
+        </Button>
+      </section>
+    );
   }
 
   return (
@@ -130,7 +229,7 @@ function ProfileEditor({ userId }: { userId: string }) {
             {avatarUrl ? (
               <img
                 src={avatarUrl}
-                alt="Avatar"
+                alt="Profile photo"
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -140,7 +239,8 @@ function ProfileEditor({ userId }: { userId: string }) {
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border bg-background shadow"
+            disabled={uploading}
+            className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border bg-background shadow disabled:opacity-60"
             aria-label="Change photo"
           >
             {uploading ? (
@@ -152,7 +252,7 @@ function ProfileEditor({ userId }: { userId: string }) {
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -164,6 +264,9 @@ function ProfileEditor({ userId }: { userId: string }) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{profile?.full_name || "Unnamed"}</p>
           <p className="truncate text-xs text-muted-foreground">{profile?.phone || "No phone"}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {uploading ? "Uploading photo…" : "JPG, PNG or WebP · up to 5 MB"}
+          </p>
         </div>
       </div>
 
@@ -173,21 +276,41 @@ function ProfileEditor({ userId }: { userId: string }) {
           <Input
             id="full_name"
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            onChange={(e) => {
+              setFullName(e.target.value);
+              if (nameError) setNameError(null);
+            }}
             placeholder="Your name"
+            maxLength={80}
+            autoComplete="name"
+            aria-invalid={!!nameError}
           />
+          {nameError && <p className="text-xs text-destructive">{nameError}</p>}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="phone">Phone</Label>
           <Input
             id="phone"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+27..."
+            onChange={(e) => {
+              setPhone(e.target.value);
+              if (phoneError) setPhoneError(null);
+            }}
+            placeholder="+27 71 234 5678"
             inputMode="tel"
+            autoComplete="tel"
+            maxLength={20}
+            aria-invalid={!!phoneError}
           />
+          {phoneError ? (
+            <p className="text-xs text-destructive">{phoneError}</p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              Drivers see this only once they've accepted your ride.
+            </p>
+          )}
         </div>
-        <Button className="w-full" onClick={onSave} disabled={saving}>
+        <Button className="w-full" onClick={onSave} disabled={saving || uploading}>
           {saving ? "Saving…" : "Save changes"}
         </Button>
       </div>
