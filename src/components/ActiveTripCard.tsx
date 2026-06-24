@@ -250,3 +250,29 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
     </div>
   );
 }
+
+const EDITABLE_STATUSES = new Set([
+  "requested",
+  "accepted",
+  "driver_arriving",
+  "arrived",
+  "in_progress",
+]);
+
+function EditTripButton({ ride }: { ride: Ride }) {
+  const [open, setOpen] = useState(false);
+  if (!EDITABLE_STATUSES.has(ride.status)) return null;
+  return (
+    <>
+      <Button
+        variant="outline"
+        className="mt-4 w-full"
+        onClick={() => setOpen(true)}
+      >
+        <Pencil className="mr-2 h-4 w-4" />
+        Edit trip
+      </Button>
+      <EditTripDialog ride={ride} open={open} onOpenChange={setOpen} />
+    </>
+  );
+}
