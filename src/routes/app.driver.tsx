@@ -15,20 +15,36 @@ import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
-import { MapPin, Navigation, AlertTriangle, Bell, Phone, Clock, Pencil } from "lucide-react";
+import { MapPin, Navigation, AlertTriangle, Bell, Phone, Clock, Pencil, ExternalLink } from "lucide-react";
 import { useLiveLocation } from "@/hooks/use-live-location";
 import { useRideChanges } from "@/hooks/use-ride-changes";
 import { useRideLiveLocations } from "@/hooks/use-ride-live-locations";
 import { useServerFn } from "@tanstack/react-start";
 import { acknowledgeRideChange } from "@/lib/ride-edit.functions";
 import {
+  acceptRide,
+  markArrived,
+  startTrip,
+  completeTrip,
+} from "@/lib/ride-driver.functions";
+import {
   getRidePassengerDetails,
   type PassengerDetails,
 } from "@/lib/driver-trip.functions";
 
+function mapsNavUrl(lat: number, lng: number) {
+  return `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${lat},${lng}`;
+}
+function openMapsNav(lat: number, lng: number): Window | null {
+  // Called synchronously inside the click handler to satisfy popup-blockers.
+  return typeof window !== "undefined"
+    ? window.open(mapsNavUrl(lat, lng), "_blank", "noopener,noreferrer")
+    : null;
+}
+
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
-type RideStatus = Database["public"]["Enums"]["ride_status"];
+
 
 export const Route = createFileRoute("/app/driver")({
   head: () => ({ meta: [{ title: "Driver — Access" }] }),
@@ -295,17 +311,21 @@ function OnlineToggle({
   );
 }
 
-function OpenRidesList({ rides, driverId }: { rides: Ride[]; driverId: string }) {
-  async function accept(ride: Ride) {
-    const { error } = await supabase
-      .from("rides")
-      .update({ driver_id: driverId, status: "accepted" })
-      .eq("id", ride.id)
-      .eq("status", "requested")
-      .is("driver_id", null);
-    if (error) toast.error(error.message);
-    else toast.success("Ride accepted");
+function OpenRidesList({ rides }: { rides: Ride[]; driverId: string }) {
+  const accept = useServerFn(acceptRide);
+  async function onAccept(ride: Ride) {
+    // Pre-open the Maps tab synchronously so the popup-blocker treats it as
+    // user-initiated. If the server claim fails we close the placeholder.
+    const win = openMapsNav(ride.pickup_lat, ride.pickup_lng);
+    try {
+      await accept({ data: { rideId: ride.id } });
+      toast.success("Ride accepted — navigating to pickup");
+    } catch (e) {
+      win?.close();
+      toast.error(e instanceof Error ? e.message : "Could not accept ride");
+    }
   }
+
 
   if (!rides.length) {
     return (
@@ -337,9 +357,10 @@ function OpenRidesList({ rides, driverId }: { rides: Ride[]; driverId: string })
               <p className="text-xs text-muted-foreground">{Number(r.distance_km).toFixed(1)} km</p>
             </div>
           </div>
-          <Button className="w-full" onClick={() => accept(r)}>
+          <Button className="w-full" onClick={() => onAccept(r)}>
             Accept ride
           </Button>
+
         </div>
       ))}
     </section>
@@ -347,40 +368,64 @@ function OpenRidesList({ rides, driverId }: { rides: Ride[]; driverId: string })
 }
 
 function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | null) => void }) {
-  const nextStatus: Record<RideStatus, RideStatus | null> = {
-    requested: "accepted",
-    accepted: "driver_arriving",
-    driver_arriving: "arrived",
-    arrived: "in_progress",
-    in_progress: "completed",
-    completed: null,
-    cancelled: null,
-  };
-  const nextLabel: Record<RideStatus, string> = {
-    requested: "Accept",
-    accepted: "I'm arriving",
-    driver_arriving: "I've arrived",
-    arrived: "Start trip",
-    in_progress: "Complete trip",
-    completed: "",
-    cancelled: "",
-  };
+  const arriveFn = useServerFn(markArrived);
+  const startFn = useServerFn(startTrip);
+  const completeFn = useServerFn(completeTrip);
+  const [busy, setBusy] = useState(false);
+  // Track whether the last attempt to open Google Maps was blocked, so we can
+  // surface a large fallback "Open Google Maps Navigation" button.
+  const [navBlocked, setNavBlocked] = useState(false);
 
-  async function advance() {
-    const next = nextStatus[ride.status];
-    if (!next) return;
-    const { data, error } = await supabase
-      .from("rides")
-      .update({ status: next })
-      .eq("id", ride.id)
-      .select()
-      .single();
-    if (error) toast.error(error.message);
-    else if (data) {
-      if (next === "completed") {
-        toast.success("Trip completed");
-        onUpdate(null);
-      } else onUpdate(data as Ride);
+  const navTarget: { lat: number; lng: number; label: string } =
+    ride.status === "in_progress"
+      ? { lat: ride.destination_lat, lng: ride.destination_lng, label: "destination" }
+      : { lat: ride.pickup_lat, lng: ride.pickup_lng, label: "pickup" };
+
+  function launchNav() {
+    const win = openMapsNav(navTarget.lat, navTarget.lng);
+    setNavBlocked(!win);
+    return win;
+  }
+
+  async function onArrived() {
+    setBusy(true);
+    try {
+      const r = await arriveFn({ data: { rideId: ride.id } });
+      onUpdate(r as Ride);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not mark arrived");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onStart() {
+    setBusy(true);
+    // Open Maps to the destination synchronously inside the click.
+    const win = openMapsNav(ride.destination_lat, ride.destination_lng);
+    try {
+      const r = await startFn({ data: { rideId: ride.id } });
+      setNavBlocked(!win);
+      onUpdate(r as Ride);
+      toast.success("Trip started — navigating to destination");
+    } catch (e) {
+      win?.close();
+      toast.error(e instanceof Error ? e.message : "Could not start trip");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onComplete() {
+    setBusy(true);
+    try {
+      await completeFn({ data: { rideId: ride.id } });
+      toast.success("Trip completed");
+      onUpdate(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not complete trip");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -395,6 +440,7 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
       toast.success("Ride cancelled");
     }
   }
+
 
   // Passenger contact (active rides only — hidden after completion/cancel).
   const fetchPassenger = useServerFn(getRidePassengerDetails);
@@ -516,19 +562,45 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
         )}
       </dl>
 
-      {nextStatus[ride.status] && (
-        <Button className="mt-4 w-full" size="lg" onClick={advance}>
-          {nextLabel[ride.status]}
+      {navBlocked && (
+        <Button
+          className="mt-3 w-full"
+          size="lg"
+          variant="secondary"
+          onClick={() => {
+            const win = launchNav();
+            if (win) toast.success("Opened Google Maps");
+          }}
+        >
+          <ExternalLink className="mr-2 h-4 w-4" />
+          Open Google Maps Navigation to {navTarget.label}
+        </Button>
+      )}
+
+      {(ride.status === "accepted" || ride.status === "driver_arriving") && (
+        <Button className="mt-4 w-full" size="lg" onClick={onArrived} disabled={busy}>
+          I've arrived at pickup
+        </Button>
+      )}
+      {ride.status === "arrived" && (
+        <Button className="mt-4 w-full" size="lg" onClick={onStart} disabled={busy}>
+          Start trip
+        </Button>
+      )}
+      {ride.status === "in_progress" && (
+        <Button className="mt-4 w-full" size="lg" onClick={onComplete} disabled={busy}>
+          Complete trip
         </Button>
       )}
       {ride.status !== "in_progress" && (
-        <Button variant="outline" className="mt-2 w-full" onClick={cancel}>
+        <Button variant="outline" className="mt-2 w-full" onClick={cancel} disabled={busy}>
           Cancel
         </Button>
       )}
     </section>
   );
 }
+
 
 function PassengerCard({
   passenger,
