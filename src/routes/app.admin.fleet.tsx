@@ -764,5 +764,187 @@ function NoteDialog({
   );
 }
 
+function RecordServiceDialog({
+  vehicle,
+  children,
+  onSaved,
+}: {
+  vehicle: Vehicle;
+  children: React.ReactNode;
+  onSaved: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [km, setKm] = useState<string>(String(vehicle.current_odometer_km ?? 0));
+  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [intervalKm, setIntervalKm] = useState<string>(String(vehicle.service_interval_km ?? 10000));
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    const lastKm = Number(km);
+    const interval = Number(intervalKm);
+    if (Number.isNaN(lastKm) || lastKm < 0) return toast.error("Enter valid service km");
+    if (Number.isNaN(interval) || interval <= 0) return toast.error("Enter valid interval");
+    setBusy(true);
+    const odo = Math.max(Number(vehicle.current_odometer_km ?? 0), lastKm);
+    const { error } = await supabase
+      .from("vehicle_profiles")
+      .update({
+        last_service_km: lastKm,
+        last_service_date: date || null,
+        service_interval_km: interval,
+        next_service_due_km: lastKm + interval,
+        current_odometer_km: odo,
+        status: vehicle.status === "in_maintenance" ? "active" : vehicle.status,
+      })
+      .eq("id", vehicle.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Service recorded · next due at " + (lastKm + interval).toLocaleString() + " km");
+    setOpen(false);
+    onSaved();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Record completed service</DialogTitle>
+          <DialogDescription>
+            Updates last service km/date and recalculates the next service due km.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Service km">
+            <Input type="number" value={km} onChange={(e) => setKm(e.target.value)} />
+          </Field>
+          <Field label="Service date">
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+          <Field label="Service interval (km)">
+            <Input type="number" value={intervalKm} onChange={(e) => setIntervalKm(e.target.value)} />
+          </Field>
+          <div className="rounded-md border bg-muted/30 p-2 text-xs">
+            <div className="text-muted-foreground">Next service due</div>
+            <div className="font-medium">
+              {(Number(km || 0) + Number(intervalKm || 0)).toLocaleString()} km
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={save} disabled={busy}>
+            {busy && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type VehicleTrip = {
+  id: string;
+  status: string;
+  pickup_address: string;
+  destination_address: string;
+  scheduled_at: string | null;
+  created_at: string;
+  completed_at: string | null;
+  distance_km: number;
+  actual_distance_km: number | null;
+};
+
+function VehicleTripsDialog({
+  vehicle,
+  children,
+}: {
+  vehicle: Vehicle;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [trips, setTrips] = useState<VehicleTrip[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("rides")
+        .select("id,status,pickup_address,destination_address,scheduled_at,created_at,completed_at,distance_km,actual_distance_km")
+        .eq("vehicle_id", vehicle.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (cancelled) return;
+      if (error) toast.error(error.message);
+      setTrips((data ?? []) as VehicleTrip[]);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [open, vehicle.id]);
+
+  const upcoming = trips.filter((t) => (ACTIVE_RIDE_STATUSES as readonly string[]).includes(t.status));
+  const past = trips.filter((t) => !(ACTIVE_RIDE_STATUSES as readonly string[]).includes(t.status));
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{vehicle.vehicle_name} · trips</DialogTitle>
+          <DialogDescription>Upcoming and recent trips assigned to this vehicle.</DialogDescription>
+        </DialogHeader>
+        {loading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" /> Loading trips…
+          </div>
+        ) : trips.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">No trips assigned to this vehicle yet.</p>
+        ) : (
+          <div className="space-y-4">
+            <TripsSection title="Upcoming / active" trips={upcoming} />
+            <TripsSection title="Past trips" trips={past} />
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TripsSection({ title, trips }: { title: string; trips: VehicleTrip[] }) {
+  if (!trips.length) return null;
+  return (
+    <div>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
+      <ul className="divide-y rounded-md border">
+        {trips.map((t) => (
+          <li key={t.id} className="space-y-1 px-3 py-2 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate font-medium">{t.destination_address}</span>
+              <Badge variant="outline" className="capitalize">{t.status.replace(/_/g, " ")}</Badge>
+            </div>
+            <p className="truncate text-muted-foreground">From {t.pickup_address}</p>
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>
+                {t.scheduled_at
+                  ? new Date(t.scheduled_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "short", timeStyle: "short" })
+                  : new Date(t.created_at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
+              </span>
+              <span>
+                {Number(t.actual_distance_km ?? t.distance_km).toFixed(1)} km
+              </span>
+              <Link to="/app/trip/$rideId" params={{ rideId: t.id }} className="text-primary hover:underline">
+                Details
+              </Link>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // Used by other admin surfaces to link in
 export { Link };
+
