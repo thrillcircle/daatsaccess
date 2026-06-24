@@ -172,17 +172,39 @@ function DriversPage() {
   }
 
   const now = Date.now();
+  const q = query.trim().toLowerCase();
+  const matchProfile = (p: Profile | undefined, userId: string) => {
+    if (!q) return true;
+    return (
+      (p?.full_name?.toLowerCase().includes(q) ?? false) ||
+      (p?.phone?.toLowerCase().includes(q) ?? false) ||
+      userId.toLowerCase().includes(q)
+    );
+  };
+  const filteredDrivers = drivers.filter((d) => matchProfile(profiles[d.user_id], d.user_id));
+  const filteredPassengers = passengers.filter((p) => matchProfile(p, p.user_id));
 
   return (
     <AppShell title="Admin" nav={nav}>
       <AdminTabs />
 
+      <div className="relative mb-4">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name, phone, or user ID…"
+          className="pl-9"
+        />
+      </div>
+
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Drivers ({drivers.length})
+        Drivers ({filteredDrivers.length}/{drivers.length})
       </h3>
 
       <ul className="space-y-3">
-        {drivers.map((d) => {
+        {filteredDrivers.map((d) => {
+
           const prof = profiles[d.user_id];
           const ride = activeRides[d.user_id];
           const updatedTs = d.location_updated_at
