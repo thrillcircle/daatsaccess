@@ -209,7 +209,7 @@ function TripHistoryPage() {
           .order("created_at", { ascending: false }),
         supabase
           .from("vehicle_profiles")
-          .select("id, vehicle_name, license_plate")
+          .select("id, vehicle_name, vehicle_type, license_plate")
           .order("vehicle_name", { ascending: true }),
       ]);
       if (cancelled) return;
@@ -330,7 +330,7 @@ function TripHistoryPage() {
         if (fleetIds.length) {
           const { data: fvs } = await supabase
             .from("vehicle_profiles")
-            .select("id, vehicle_name, license_plate")
+            .select("id, vehicle_name, vehicle_type, license_plate")
             .in("id", fleetIds);
           if (!cancelled)
             setFleetVehicles(
