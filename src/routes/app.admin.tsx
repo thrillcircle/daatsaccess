@@ -135,7 +135,9 @@ function AdminPage() {
 
   return (
     <AppShell title="Admin" nav={nav}>
+      <AdminTabs />
       <section className="grid grid-cols-2 gap-3">
+
         <Metric label="Users" value={metrics?.users ?? "—"} />
         <Metric label="Drivers" value={metrics?.drivers ?? "—"} />
         <Metric label="Total trips" value={metrics?.trips ?? "—"} />
