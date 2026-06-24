@@ -251,12 +251,6 @@ function AdminTripsPage() {
           setPayments(new Map());
         }
 
-        if (active === "completed" && list.length) {
-          const rideIds = list.map((r) => r.id);
-          const { data: revs } = await supabase
-            .from("ride_reviews")
-            .select("ride_id, rating, comment")
-            .in("ride_id", rideIds);
 
         if (active === "completed" && list.length) {
           const rideIds = list.map((r) => r.id);
