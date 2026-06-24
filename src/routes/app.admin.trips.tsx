@@ -9,10 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
-import { Search, Star, KeyRound, Loader2 } from "lucide-react";
+import { Search, Star, KeyRound, Loader2, Eye, EyeOff, ShieldAlert, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { adminResetRidePin } from "@/lib/ride-pin.functions";
+import {
+  adminResetRidePin,
+  adminViewRidePin,
+  adminAcknowledgePinAlert,
+} from "@/lib/ride-pin.functions";
 import type { Database } from "@/integrations/supabase/types";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
@@ -361,28 +365,103 @@ function TripRow({
   );
 }
 
-function AdminPinRow({ rideId }: { rideId: string }) {
-  const [pin, setPin] = useState<string | null | undefined>(undefined);
-  const [busy, setBusy] = useState(false);
-  const resetFn = useServerFn(adminResetRidePin);
+const LOCK_WINDOW_MS = 15 * 60 * 1000;
+const MAX_FAILURES = 5;
 
+type PinAttempt = { attempted_at: string; success: boolean };
+type PinAlert = { id: string; read_at: string | null; created_at: string };
+
+function AdminPinRow({ rideId }: { rideId: string }) {
+  const [pin, setPin] = useState<string | null>(null);
+  const [revealBusy, setRevealBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [ackBusy, setAckBusy] = useState(false);
+  const [attempts, setAttempts] = useState<PinAttempt[]>([]);
+  const [alert, setAlert] = useState<PinAlert | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  const viewFn = useServerFn(adminViewRidePin);
+  const resetFn = useServerFn(adminResetRidePin);
+  const ackFn = useServerFn(adminAcknowledgePinAlert);
+
+  // Initial load + realtime subscription on attempts and admin alerts.
   useEffect(() => {
     let cancelled = false;
-    supabase
-      .from("ride_pins")
-      .select("pin")
-      .eq("ride_id", rideId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setPin(data?.pin ?? null);
-      });
+    const loadAttempts = async () => {
+      const { data } = await supabase
+        .from("ride_pin_attempts")
+        .select("attempted_at, success")
+        .eq("ride_id", rideId)
+        .order("attempted_at", { ascending: false })
+        .limit(20);
+      if (!cancelled) setAttempts((data ?? []) as PinAttempt[]);
+    };
+    const loadAlert = async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return;
+      const { data } = await supabase
+        .from("notifications")
+        .select("id, read_at, created_at")
+        .eq("user_id", u.user.id)
+        .eq("ride_id", rideId)
+        .eq("type", "pin_failed_attempt_limit")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled) setAlert((data as PinAlert | null) ?? null);
+    };
+    loadAttempts();
+    loadAlert();
+
+    const ch = supabase
+      .channel(`admin-pin-${rideId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ride_pin_attempts", filter: `ride_id=eq.${rideId}` },
+        () => loadAttempts(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `ride_id=eq.${rideId}` },
+        () => loadAlert(),
+      )
+      .subscribe();
+    const tick = setInterval(() => setNow(Date.now()), 30_000);
     return () => {
       cancelled = true;
+      supabase.removeChannel(ch);
+      clearInterval(tick);
     };
   }, [rideId]);
 
+  const recentFailures = useMemo(
+    () =>
+      attempts.filter(
+        (a) => !a.success && now - new Date(a.attempted_at).getTime() < LOCK_WINDOW_MS,
+      ),
+    [attempts, now],
+  );
+  const latestFailIso = recentFailures[0]?.attempted_at ?? null;
+  const locked = recentFailures.length >= MAX_FAILURES;
+  const lockExpiresAt = locked && latestFailIso ? new Date(latestFailIso).getTime() + LOCK_WINDOW_MS : null;
+  const lockSecondsLeft = lockExpiresAt ? Math.max(0, Math.round((lockExpiresAt - now) / 1000)) : 0;
+  const hasOpenAlert = !!alert && alert.read_at === null;
+
+  async function onReveal() {
+    setRevealBusy(true);
+    try {
+      const r = await viewFn({ data: { rideId } });
+      setPin(r.pin);
+      toast.success("PIN revealed — audit entry recorded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Reveal failed");
+    } finally {
+      setRevealBusy(false);
+    }
+  }
+
   async function onReset() {
-    setBusy(true);
+    setResetBusy(true);
     try {
       const r = await resetFn({ data: { rideId } });
       setPin(r.pin);
@@ -390,24 +469,106 @@ function AdminPinRow({ rideId }: { rideId: string }) {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Reset failed");
     } finally {
-      setBusy(false);
+      setResetBusy(false);
+    }
+  }
+
+  async function onAcknowledge() {
+    setAckBusy(true);
+    try {
+      await ackFn({ data: { rideId } });
+      toast.success("Alert acknowledged");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Acknowledge failed");
+    } finally {
+      setAckBusy(false);
     }
   }
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-md border border-dashed bg-secondary/40 px-2.5 py-2 text-xs">
-      <span className="flex items-center gap-1.5 text-muted-foreground">
-        <KeyRound className="h-3.5 w-3.5" /> Start PIN
-        <span className="ml-1 font-mono text-base font-semibold tracking-widest text-foreground">
-          {pin === undefined ? "…" : (pin ?? "—")}
+    <div
+      className={
+        "space-y-2 rounded-md border px-2.5 py-2 text-xs " +
+        (hasOpenAlert
+          ? "border-destructive/60 bg-destructive/10"
+          : "border-dashed bg-secondary/40")
+      }
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <KeyRound className="h-3.5 w-3.5" /> Start PIN
+          <span className="ml-1 font-mono text-base font-semibold tracking-widest text-foreground">
+            {pin ?? "••••"}
+          </span>
+          {hasOpenAlert && (
+            <Badge variant="destructive" className="ml-2 gap-1">
+              <ShieldAlert className="h-3 w-3" /> PIN lockout
+            </Badge>
+          )}
         </span>
-      </span>
-      <Button size="sm" variant="ghost" onClick={onReset} disabled={busy}>
-        {busy && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}Reset
-      </Button>
+        <div className="flex flex-wrap items-center gap-1">
+          <Button size="sm" variant="outline" onClick={onReveal} disabled={revealBusy}>
+            {revealBusy ? (
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+            ) : pin ? (
+              <EyeOff className="mr-1 h-3 w-3" />
+            ) : (
+              <Eye className="mr-1 h-3 w-3" />
+            )}
+            {pin ? "Re-reveal" : "Reveal PIN"}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onReset} disabled={resetBusy}>
+            {resetBusy && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}Reset
+          </Button>
+          {hasOpenAlert && (
+            <Button size="sm" variant="secondary" onClick={onAcknowledge} disabled={ackBusy}>
+              {ackBusy ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : (
+                <Check className="mr-1 h-3 w-3" />
+              )}
+              Acknowledge
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground sm:grid-cols-4">
+        <span>
+          Failed attempts:{" "}
+          <span className="font-medium text-foreground">
+            {recentFailures.length}/{MAX_FAILURES}
+          </span>
+        </span>
+        <span>
+          Latest attempt:{" "}
+          <span className="font-medium text-foreground">
+            {latestFailIso
+              ? new Date(latestFailIso).toLocaleTimeString(undefined, {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "—"}
+          </span>
+        </span>
+        <span>
+          Lockout:{" "}
+          <span className={"font-medium " + (locked ? "text-destructive" : "text-foreground")}>
+            {locked ? "Active" : "Clear"}
+          </span>
+        </span>
+        <span>
+          Lockout expires:{" "}
+          <span className="font-medium text-foreground">
+            {lockExpiresAt
+              ? `${new Date(lockExpiresAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })} (~${Math.ceil(lockSecondsLeft / 60)}m)`
+              : "—"}
+          </span>
+        </span>
+      </div>
     </div>
   );
 }
+
 
 function formatDuration(r: Ride): string {
   const secs =
