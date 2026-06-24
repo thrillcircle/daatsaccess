@@ -150,6 +150,18 @@ function DriverPage() {
     return () => unsub?.();
   }, [user, profile?.is_available, activeRide]);
 
+  const trackingRideId =
+    activeRide && ["accepted", "driver_arriving", "arrived", "in_progress"].includes(activeRide.status)
+      ? activeRide.id
+      : null;
+  const live = useLiveLocation({
+    enabled: !!profile?.is_available,
+    userId: user?.id,
+    role: "driver",
+    rideId: trackingRideId,
+    updateDriverProfile: true,
+  });
+
   if (loadingProfile) {
     return (
       <AppShell title="Driver" nav={nav}>
@@ -166,17 +178,6 @@ function DriverPage() {
     );
   }
 
-  const trackingRideId =
-    activeRide && ["accepted", "driver_arriving", "arrived", "in_progress"].includes(activeRide.status)
-      ? activeRide.id
-      : null;
-  const live = useLiveLocation({
-    enabled: !!profile.is_available,
-    userId: user!.id,
-    role: "driver",
-    rideId: trackingRideId,
-    updateDriverProfile: true,
-  });
 
   return (
     <AppShell title="Driver" nav={nav}>
