@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,11 +10,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { type ExtendedJourneyMetadata } from "@/lib/booking-types";
-import { Calculator, UserPlus, Wallet } from "lucide-react";
+import type { ExtendedJourneyMetadata } from "@/lib/booking-types";
+import { Calculator, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-
-type DepositStatus = "none" | "pending" | "paid" | "refunded" | "waived";
 
 export type EJBooking = {
   id: string;
@@ -27,7 +23,7 @@ export type EJBooking = {
   status: string;
   quoted_total: number | null;
   deposit_amount: number | null;
-  deposit_status: DepositStatus;
+  deposit_status: "none" | "pending" | "paid" | "refunded" | "waived";
   metadata: unknown;
 };
 
@@ -50,22 +46,13 @@ export function ExtendedJourneyAdminPanel({
   onChanged: () => void;
   actorId: string;
 }) {
-  const [depositAmount, setDepositAmount] = useState<string>(
-    booking.deposit_amount != null ? String(booking.deposit_amount) : "",
-  );
-  const [depositStatus, setDepositStatus] = useState<DepositStatus>(booking.deposit_status);
   const [reliefId, setReliefId] = useState("");
   const [reliefExisting, setReliefExisting] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const meta = isMetadata(booking.metadata) ? booking.metadata : {};
 
   useEffect(() => {
-    setDepositAmount(booking.deposit_amount != null ? String(booking.deposit_amount) : "");
-    setDepositStatus(booking.deposit_status);
-  }, [booking.deposit_amount, booking.deposit_status]);
-
-  useEffect(() => {
-    (async () => {
+    void (async () => {
       const { data } = await supabase
         .from("booking_driver_assignments")
         .select("driver_user_id,assignment_role")
@@ -88,32 +75,11 @@ export function ExtendedJourneyAdminPanel({
     });
   };
 
-  const saveDeposit = async () => {
-    setBusy(true);
-    try {
-      const amount = Number(depositAmount);
-      const { error } = await supabase
-        .from("service_bookings")
-        .update({
-          deposit_amount: Number.isFinite(amount) && amount > 0 ? amount : null,
-          deposit_status: depositStatus,
-        })
-        .eq("id", booking.id);
-      if (error) throw error;
-      await logEvent("deposit_updated", { deposit_amount: amount, deposit_status: depositStatus });
-      toast.success("Deposit record updated");
-      onChanged();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Deposit update failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const saveRelief = async () => {
     if (!reliefId) return toast.error("Pick a relief driver");
-    if (reliefId === primaryDriverId)
+    if (reliefId === primaryDriverId) {
       return toast.error("Relief must differ from the primary driver");
+    }
     setBusy(true);
     try {
       await supabase
@@ -160,16 +126,20 @@ export function ExtendedJourneyAdminPanel({
     <div className="space-y-3">
       <section className="rounded-lg border p-3 text-sm">
         <h4 className="font-semibold">Extended Journey details</h4>
-        <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+        <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
           <div className="col-span-2">
             <dt className="text-muted-foreground">Dates</dt>
             <dd>
               {booking.start_at
-                ? new Date(booking.start_at).toLocaleDateString("en-ZA", { dateStyle: "medium" })
+                ? new Date(booking.start_at).toLocaleDateString("en-ZA", {
+                    dateStyle: "medium",
+                  })
                 : "—"}
               {" → "}
               {booking.end_at
-                ? new Date(booking.end_at).toLocaleDateString("en-ZA", { dateStyle: "medium" })
+                ? new Date(booking.end_at).toLocaleDateString("en-ZA", {
+                    dateStyle: "medium",
+                  })
                 : "—"}
             </dd>
           </div>
@@ -239,9 +209,7 @@ export function ExtendedJourneyAdminPanel({
           {meta.additional_travellers?.length ? (
             <div className="col-span-2">
               <dt className="text-muted-foreground">Additional travellers</dt>
-              <dd>
-                {meta.additional_travellers.map((traveller) => traveller.full_name).join(", ")}
-              </dd>
+              <dd>{meta.additional_travellers.map((traveller) => traveller.full_name).join(", ")}</dd>
             </div>
           ) : null}
         </dl>
@@ -253,61 +221,14 @@ export function ExtendedJourneyAdminPanel({
           Calculated quote workspace
         </h4>
         <p className="mt-1 text-xs text-muted-foreground">
-          Manual line-item totals have been retired. Generate the quote from the published pricing
-          version, then apply any approved adjustment with a mandatory audit reason.
+          Quote totals, adjustments and deposit terms are controlled through protected pricing
+          operations. Direct booking-level financial edits are disabled.
         </p>
         <Button asChild size="sm" className="mt-3">
           <Link to="/app/admin/bookings/$bookingId/quote" params={{ bookingId: booking.id }}>
             Open quote workspace
           </Link>
         </Button>
-      </section>
-
-      <section className="rounded-lg border p-3">
-        <h4 className="flex items-center gap-1 text-sm font-semibold">
-          <Wallet className="h-3.5 w-3.5" />
-          Deposit record
-        </h4>
-        <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-          <div>
-            <Label>Amount (ZAR)</Label>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={depositAmount}
-              onChange={(event) => setDepositAmount(event.target.value)}
-            />
-          </div>
-          <div>
-            <Label>Status</Label>
-            <Select
-              value={depositStatus}
-              onValueChange={(value) => setDepositStatus(value as DepositStatus)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(["none", "pending", "paid", "waived", "refunded"] as DepositStatus[]).map(
-                  (status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ),
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid items-end">
-            <Button size="sm" disabled={busy} onClick={() => void saveDeposit()}>
-              Save deposit
-            </Button>
-          </div>
-        </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Payment collection and settlement remain outside Phase 4.
-        </p>
       </section>
 
       <section className="rounded-lg border p-3">
