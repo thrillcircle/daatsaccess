@@ -28,7 +28,16 @@ WHERE ranked.id = quote.id
   AND quote.revision_number IS DISTINCT FROM ranked.revision_number;
 
 UPDATE public.service_quotes
-SET sent_at = COALESCE(sent_at, updated_at, created_at)
+SET sent_at = COALESCE(
+  sent_at,
+  CASE
+    WHEN valid_until IS NOT NULL THEN LEAST(
+      COALESCE(updated_at, created_at),
+      valid_until - interval '1 second'
+    )
+    ELSE COALESCE(updated_at, created_at)
+  END
+)
 WHERE status::text = 'sent';
 
 UPDATE public.service_quotes
@@ -42,6 +51,16 @@ WHERE status::text = 'rejected';
 UPDATE public.service_quotes
 SET expired_at = COALESCE(expired_at, updated_at, created_at)
 WHERE status::text = 'expired';
+
+UPDATE public.service_quotes
+SET expired_at = COALESCE(expired_at, valid_until, now())
+WHERE status::text = 'sent'
+  AND valid_until IS NOT NULL
+  AND valid_until <= now()
+  AND accepted_at IS NULL
+  AND declined_at IS NULL
+  AND superseded_at IS NULL
+  AND cancelled_at IS NULL;
 
 WITH ranked_sent AS (
   SELECT
