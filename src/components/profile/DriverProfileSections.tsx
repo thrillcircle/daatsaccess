@@ -1,7 +1,17 @@
+import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { CalendarRange, Car, Loader2, MapPinned, ShieldCheck, Star } from "lucide-react";
+import {
+  CalendarRange,
+  Car,
+  LifeBuoy,
+  Loader2,
+  MapPinned,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { Database } from "@/integrations/supabase/types";
 
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
@@ -121,6 +131,21 @@ export function DriverProfileSections({ userId }: { userId: string }) {
           Vehicle and driver records are managed by Access administration. Drivers can report issues
           through Support but cannot edit vehicle master data or maintenance status.
         </p>
+        <Button asChild variant="outline" className="mt-3 w-full">
+          <Link
+            to="/app/support"
+            search={{
+              rideId: "",
+              bookingId: "",
+              category: "vehicle_issue",
+              subject: driver?.license_plate
+                ? `Vehicle issue · ${driver.license_plate}`
+                : "Vehicle or driver operations issue",
+            }}
+          >
+            <LifeBuoy className="mr-1 h-4 w-4" /> Report a vehicle or operational issue
+          </Link>
+        </Button>
       </section>
 
       <section className="mt-4 rounded-2xl border bg-card p-4 shadow-sm">
