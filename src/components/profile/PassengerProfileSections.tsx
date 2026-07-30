@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { HeartHandshake, Home, Loader2, MapPin, Pencil, Plus, Shield, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
-const db = supabase as any;
+const db = supabase as unknown as SupabaseClient;
 
 type SavedAddress = {
   id: string;
@@ -37,7 +38,13 @@ type PassengerPreferences = {
   emergency_contact_relationship: string | null;
 };
 
-const ADDRESS_LABELS: SavedAddress["label"][] = ["Home", "Work", "Medical Facility", "Family", "Other"];
+const ADDRESS_LABELS: SavedAddress["label"][] = [
+  "Home",
+  "Work",
+  "Medical Facility",
+  "Family",
+  "Other",
+];
 
 export function PassengerProfileSections({ userId }: { userId: string }) {
   return (
@@ -189,7 +196,10 @@ function SavedAddressesCard({ userId }: { userId: string }) {
             enableCurrentLocation
           />
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={isDefault} onCheckedChange={(value) => setIsDefault(value === true)} />
+            <Checkbox
+              checked={isDefault}
+              onCheckedChange={(value) => setIsDefault(value === true)}
+            />
             Use as my default pickup address
           </label>
           <div className="flex gap-2">
@@ -324,7 +334,8 @@ function PassengerPreferencesCard({ userId }: { userId: string }) {
           <h2 className="font-semibold">Travel and assistance preferences</h2>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          These preferences help Access plan suitable support. They are not treated as medical diagnoses.
+          These preferences help Access plan suitable support. They are not treated as medical
+          diagnoses.
         </p>
       </div>
 
@@ -336,7 +347,8 @@ function PassengerPreferencesCard({ userId }: { userId: string }) {
           onChange={(event) =>
             setForm((previous) => ({
               ...previous,
-              preferred_contact_method: event.target.value as PassengerPreferences["preferred_contact_method"],
+              preferred_contact_method: event.target
+                .value as PassengerPreferences["preferred_contact_method"],
             }))
           }
           className="h-10 w-full rounded-md border bg-background px-3 text-sm"
@@ -367,7 +379,9 @@ function PassengerPreferencesCard({ userId }: { userId: string }) {
         <Textarea
           id="mobility-notes"
           value={form.mobility_device_notes ?? ""}
-          onChange={(event) => setForm((previous) => ({ ...previous, mobility_device_notes: event.target.value }))}
+          onChange={(event) =>
+            setForm((previous) => ({ ...previous, mobility_device_notes: event.target.value }))
+          }
           rows={3}
           placeholder="Wheelchair type, walker, folding requirements, dimensions where relevant…"
         />
@@ -378,7 +392,10 @@ function PassengerPreferencesCard({ userId }: { userId: string }) {
           id="communication-notes"
           value={form.communication_support_notes ?? ""}
           onChange={(event) =>
-            setForm((previous) => ({ ...previous, communication_support_notes: event.target.value }))
+            setForm((previous) => ({
+              ...previous,
+              communication_support_notes: event.target.value,
+            }))
           }
           rows={3}
           placeholder="Preferred communication approach or support needs…"
@@ -403,7 +420,8 @@ function PassengerPreferencesCard({ userId }: { userId: string }) {
           <h3 className="font-medium">Emergency contact</h3>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          This contact is visible only to authorised Access administrators where operationally necessary.
+          This contact is visible only to authorised Access administrators where operationally
+          necessary.
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -422,7 +440,10 @@ function PassengerPreferencesCard({ userId }: { userId: string }) {
               id="emergency-phone"
               value={form.emergency_contact_phone ?? ""}
               onChange={(event) =>
-                setForm((previous) => ({ ...previous, emergency_contact_phone: event.target.value }))
+                setForm((previous) => ({
+                  ...previous,
+                  emergency_contact_phone: event.target.value,
+                }))
               }
               inputMode="tel"
             />
@@ -433,7 +454,10 @@ function PassengerPreferencesCard({ userId }: { userId: string }) {
               id="emergency-relationship"
               value={form.emergency_contact_relationship ?? ""}
               onChange={(event) =>
-                setForm((previous) => ({ ...previous, emergency_contact_relationship: event.target.value }))
+                setForm((previous) => ({
+                  ...previous,
+                  emergency_contact_relationship: event.target.value,
+                }))
               }
             />
           </div>

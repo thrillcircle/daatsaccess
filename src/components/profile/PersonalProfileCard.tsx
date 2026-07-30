@@ -139,7 +139,9 @@ export function PersonalProfileCard({
       if (previous && previous !== path) {
         await supabase.storage.from("avatars").remove([previous]);
       }
-      const { data: signed } = await supabase.storage.from("avatars").createSignedUrl(path, 60 * 60);
+      const { data: signed } = await supabase.storage
+        .from("avatars")
+        .createSignedUrl(path, 60 * 60);
       setProfile(updated);
       setAvatarUrl(signed?.signedUrl ?? null);
       toast.success("Photo updated");
@@ -191,7 +193,11 @@ export function PersonalProfileCard({
                   className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border bg-background shadow disabled:opacity-60"
                   aria-label="Change profile photo"
                 >
-                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
                 </button>
                 <input
                   ref={fileRef}
@@ -258,7 +264,11 @@ export function PersonalProfileCard({
         </p>
       ) : (
         <Button className="w-full" onClick={save} disabled={saving || uploading}>
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+          {saving ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+          )}
           Save personal details
         </Button>
       )}

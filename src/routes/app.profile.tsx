@@ -30,7 +30,13 @@ function ProfilePage() {
   const isDriver = !!roles?.includes("driver");
   const isAdmin = !!roles?.includes("admin");
   const driverOnly = isDriver && !isPassenger && !isAdmin;
-  const primaryRole = isAdmin ? "Administrator" : isPassenger ? "Passenger" : isDriver ? "Driver" : "Account";
+  const primaryRole = isAdmin
+    ? "Administrator"
+    : isPassenger
+      ? "Passenger"
+      : isDriver
+        ? "Driver"
+        : "Account";
 
   return (
     <AppShell title="Profile">
@@ -47,18 +53,25 @@ function ProfilePage() {
           </div>
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border bg-secondary/40 p-3">
-              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Account ID</dt>
+              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Account ID
+              </dt>
               <dd className="mt-1 break-all font-mono text-xs">{user.id}</dd>
             </div>
             <div className="rounded-xl border bg-secondary/40 p-3">
-              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Account created</dt>
+              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Account created
+              </dt>
               <dd className="mt-1 text-sm font-medium">
-                {user.created_at ? new Date(user.created_at).toLocaleString("en-ZA") : "Unavailable"}
+                {user.created_at
+                  ? new Date(user.created_at).toLocaleString("en-ZA")
+                  : "Unavailable"}
               </dd>
             </div>
           </dl>
           <p className="mt-4 text-xs text-muted-foreground">
-            Administrator roles cannot be assigned or removed from this profile page. Role changes belong in the future Users & Roles module.
+            Administrator roles cannot be assigned or removed from this profile page. Role changes
+            belong in the future Users & Roles module.
           </p>
           <Button asChild className="mt-4" variant="outline">
             <Link to="/app/admin">Return to Admin Overview</Link>

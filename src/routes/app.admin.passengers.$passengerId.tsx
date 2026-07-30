@@ -1,7 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, CalendarRange, HeartHandshake, LifeBuoy, Loader2, MapPin, Phone, Shield, UserCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarRange,
+  HeartHandshake,
+  LifeBuoy,
+  Loader2,
+  MapPin,
+  Phone,
+  Shield,
+  UserCircle2,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +26,7 @@ import {
   type SupportTicket,
 } from "@/lib/support";
 
-const db = supabase as any;
+const db = supabase as unknown as SupabaseClient;
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type Booking = Database["public"]["Tables"]["service_bookings"]["Row"];
@@ -67,35 +78,37 @@ function PassengerDetailPage() {
     const load = async () => {
       setLoading(true);
       setError(null);
-      const [profileResult, rideResult, bookingResult, addressResult, preferenceResult, ticketResult] =
-        await Promise.all([
-          supabase.from("profiles").select("*").eq("user_id", passengerId).maybeSingle(),
-          supabase
-            .from("rides")
-            .select("*")
-            .eq("passenger_id", passengerId)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("service_bookings")
-            .select("*")
-            .eq("booked_by_user_id", passengerId)
-            .order("created_at", { ascending: false }),
-          db
-            .from("passenger_saved_addresses")
-            .select("id,label,formatted_address,is_default")
-            .eq("passenger_id", passengerId)
-            .order("is_default", { ascending: false }),
-          db
-            .from("passenger_preferences")
-            .select("*")
-            .eq("passenger_id", passengerId)
-            .maybeSingle(),
-          db
-            .from("support_tickets")
-            .select("*")
-            .or(`passenger_id.eq.${passengerId},created_by.eq.${passengerId}`)
-            .order("updated_at", { ascending: false }),
-        ]);
+      const [
+        profileResult,
+        rideResult,
+        bookingResult,
+        addressResult,
+        preferenceResult,
+        ticketResult,
+      ] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", passengerId).maybeSingle(),
+        supabase
+          .from("rides")
+          .select("*")
+          .eq("passenger_id", passengerId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("service_bookings")
+          .select("*")
+          .eq("booked_by_user_id", passengerId)
+          .order("created_at", { ascending: false }),
+        db
+          .from("passenger_saved_addresses")
+          .select("id,label,formatted_address,is_default")
+          .eq("passenger_id", passengerId)
+          .order("is_default", { ascending: false }),
+        db.from("passenger_preferences").select("*").eq("passenger_id", passengerId).maybeSingle(),
+        db
+          .from("support_tickets")
+          .select("*")
+          .or(`passenger_id.eq.${passengerId},created_by.eq.${passengerId}`)
+          .order("updated_at", { ascending: false }),
+      ]);
       if (cancelled) return;
       const firstError =
         profileResult.error ||
@@ -139,12 +152,22 @@ function PassengerDetailPage() {
     );
   }
 
-  const activeStatuses = new Set(["requested", "accepted", "driver_arriving", "arrived", "in_progress"]);
+  const activeStatuses = new Set([
+    "requested",
+    "accepted",
+    "driver_arriving",
+    "arrived",
+    "in_progress",
+  ]);
   const activeRides = rides.filter((ride) => activeStatuses.has(ride.status));
   const upcoming = rides.filter(
-    (ride) => ride.request_type === "scheduled" && (ride.status === "requested" || ride.status === "accepted"),
+    (ride) =>
+      ride.request_type === "scheduled" &&
+      (ride.status === "requested" || ride.status === "accepted"),
   );
-  const historical = rides.filter((ride) => ride.status === "completed" || ride.status === "cancelled");
+  const historical = rides.filter(
+    (ride) => ride.status === "completed" || ride.status === "cancelled",
+  );
   const openTickets = tickets.filter((ticket) => !["resolved", "closed"].includes(ticket.status));
 
   return (
@@ -175,15 +198,22 @@ function PassengerDetailPage() {
                 <UserCircle2 className="h-6 w-6" />
               </span>
               <div className="min-w-0">
-                <h2 className="truncate font-semibold">{profile.full_name ?? "Unnamed passenger"}</h2>
+                <h2 className="truncate font-semibold">
+                  {profile.full_name ?? "Unnamed passenger"}
+                </h2>
                 <p className="text-sm text-muted-foreground">{profile.phone ?? "No phone"}</p>
-                <p className="mt-1 break-all font-mono text-[10px] text-muted-foreground">{profile.user_id}</p>
+                <p className="mt-1 break-all font-mono text-[10px] text-muted-foreground">
+                  {profile.user_id}
+                </p>
               </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2 text-center">
               <MiniStat label="Active" value={activeRides.length} />
               <MiniStat label="Upcoming" value={upcoming.length} />
-              <MiniStat label="Completed" value={rides.filter((ride) => ride.status === "completed").length} />
+              <MiniStat
+                label="Completed"
+                value={rides.filter((ride) => ride.status === "completed").length}
+              />
               <MiniStat label="Open support" value={openTickets.length} />
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
@@ -224,11 +254,26 @@ function PassengerDetailPage() {
             </div>
             {preferences ? (
               <dl className="mt-3 space-y-3 text-sm">
-                <Detail label="Preferred contact" value={preferences.preferred_contact_method.replaceAll("_", " ")} />
-                <Detail label="Wheelchair user" value={preferences.wheelchair_user ? "Yes" : "No"} />
-                <Detail label="Mobility notes" value={preferences.mobility_device_notes || "None"} />
-                <Detail label="Communication support" value={preferences.communication_support_notes || "None"} />
-                <Detail label="General assistance" value={preferences.general_assistance_notes || "None"} />
+                <Detail
+                  label="Preferred contact"
+                  value={preferences.preferred_contact_method.replaceAll("_", " ")}
+                />
+                <Detail
+                  label="Wheelchair user"
+                  value={preferences.wheelchair_user ? "Yes" : "No"}
+                />
+                <Detail
+                  label="Mobility notes"
+                  value={preferences.mobility_device_notes || "None"}
+                />
+                <Detail
+                  label="Communication support"
+                  value={preferences.communication_support_notes || "None"}
+                />
+                <Detail
+                  label="General assistance"
+                  value={preferences.general_assistance_notes || "None"}
+                />
               </dl>
             ) : (
               <p className="mt-3 text-sm text-muted-foreground">No passenger preferences saved.</p>
@@ -241,12 +286,19 @@ function PassengerDetailPage() {
               <h2 className="font-semibold">Emergency contact</h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Restricted operational information. Do not expose in passenger lists or driver profiles.
+              Restricted operational information. Do not expose in passenger lists or driver
+              profiles.
             </p>
             <dl className="mt-3 space-y-2 text-sm">
               <Detail label="Name" value={preferences?.emergency_contact_name || "Not provided"} />
-              <Detail label="Phone" value={preferences?.emergency_contact_phone || "Not provided"} />
-              <Detail label="Relationship" value={preferences?.emergency_contact_relationship || "Not provided"} />
+              <Detail
+                label="Phone"
+                value={preferences?.emergency_contact_phone || "Not provided"}
+              />
+              <Detail
+                label="Relationship"
+                value={preferences?.emergency_contact_relationship || "Not provided"}
+              />
             </dl>
           </section>
         </aside>
@@ -260,7 +312,11 @@ function PassengerDetailPage() {
               </div>
               <Badge variant="outline">{activeRides.length + upcoming.length}</Badge>
             </div>
-            <TripList rides={Array.from(new Map([...activeRides, ...upcoming].map((ride) => [ride.id, ride])).values())} />
+            <TripList
+              rides={Array.from(
+                new Map([...activeRides, ...upcoming].map((ride) => [ride.id, ride])).values(),
+              )}
+            />
           </section>
 
           <section className="rounded-2xl border bg-card p-4 shadow-sm">
@@ -272,7 +328,9 @@ function PassengerDetailPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="font-semibold">Service bookings</h2>
-                <p className="text-xs text-muted-foreground">Transport, Assisted, Appointment and Extended Journey requests.</p>
+                <p className="text-xs text-muted-foreground">
+                  Transport, Assisted, Appointment and Extended Journey requests.
+                </p>
               </div>
               <Button asChild size="sm" variant="outline">
                 <Link to="/app/admin/bookings">Open bookings</Link>
@@ -284,7 +342,9 @@ function PassengerDetailPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-medium">{booking.booking_reference}</p>
-                      <p className="text-xs text-muted-foreground">{booking.service_type.replaceAll("_", " ")}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {booking.service_type.replaceAll("_", " ")}
+                      </p>
                     </div>
                     <Badge variant="secondary">{booking.status.replaceAll("_", " ")}</Badge>
                   </div>
@@ -304,11 +364,21 @@ function PassengerDetailPage() {
                 <LifeBuoy className="h-4 w-4 text-primary" />
                 <div>
                   <h2 className="font-semibold">Support history</h2>
-                  <p className="text-xs text-muted-foreground">Open and resolved passenger support cases.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Open and resolved passenger support cases.
+                  </p>
                 </div>
               </div>
               <Button asChild size="sm" variant="outline">
-                <Link to="/app/admin/support" search={{ q: profile.full_name ?? profile.user_id, status: "all", priority: "all", category: "all" }}>
+                <Link
+                  to="/app/admin/support"
+                  search={{
+                    q: profile.full_name ?? profile.user_id,
+                    status: "all",
+                    priority: "all",
+                    category: "all",
+                  }}
+                >
                   Open Support
                 </Link>
               </Button>
@@ -323,11 +393,17 @@ function PassengerDetailPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-medium">{ticket.ticket_reference} · {ticket.subject}</p>
-                        <p className="text-xs text-muted-foreground">{supportCategoryLabel(ticket.category)}</p>
+                        <p className="font-medium">
+                          {ticket.ticket_reference} · {ticket.subject}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {supportCategoryLabel(ticket.category)}
+                        </p>
                       </div>
                       <div className="flex flex-col items-end gap-1">
-                        <Badge variant={ticket.priority === "urgent" ? "destructive" : "outline"}>{supportPriorityLabel(ticket.priority)}</Badge>
+                        <Badge variant={ticket.priority === "urgent" ? "destructive" : "outline"}>
+                          {supportPriorityLabel(ticket.priority)}
+                        </Badge>
                         <Badge variant="secondary">{supportStatusLabel(ticket.status)}</Badge>
                       </div>
                     </div>
@@ -368,7 +444,9 @@ function TripList({ rides }: { rides: Ride[] }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{ride.destination_address}</p>
                 <p className="truncate text-xs text-muted-foreground">From {ride.pickup_address}</p>
-                <p className="mt-1 text-[10px] text-muted-foreground">{new Date(ride.scheduled_at ?? ride.created_at).toLocaleString("en-ZA")}</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {new Date(ride.scheduled_at ?? ride.created_at).toLocaleString("en-ZA")}
+                </p>
               </div>
               <RideStatusBadge status={ride.status} />
             </div>

@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Clock3, FileText, Loader2, MessageSquare, Send, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,7 @@ import {
   type SupportTicket,
 } from "@/lib/support";
 
-const db = supabase as any;
+const db = supabase as unknown as SupabaseClient;
 type ProfileSummary = { user_id: string; full_name: string | null; phone: string | null };
 
 export const Route = createFileRoute("/app/admin/support/$ticketId")({
@@ -112,9 +113,31 @@ function AdminSupportTicketPage() {
     void load();
     const channel = supabase
       .channel(`admin-support-${ticketId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets", filter: `id=eq.${ticketId}` }, () => void load())
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_messages", filter: `ticket_id=eq.${ticketId}` }, () => void load())
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_ticket_events", filter: `ticket_id=eq.${ticketId}` }, () => void load())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "support_tickets", filter: `id=eq.${ticketId}` },
+        () => void load(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "support_messages",
+          filter: `ticket_id=eq.${ticketId}`,
+        },
+        () => void load(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "support_ticket_events",
+          filter: `ticket_id=eq.${ticketId}`,
+        },
+        () => void load(),
+      )
       .subscribe();
     return () => {
       cancelled = true;
@@ -226,7 +249,8 @@ function AdminSupportTicketPage() {
                 </div>
                 <h1 className="mt-2 text-xl font-semibold">{ticket.subject}</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {supportCategoryLabel(ticket.category)} · {new Date(ticket.created_at).toLocaleString("en-ZA")}
+                  {supportCategoryLabel(ticket.category)} ·{" "}
+                  {new Date(ticket.created_at).toLocaleString("en-ZA")}
                 </p>
               </div>
               <div className="text-sm sm:text-right">
@@ -249,23 +273,28 @@ function AdminSupportTicketPage() {
               <h2 className="font-semibold">Public conversation</h2>
             </div>
             <ul className="mt-4 space-y-3">
-              {messages.filter((message) => !message.is_internal_note).map((message) => {
-                const sender = profiles[message.sender_id];
-                const adminMessage = message.sender_role === "admin";
-                return (
-                  <li
-                    key={message.id}
-                    className={`max-w-[90%] rounded-2xl p-3 text-sm ${
-                      adminMessage ? "ml-auto bg-primary text-primary-foreground" : "bg-secondary"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap">{message.message}</p>
-                    <p className={`mt-1 text-[10px] ${adminMessage ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                      {sender?.full_name ?? message.sender_role} · {new Date(message.created_at).toLocaleString("en-ZA")}
-                    </p>
-                  </li>
-                );
-              })}
+              {messages
+                .filter((message) => !message.is_internal_note)
+                .map((message) => {
+                  const sender = profiles[message.sender_id];
+                  const adminMessage = message.sender_role === "admin";
+                  return (
+                    <li
+                      key={message.id}
+                      className={`max-w-[90%] rounded-2xl p-3 text-sm ${
+                        adminMessage ? "ml-auto bg-primary text-primary-foreground" : "bg-secondary"
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap">{message.message}</p>
+                      <p
+                        className={`mt-1 text-[10px] ${adminMessage ? "text-primary-foreground/70" : "text-muted-foreground"}`}
+                      >
+                        {sender?.full_name ?? message.sender_role} ·{" "}
+                        {new Date(message.created_at).toLocaleString("en-ZA")}
+                      </p>
+                    </li>
+                  );
+                })}
               {!messages.some((message) => !message.is_internal_note) ? (
                 <li className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
                   No public replies yet.
@@ -273,9 +302,18 @@ function AdminSupportTicketPage() {
               ) : null}
             </ul>
             <div className="mt-4 space-y-2">
-              <Textarea value={reply} onChange={(event) => setReply(event.target.value)} rows={4} placeholder="Write a public reply…" />
+              <Textarea
+                value={reply}
+                onChange={(event) => setReply(event.target.value)}
+                rows={4}
+                placeholder="Write a public reply…"
+              />
               <Button onClick={() => addMessage(reply, false)} disabled={sending || !reply.trim()}>
-                {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                {sending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
                 Send public reply
               </Button>
             </div>
@@ -290,18 +328,30 @@ function AdminSupportTicketPage() {
               Internal notes are visible to administrators only.
             </p>
             <ul className="mt-4 space-y-2">
-              {messages.filter((message) => message.is_internal_note).map((message) => (
-                <li key={message.id} className="rounded-xl border bg-background p-3 text-sm">
-                  <p className="whitespace-pre-wrap">{message.message}</p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    {profiles[message.sender_id]?.full_name ?? "Administrator"} · {new Date(message.created_at).toLocaleString("en-ZA")}
-                  </p>
-                </li>
-              ))}
+              {messages
+                .filter((message) => message.is_internal_note)
+                .map((message) => (
+                  <li key={message.id} className="rounded-xl border bg-background p-3 text-sm">
+                    <p className="whitespace-pre-wrap">{message.message}</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      {profiles[message.sender_id]?.full_name ?? "Administrator"} ·{" "}
+                      {new Date(message.created_at).toLocaleString("en-ZA")}
+                    </p>
+                  </li>
+                ))}
             </ul>
             <div className="mt-4 space-y-2">
-              <Textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="Add an internal note…" />
-              <Button variant="outline" onClick={() => addMessage(note, true)} disabled={sending || !note.trim()}>
+              <Textarea
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                rows={3}
+                placeholder="Add an internal note…"
+              />
+              <Button
+                variant="outline"
+                onClick={() => addMessage(note, true)}
+                disabled={sending || !note.trim()}
+              >
                 Add internal note
               </Button>
             </div>
@@ -356,12 +406,18 @@ function AdminSupportTicketPage() {
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save changes
               </Button>
-              <Button className="w-full" variant="outline" onClick={() => updateTicket(true)} disabled={saving}>
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => updateTicket(true)}
+                disabled={saving}
+              >
                 <UserCheck className="mr-2 h-4 w-4" /> Assign to me
               </Button>
             </div>
             <div className="mt-4 rounded-xl bg-secondary p-3 text-xs text-muted-foreground">
-              Assigned: {assigned?.full_name ?? (ticket.assigned_admin_id ? "Administrator" : "Unassigned")}
+              Assigned:{" "}
+              {assigned?.full_name ?? (ticket.assigned_admin_id ? "Administrator" : "Unassigned")}
             </div>
           </section>
 
@@ -375,7 +431,8 @@ function AdminSupportTicketPage() {
                 <li key={event.id} className="border-l-2 border-primary/20 pl-3 text-xs">
                   <p className="font-medium capitalize">{event.event_type.replaceAll("_", " ")}</p>
                   <p className="text-muted-foreground">
-                    {profiles[event.performed_by ?? ""]?.full_name ?? "System"} · {new Date(event.created_at).toLocaleString("en-ZA")}
+                    {profiles[event.performed_by ?? ""]?.full_name ?? "System"} ·{" "}
+                    {new Date(event.created_at).toLocaleString("en-ZA")}
                   </p>
                 </li>
               ))}

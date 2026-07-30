@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { LifeBuoy, Loader2, MessageCircleQuestion, Plus, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AppShell } from "@/components/AppShell";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +25,7 @@ import {
   type SupportTicket,
 } from "@/lib/support";
 
-const db = supabase as any;
+const db = supabase as unknown as SupabaseClient;
 
 type RideOption = {
   id: string;
@@ -112,8 +113,10 @@ function SupportPage() {
     void load();
     const channel = supabase
       .channel(`support-centre-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () =>
-        void load(),
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "support_tickets" },
+        () => void load(),
       )
       .subscribe();
     return () => {
@@ -193,8 +196,8 @@ function SupportPage() {
           <h2 className="font-semibold">Access Support Assistant</h2>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Automated guidance with escalation to Access Support. It cannot cancel trips, issue refunds,
-          assign drivers, or act as an emergency service.
+          Automated guidance with escalation to Access Support. It cannot cancel trips, issue
+          refunds, assign drivers, or act as an emergency service.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {SUPPORT_FAQS.map((faq) => (
@@ -339,8 +342,8 @@ function SupportPage() {
 
           {requesterRole === "driver" && category === "vehicle_issue" ? (
             <p className="rounded-xl border border-amber-400/40 bg-amber-50 p-3 text-xs text-amber-900">
-              State whether the vehicle is safe to continue. This ticket does not change the vehicle's
-              maintenance or operational status.
+              State whether the vehicle is safe to continue. This ticket does not change the
+              vehicle's maintenance or operational status.
             </p>
           ) : null}
 
@@ -348,8 +351,9 @@ function SupportPage() {
             <div className="flex gap-2 rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm">
               <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
               <p>
-                Access Support is not an emergency service. If there is immediate danger, contact the
-                appropriate emergency service. This ticket will be flagged for urgent admin review.
+                Access Support is not an emergency service. If there is immediate danger, contact
+                the appropriate emergency service. This ticket will be flagged for urgent admin
+                review.
               </p>
             </div>
           ) : null}
@@ -395,7 +399,8 @@ function SupportPage() {
                       <p className="text-xs font-medium text-primary">{ticket.ticket_reference}</p>
                       <p className="truncate font-semibold">{ticket.subject}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {supportCategoryLabel(ticket.category)} · updated {supportAge(ticket.updated_at)} ago
+                        {supportCategoryLabel(ticket.category)} · updated{" "}
+                        {supportAge(ticket.updated_at)} ago
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">

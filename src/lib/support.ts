@@ -154,7 +154,9 @@ export const SUPPORT_FAQS = [
 ] as const;
 
 export function supportCategoryLabel(value: string): string {
-  return SUPPORT_CATEGORIES.find((item) => item.value === value)?.label ?? value.replaceAll("_", " ");
+  return (
+    SUPPORT_CATEGORIES.find((item) => item.value === value)?.label ?? value.replaceAll("_", " ")
+  );
 }
 
 export function supportStatusLabel(value: string): string {

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, LocateFixed, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
 
 export type AddressPick = {
@@ -41,7 +42,7 @@ type SavedAddress = {
   is_default: boolean;
 };
 
-const profileDb = supabase as any;
+const profileDb = supabase as unknown as SupabaseClient;
 
 export function AddressAutocomplete({
   label,
@@ -167,7 +168,8 @@ export function AddressAutocomplete({
         setOpen(true);
       } catch (suggestionError) {
         console.warn("Autocomplete failed", suggestionError);
-        const message = suggestionError instanceof Error ? suggestionError.message : String(suggestionError);
+        const message =
+          suggestionError instanceof Error ? suggestionError.message : String(suggestionError);
         if (/referer .* blocked/i.test(message)) {
           setError(
             "Address search isn't available on this domain — open the published preview link to test it.",
@@ -214,7 +216,7 @@ export function AddressAutocomplete({
     }
   }
 
-  function useSavedAddress(address: SavedAddress) {
+  function selectSavedAddress(address: SavedAddress) {
     const pick: AddressPick = {
       address: address.formatted_address,
       placeId: address.place_id,
@@ -299,7 +301,7 @@ export function AddressAutocomplete({
             <button
               key={address.id}
               type="button"
-              onClick={() => useSavedAddress(address)}
+              onClick={() => selectSavedAddress(address)}
               className="inline-flex items-center gap-1 rounded-full border bg-secondary px-2.5 py-1 text-[11px] hover:border-primary/40"
             >
               <MapPin className="h-3 w-3 text-primary" />

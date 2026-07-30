@@ -1,13 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Bell } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Database } from "@/integrations/supabase/types";
@@ -46,7 +42,8 @@ export function NotificationBell() {
           table: "notifications",
           filter: `user_id=eq.${user.id}`,
         },
-        (payload) => setItems((previous) => [payload.new as Notification, ...previous].slice(0, 30)),
+        (payload) =>
+          setItems((previous) => [payload.new as Notification, ...previous].slice(0, 30)),
       )
       .on(
         "postgres_changes",
@@ -138,7 +135,7 @@ export function NotificationBell() {
                   </div>
                 );
 
-                let destination: React.ReactNode = inner;
+                let destination: ReactNode = inner;
                 if (notification.support_ticket_id) {
                   destination = isAdmin ? (
                     <Link

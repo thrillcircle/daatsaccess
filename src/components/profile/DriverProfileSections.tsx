@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CalendarRange, Car, Loader2, MapPinned, ShieldCheck, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -87,7 +87,8 @@ export function DriverProfileSections({ userId }: { userId: string }) {
               <h2 className="font-semibold">Current vehicle record</h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Temporary Phase 2 source: current driver profile. Phase 3 will replace this with daily fleet assignment.
+              Temporary Phase 2 source: current driver profile. Phase 3 will replace this with daily
+              fleet assignment.
             </p>
           </div>
           <Badge variant={driver?.is_available ? "default" : "secondary"}>
@@ -106,14 +107,19 @@ export function DriverProfileSections({ userId }: { userId: string }) {
             <ReadOnlyField label="Registration" value={driver.license_plate || "Not assigned"} />
             <ReadOnlyField
               label="Location status"
-              value={driver.location_updated_at ? `Updated ${new Date(driver.location_updated_at).toLocaleString("en-ZA")}` : "No recent location"}
+              value={
+                driver.location_updated_at
+                  ? `Updated ${new Date(driver.location_updated_at).toLocaleString("en-ZA")}`
+                  : "No recent location"
+              }
             />
           </dl>
         )}
 
         <p className="mt-4 flex items-start gap-2 rounded-xl bg-secondary p-3 text-xs text-muted-foreground">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Vehicle and driver records are managed by Access administration. Drivers can report issues through Support but cannot edit vehicle master data or maintenance status.
+          Vehicle and driver records are managed by Access administration. Drivers can report issues
+          through Support but cannot edit vehicle master data or maintenance status.
         </p>
       </section>
 
@@ -123,15 +129,29 @@ export function DriverProfileSections({ userId }: { userId: string }) {
           <h2 className="font-semibold">Driver performance</h2>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Average rating" value={stats.averageRating == null ? "No ratings" : `${stats.averageRating.toFixed(2)}★`} />
+          <Stat
+            label="Average rating"
+            value={
+              stats.averageRating == null ? "No ratings" : `${stats.averageRating.toFixed(2)}★`
+            }
+          />
           <Stat label="Ratings" value={ratings.length} />
           <Stat label="Completed" value={stats.completed} />
           <Stat label="Cancelled" value={stats.cancelled} />
-          <Stat label="Upcoming" value={stats.upcoming} icon={<CalendarRange className="h-3.5 w-3.5" />} />
-          <Stat label="Total distance" value={`${stats.totalKm.toFixed(0)} km`} icon={<MapPinned className="h-3.5 w-3.5" />} />
+          <Stat
+            label="Upcoming"
+            value={stats.upcoming}
+            icon={<CalendarRange className="h-3.5 w-3.5" />}
+          />
+          <Stat
+            label="Total distance"
+            value={`${stats.totalKm.toFixed(0)} km`}
+            icon={<MapPinned className="h-3.5 w-3.5" />}
+          />
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          This operational summary intentionally excludes fares, earnings, commissions, and payment values.
+          This operational summary intentionally excludes fares, earnings, commissions, and payment
+          values.
         </p>
       </section>
     </>
@@ -147,7 +167,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Stat({ label, value, icon }: { label: string; value: string | number; icon?: React.ReactNode }) {
+function Stat({ label, value, icon }: { label: string; value: string | number; icon?: ReactNode }) {
   return (
     <div className="rounded-xl border p-3 text-center">
       <p className="flex items-center justify-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">

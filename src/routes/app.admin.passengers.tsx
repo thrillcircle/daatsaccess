@@ -1,15 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Activity, CalendarRange, Loader2, Phone, Search, UserCircle2 } from "lucide-react";
+import { Activity, Loader2, Phone, Search, UserCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Database } from "@/integrations/supabase/types";
 
-const db = supabase as any;
+const db = supabase as unknown as SupabaseClient;
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Ride = Pick<
   Database["public"]["Tables"]["rides"]["Row"],
@@ -136,10 +136,22 @@ function PassengersPage() {
     void load();
     const channel = supabase
       .channel("admin-passenger-operations")
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => void load())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => void load(),
+      )
       .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, () => void load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "service_bookings" }, () => void load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () => void load())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "service_bookings" },
+        () => void load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "support_tickets" },
+        () => void load(),
+      )
       .subscribe();
     return () => {
       cancelled = true;
@@ -148,14 +160,29 @@ function PassengersPage() {
   }, [isAdmin]);
 
   const stats = useMemo(() => {
-    const activeStatuses = new Set(["requested", "accepted", "driver_arriving", "arrived", "in_progress"]);
-    const openSupportStatuses = new Set(["open", "triage", "assigned", "waiting_for_user", "in_progress"]);
+    const activeStatuses = new Set([
+      "requested",
+      "accepted",
+      "driver_arriving",
+      "arrived",
+      "in_progress",
+    ]);
+    const openSupportStatuses = new Set([
+      "open",
+      "triage",
+      "assigned",
+      "waiting_for_user",
+      "in_progress",
+    ]);
     const map: Record<string, PassengerStats> = {};
     for (const profile of profiles) {
       const passengerRides = rides.filter((ride) => ride.passenger_id === profile.user_id);
-      const passengerBookings = bookings.filter((booking) => booking.booked_by_user_id === profile.user_id);
+      const passengerBookings = bookings.filter(
+        (booking) => booking.booked_by_user_id === profile.user_id,
+      );
       const passengerTickets = tickets.filter(
-        (ticket) => ticket.passenger_id === profile.user_id || ticket.created_by === profile.user_id,
+        (ticket) =>
+          ticket.passenger_id === profile.user_id || ticket.created_by === profile.user_id,
       );
       const dates = [
         ...passengerRides.map((ride) => ride.updated_at || ride.created_at),
@@ -173,7 +200,8 @@ function PassengersPage() {
         completed: passengerRides.filter((ride) => ride.status === "completed").length,
         cancelled: passengerRides.filter((ride) => ride.status === "cancelled").length,
         bookings: passengerBookings.length,
-        openSupport: passengerTickets.filter((ticket) => openSupportStatuses.has(ticket.status)).length,
+        openSupport: passengerTickets.filter((ticket) => openSupportStatuses.has(ticket.status))
+          .length,
         lastActivity: dates.length
           ? dates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0]
           : null,
@@ -198,7 +226,10 @@ function PassengersPage() {
       if (search.filter === "upcoming" && summary.upcoming === 0) return false;
       if (search.filter === "support" && summary.openSupport === 0) return false;
       if (search.filter === "incomplete" && profile.full_name && profile.phone) return false;
-      if (search.filter === "no_history" && summary.completed + summary.cancelled + summary.active + summary.upcoming > 0)
+      if (
+        search.filter === "no_history" &&
+        summary.completed + summary.cancelled + summary.active + summary.upcoming > 0
+      )
         return false;
       if (!query) return true;
       return (
@@ -291,7 +322,9 @@ function PassengersPage() {
                         <UserCircle2 className="h-5 w-5" />
                       </span>
                       <div className="min-w-0">
-                        <p className="truncate font-semibold">{profile.full_name ?? "Unnamed passenger"}</p>
+                        <p className="truncate font-semibold">
+                          {profile.full_name ?? "Unnamed passenger"}
+                        </p>
                         {profile.phone ? (
                           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                             <Phone className="h-3 w-3" /> {profile.phone}
@@ -321,7 +354,10 @@ function PassengersPage() {
                     <Stat label="Support" value={summary?.openSupport ?? 0} />
                   </div>
                   <p className="mt-3 flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <Activity className="h-3 w-3" /> Last activity {summary?.lastActivity ? new Date(summary.lastActivity).toLocaleString("en-ZA") : "—"}
+                    <Activity className="h-3 w-3" /> Last activity{" "}
+                    {summary?.lastActivity
+                      ? new Date(summary.lastActivity).toLocaleString("en-ZA")
+                      : "—"}
                   </p>
                 </Link>
               </li>

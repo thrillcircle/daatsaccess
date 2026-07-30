@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Loader2, MessageSquare, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
 import { AppShell } from "@/components/AppShell";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,7 @@ import {
   type SupportTicket,
 } from "@/lib/support";
 
-const db = supabase as any;
+const db = supabase as unknown as SupabaseClient;
 
 export const Route = createFileRoute("/app/support/$ticketId")({
   head: () => ({ meta: [{ title: "Support ticket — Access" }] }),
@@ -65,7 +66,12 @@ function SupportTicketPage() {
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "support_messages", filter: `ticket_id=eq.${ticketId}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "support_messages",
+          filter: `ticket_id=eq.${ticketId}`,
+        },
         () => void load(),
       )
       .subscribe();
@@ -132,7 +138,8 @@ function SupportTicketPage() {
             <p className="text-xs font-medium text-primary">{ticket.ticket_reference}</p>
             <h1 className="text-lg font-semibold">{ticket.subject}</h1>
             <p className="mt-1 text-xs text-muted-foreground">
-              {supportCategoryLabel(ticket.category)} · created {new Date(ticket.created_at).toLocaleString("en-ZA")}
+              {supportCategoryLabel(ticket.category)} · created{" "}
+              {new Date(ticket.created_at).toLocaleString("en-ZA")}
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
@@ -148,7 +155,8 @@ function SupportTicketPage() {
         <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
           <p>Trip: {ticket.ride_id ? ticket.ride_id.slice(0, 8) : "Not linked"}</p>
           <p>
-            Service booking: {ticket.service_booking_id ? ticket.service_booking_id.slice(0, 8) : "Not linked"}
+            Service booking:{" "}
+            {ticket.service_booking_id ? ticket.service_booking_id.slice(0, 8) : "Not linked"}
           </p>
         </div>
         {ticket.resolution_summary ? (
@@ -185,7 +193,8 @@ function SupportTicketPage() {
                       mine ? "text-primary-foreground/70" : "text-muted-foreground"
                     }`}
                   >
-                    {mine ? "You" : "Access Support"} · {new Date(item.created_at).toLocaleString("en-ZA")}
+                    {mine ? "You" : "Access Support"} ·{" "}
+                    {new Date(item.created_at).toLocaleString("en-ZA")}
                   </p>
                 </li>
               );
@@ -207,7 +216,11 @@ function SupportTicketPage() {
               placeholder="Write a reply…"
             />
             <Button className="w-full" onClick={sendMessage} disabled={sending || !message.trim()}>
-              {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              {sending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
               Send reply
             </Button>
           </div>

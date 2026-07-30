@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { LifeBuoy, Loader2, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,7 @@ import {
   type SupportTicket,
 } from "@/lib/support";
 
-const db = supabase as any;
+const db = supabase as unknown as SupabaseClient;
 
 type ProfileSummary = { user_id: string; full_name: string | null; phone: string | null };
 type SupportSearch = {
@@ -107,7 +108,10 @@ function AdminSupportPage() {
         if (!cancelled) {
           setProfiles(
             Object.fromEntries(
-              ((profileRows ?? []) as ProfileSummary[]).map((profile) => [profile.user_id, profile]),
+              ((profileRows ?? []) as ProfileSummary[]).map((profile) => [
+                profile.user_id,
+                profile,
+              ]),
             ),
           );
         }
@@ -119,8 +123,10 @@ function AdminSupportPage() {
     void load();
     const channel = supabase
       .channel("admin-support-dashboard")
-      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () =>
-        void load(),
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "support_tickets" },
+        () => void load(),
       )
       .subscribe();
     return () => {
@@ -208,7 +214,11 @@ function AdminSupportPage() {
         <Metric label="Resolved today" value={metrics.resolvedToday} />
         <Metric
           label="Avg open age"
-          value={metrics.averageOpenAgeHours < 24 ? `${metrics.averageOpenAgeHours.toFixed(1)}h` : `${(metrics.averageOpenAgeHours / 24).toFixed(1)}d`}
+          value={
+            metrics.averageOpenAgeHours < 24
+              ? `${metrics.averageOpenAgeHours.toFixed(1)}h`
+              : `${(metrics.averageOpenAgeHours / 24).toFixed(1)}d`
+          }
         />
       </section>
 
@@ -225,7 +235,9 @@ function AdminSupportPage() {
           </div>
           <select
             value={search.status}
-            onChange={(event) => updateSearch({ status: event.target.value as SupportSearch["status"] })}
+            onChange={(event) =>
+              updateSearch({ status: event.target.value as SupportSearch["status"] })
+            }
             className="h-10 rounded-md border bg-background px-3 text-sm"
           >
             <option value="all">All statuses</option>
@@ -300,15 +312,21 @@ function AdminSupportPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-xs font-semibold text-primary">{ticket.ticket_reference}</p>
+                          <p className="text-xs font-semibold text-primary">
+                            {ticket.ticket_reference}
+                          </p>
                           <Badge variant="outline">{ticket.requester_role}</Badge>
                         </div>
                         <p className="mt-1 truncate font-semibold">{ticket.subject}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {requester?.full_name ?? "Unknown requester"} · {supportCategoryLabel(ticket.category)} · age {supportAge(ticket.created_at)}
+                          {requester?.full_name ?? "Unknown requester"} ·{" "}
+                          {supportCategoryLabel(ticket.category)} · age{" "}
+                          {supportAge(ticket.created_at)}
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Assigned: {assigned?.full_name ?? (ticket.assigned_admin_id ? "Administrator" : "Unassigned")}
+                          Assigned:{" "}
+                          {assigned?.full_name ??
+                            (ticket.assigned_admin_id ? "Administrator" : "Unassigned")}
                         </p>
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-end">
@@ -329,11 +347,23 @@ function AdminSupportPage() {
   );
 }
 
-function Metric({ label, value, emphasize }: { label: string; value: string | number; emphasize?: boolean }) {
+function Metric({
+  label,
+  value,
+  emphasize,
+}: {
+  label: string;
+  value: string | number;
+  emphasize?: boolean;
+}) {
   return (
-    <div className={`rounded-2xl border bg-card p-4 shadow-sm ${emphasize ? "border-destructive/40" : ""}`}>
+    <div
+      className={`rounded-2xl border bg-card p-4 shadow-sm ${emphasize ? "border-destructive/40" : ""}`}
+    >
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${emphasize ? "text-destructive" : ""}`}>{value}</p>
+      <p className={`mt-1 text-2xl font-semibold ${emphasize ? "text-destructive" : ""}`}>
+        {value}
+      </p>
     </div>
   );
 }
