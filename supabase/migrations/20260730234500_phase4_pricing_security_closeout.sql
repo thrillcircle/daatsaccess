@@ -27,7 +27,8 @@ BEGIN
     IF v_status IS DISTINCT FROM 'draft' THEN
       RAISE EXCEPTION 'Published or retired pricing components are immutable';
     END IF;
-    RETURN COALESCE(NEW, OLD);
+    IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
   END IF;
 
   IF TG_OP = 'DELETE' AND OLD.status <> 'draft' THEN
@@ -54,7 +55,8 @@ BEGIN
       RAISE EXCEPTION 'Published pricing may only be retired';
     END IF;
   END IF;
-  RETURN COALESCE(NEW, OLD);
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
 END;
 $$;
 
@@ -117,7 +119,8 @@ BEGIN
   IF v_sent_at IS NOT NULL THEN
     RAISE EXCEPTION 'Sent quote items are immutable';
   END IF;
-  RETURN COALESCE(NEW, OLD);
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
 END;
 $$;
 

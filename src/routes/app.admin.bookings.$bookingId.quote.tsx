@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { SERVICE_TYPE_LABEL, type BookingStatus, type ServiceType } from "@/lib/booking-types";
 import { formatZAR } from "@/lib/pricing";
@@ -39,6 +40,8 @@ type Quote = {
   adjustments_total: number;
   margin_amount: number;
   final_total: number;
+  deposit_required: boolean;
+  deposit_amount_snapshot: number;
   currency: string;
   valid_until: string | null;
   sent_at: string | null;
@@ -132,6 +135,9 @@ function AdminQuoteWorkspacePage() {
   const [validUntil, setValidUntil] = useState(validUntilDefault());
   const [adjustment, setAdjustment] = useState(0);
   const [overrideReason, setOverrideReason] = useState("");
+  const [depositRequired, setDepositRequired] = useState(false);
+  const [depositAmount, setDepositAmount] = useState(0);
+  const [depositReason, setDepositReason] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -173,6 +179,12 @@ function AdminQuoteWorkspacePage() {
     [workspace],
   );
 
+  useEffect(() => {
+    setDepositRequired(selectedQuote?.deposit_required ?? false);
+    setDepositAmount(Number(selectedQuote?.deposit_amount_snapshot ?? 0));
+    setDepositReason("");
+  }, [selectedQuote?.id, selectedQuote?.deposit_amount_snapshot, selectedQuote?.deposit_required]);
+
   const generate = async () => {
     if (!workspace) return;
     setBusy("generate");
@@ -203,6 +215,22 @@ function AdminQuoteWorkspacePage() {
     toast.success("Audited quote adjustment applied");
     setAdjustment(0);
     setOverrideReason("");
+    await load();
+  };
+
+  const saveDeposit = async () => {
+    if (!selectedQuote) return;
+    setBusy("deposit");
+    const { error: depositError } = await pricingDb.rpc("admin_set_quote_deposit", {
+      p_quote_id: selectedQuote.id,
+      p_required: depositRequired,
+      p_amount: Number(depositAmount),
+      p_reason: depositReason,
+      p_expected_row_version: selectedQuote.row_version,
+    });
+    setBusy(null);
+    if (depositError) return toast.error(depositError.message);
+    toast.success("Quote deposit terms updated");
     await load();
   };
 
@@ -371,6 +399,39 @@ function AdminQuoteWorkspacePage() {
                     onClick={() => void applyOverride()}
                   >
                     Apply override
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 rounded-xl border p-3 md:grid-cols-[auto_160px_1fr_auto]">
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch checked={depositRequired} onCheckedChange={setDepositRequired} />
+                  Deposit required
+                </label>
+                <div>
+                  <Label>Deposit amount</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={depositAmount}
+                    disabled={!depositRequired}
+                    onChange={(event) => setDepositAmount(Number(event.target.value))}
+                  />
+                </div>
+                <div>
+                  <Label>Mandatory reason</Label>
+                  <Input
+                    value={depositReason}
+                    onChange={(event) => setDepositReason(event.target.value)}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    variant="outline"
+                    disabled={!depositReason.trim() || busy === "deposit"}
+                    onClick={() => void saveDeposit()}
+                  >
+                    Save deposit terms
                   </Button>
                 </div>
               </div>

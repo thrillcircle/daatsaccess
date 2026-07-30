@@ -79,8 +79,8 @@ function localDateTime(value: string | null): string {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
-function toIso(value: string): string {
-  return value ? new Date(value).toISOString() : "";
+function toIso(value: string): string | null {
+  return value ? new Date(value).toISOString() : null;
 }
 
 export function PricingVersionManager() {
@@ -168,7 +168,7 @@ export function PricingVersionManager() {
     setComparePreview(null);
     setPublishConfirmation("");
     setRetireReason("");
-  }, [components, selected?.id]);
+  }, [components, selected]);
 
   useEffect(() => {
     setPreviewInputs(scenarioFor(service));
@@ -217,6 +217,7 @@ export function PricingVersionManager() {
       p_name: draftVersion.name,
       p_description: draftVersion.description ?? "",
       p_effective_from: toIso(localDateTime(draftVersion.effective_from)),
+      p_effective_to: toIso(localDateTime(draftVersion.effective_to)),
       p_is_mock: draftVersion.is_mock,
       p_components: payload,
       p_expected_row_version: draftVersion.row_version,
@@ -229,7 +230,7 @@ export function PricingVersionManager() {
 
   const runPreview = async (versionId: string, comparison = false) => {
     setBusy(comparison ? "compare" : "preview");
-    const { data, error: previewError } = await pricingDb.rpc("pricing_calculate", {
+    const { data, error: previewError } = await pricingDb.rpc("admin_pricing_calculate", {
       p_service_code: service,
       p_inputs: previewInputs as unknown as JsonValue,
       p_effective_at: new Date().toISOString(),
@@ -437,6 +438,20 @@ export function PricingVersionManager() {
                         setDraftVersion({
                           ...draftVersion,
                           effective_from: toIso(event.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label>Effective to (optional)</Label>
+                    <Input
+                      type="datetime-local"
+                      value={localDateTime(draftVersion.effective_to)}
+                      disabled={draftVersion.status !== "draft"}
+                      onChange={(event) =>
+                        setDraftVersion({
+                          ...draftVersion,
+                          effective_to: toIso(event.target.value),
                         })
                       }
                     />

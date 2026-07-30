@@ -334,7 +334,7 @@ BEGIN
 
   v_estimate := public.pricing_calculate(
     'ride', jsonb_build_object('distance_km', p_distance_km),
-    COALESCE(v_ride.scheduled_at, v_ride.created_at), NULL
+    COALESCE(v_ride.scheduled_at, v_ride.created_at), v_ride.pricing_version_id
   );
   v_previous := jsonb_build_object(
     'pickup_address', v_ride.pickup_address,

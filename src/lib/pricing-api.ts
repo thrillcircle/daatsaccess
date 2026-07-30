@@ -160,7 +160,7 @@ export type PricingDatabase = {
     };
     Views: Record<string, never>;
     Functions: {
-      pricing_calculate: {
+      admin_pricing_calculate: {
         Args: {
           p_service_code: string;
           p_inputs?: JsonValue;
@@ -246,7 +246,8 @@ export type PricingDatabase = {
           p_version_id: string;
           p_name: string;
           p_description: string;
-          p_effective_from: string;
+          p_effective_from: string | null;
+          p_effective_to: string | null;
           p_is_mock: boolean;
           p_components: JsonValue;
           p_expected_row_version: number;
@@ -307,6 +308,17 @@ export type PricingDatabase = {
         Args: { p_quote_id: string; p_expected_row_version: number; p_reason?: string };
         Returns: JsonValue;
       };
+      admin_set_quote_deposit: {
+        Args: {
+          p_quote_id: string;
+          p_required: boolean;
+          p_amount: number;
+          p_reason: string;
+          p_expected_row_version: number;
+        };
+        Returns: JsonValue;
+      };
+      admin_expire_service_quotes: { Args: Record<string, never>; Returns: number };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

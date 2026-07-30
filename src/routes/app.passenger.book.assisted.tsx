@@ -13,7 +13,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { RouteMap } from "@/components/RouteMap";
 import { computeRoute } from "@/lib/maps.functions";
-import { estimatePrice, formatZAR } from "@/lib/pricing";
 import { ASSISTANCE_OPTIONS, type AssistanceCode } from "@/lib/booking-types";
 import { toast } from "sonner";
 import { ChevronLeft } from "lucide-react";
@@ -40,8 +39,10 @@ function BookAssistedPage() {
       { to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger },
       { to: "/app/passenger/bookings", label: "Bookings", icon: NAV_ICONS.Profile },
     ];
-    if (roles?.includes("driver")) items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
-    if (roles?.includes("admin")) items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
+    if (roles?.includes("driver"))
+      items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
+    if (roles?.includes("admin"))
+      items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
     items.push({ to: "/app/profile", label: "Profile", icon: NAV_ICONS.Profile });
     return items;
   }, [roles]);
@@ -66,7 +67,11 @@ function BookAssistedPage() {
   useEffect(() => {
     if (!user || bookFor !== "self") return;
     (async () => {
-      const { data } = await supabase.from("profiles").select("full_name, phone").eq("user_id", user.id).maybeSingle();
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("user_id", user.id)
+        .maybeSingle();
       if (data) {
         setTravellerName((n) => n || data.full_name || "");
         setTravellerPhone((p) => p || data.phone || "");
@@ -83,7 +88,12 @@ function BookAssistedPage() {
     let cancelled = false;
     setEstimating(true);
     route({
-      data: { originLat: pickupPt.lat, originLng: pickupPt.lng, destLat: destPt.lat, destLng: destPt.lng },
+      data: {
+        originLat: pickupPt.lat,
+        originLng: pickupPt.lng,
+        destLat: destPt.lat,
+        destLng: destPt.lng,
+      },
     })
       .then((r) => {
         if (cancelled) return;
@@ -102,9 +112,10 @@ function BookAssistedPage() {
   const scheduleDate = mode === "scheduled" && scheduleLocal ? new Date(scheduleLocal) : null;
   const scheduleValid =
     mode === "now" ||
-    (!!scheduleDate && !Number.isNaN(scheduleDate.getTime()) && scheduleDate.getTime() > Date.now() + 60_000);
+    (!!scheduleDate &&
+      !Number.isNaN(scheduleDate.getTime()) &&
+      scheduleDate.getTime() > Date.now() + 60_000);
 
-  const transportEstimate = distanceKm != null ? estimatePrice(distanceKm) : null;
   const hasAssistance = assistance.length > 0;
   const canSubmit =
     !!user &&
@@ -119,14 +130,19 @@ function BookAssistedPage() {
     !submitting;
 
   function toggleAssistance(code: AssistanceCode, on: boolean) {
-    setAssistance((prev) => (on ? Array.from(new Set([...prev, code])) : prev.filter((c) => c !== code)));
+    setAssistance((prev) =>
+      on ? Array.from(new Set([...prev, code])) : prev.filter((c) => c !== code),
+    );
   }
 
   async function onSubmit() {
     if (!canSubmit || !user || !pickupPt || !destPt || distanceKm == null) return;
     setSubmitting(true);
     try {
-      const startAt = mode === "scheduled" && scheduleDate ? scheduleDate.toISOString() : new Date().toISOString();
+      const startAt =
+        mode === "scheduled" && scheduleDate
+          ? scheduleDate.toISOString()
+          : new Date().toISOString();
       const { data: booking, error: bookingErr } = await supabase
         .from("service_bookings")
         .insert({
@@ -137,7 +153,7 @@ function BookAssistedPage() {
           start_at: startAt,
           requested_companion_count: companionCount,
           passenger_notes: notes.trim() || null,
-          estimated_total: transportEstimate,
+          estimated_total: null,
         })
         .select()
         .single();
@@ -187,7 +203,6 @@ function BookAssistedPage() {
           pickupPlaceId: pickupPt.placeId,
           distanceKm,
           durationMin,
-          estimatedTransport: transportEstimate,
           requestType: mode,
           scheduledAt: mode === "scheduled" && scheduleDate ? scheduleDate.toISOString() : null,
         }),
@@ -213,34 +228,59 @@ function BookAssistedPage() {
   return (
     <AppShell title="Access Assisted" nav={nav}>
       <div className="mb-3">
-        <Link to="/app/passenger/book" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+        <Link
+          to="/app/passenger/book"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+        >
           <ChevronLeft className="mr-1 h-4 w-4" /> Back
         </Link>
       </div>
 
       <section className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
         <h2 className="text-base font-semibold">Who is travelling?</h2>
-        <RadioGroup value={bookFor} onValueChange={(v) => setBookFor(v as "self" | "other")} className="mt-3 grid grid-cols-2 gap-2">
-          <Label htmlFor="abf-self" className="flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm">
+        <RadioGroup
+          value={bookFor}
+          onValueChange={(v) => setBookFor(v as "self" | "other")}
+          className="mt-3 grid grid-cols-2 gap-2"
+        >
+          <Label
+            htmlFor="abf-self"
+            className="flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm"
+          >
             <RadioGroupItem id="abf-self" value="self" /> Myself
           </Label>
-          <Label htmlFor="abf-other" className="flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm">
+          <Label
+            htmlFor="abf-other"
+            className="flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm"
+          >
             <RadioGroupItem id="abf-other" value="other" /> Someone else
           </Label>
         </RadioGroup>
         <div className="mt-3 grid gap-3">
           <div>
             <Label htmlFor="atrav-name">Traveller full name</Label>
-            <Input id="atrav-name" value={travellerName} onChange={(e) => setTravellerName(e.target.value)} />
+            <Input
+              id="atrav-name"
+              value={travellerName}
+              onChange={(e) => setTravellerName(e.target.value)}
+            />
           </div>
           <div>
             <Label htmlFor="atrav-phone">Traveller phone</Label>
-            <Input id="atrav-phone" value={travellerPhone} onChange={(e) => setTravellerPhone(e.target.value)} />
+            <Input
+              id="atrav-phone"
+              value={travellerPhone}
+              onChange={(e) => setTravellerPhone(e.target.value)}
+            />
           </div>
           {bookFor === "other" ? (
             <div>
               <Label htmlFor="atrav-rel">Relationship to traveller</Label>
-              <Input id="atrav-rel" value={relationship} onChange={(e) => setRelationship(e.target.value)} />
+              <Input
+                id="atrav-rel"
+                value={relationship}
+                onChange={(e) => setRelationship(e.target.value)}
+              />
             </div>
           ) : null}
         </div>
@@ -249,17 +289,31 @@ function BookAssistedPage() {
       <section className="mt-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
         <h2 className="text-base font-semibold">When?</h2>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button type="button" variant={mode === "now" ? "default" : "outline"} onClick={() => setMode("now")}>
+          <Button
+            type="button"
+            variant={mode === "now" ? "default" : "outline"}
+            onClick={() => setMode("now")}
+          >
             As soon as possible
           </Button>
-          <Button type="button" variant={mode === "scheduled" ? "default" : "outline"} onClick={() => setMode("scheduled")}>
+          <Button
+            type="button"
+            variant={mode === "scheduled" ? "default" : "outline"}
+            onClick={() => setMode("scheduled")}
+          >
             Schedule
           </Button>
         </div>
         {mode === "scheduled" ? (
           <div className="mt-3">
             <Label htmlFor="asched">Pickup time (Africa/Johannesburg)</Label>
-            <Input id="asched" type="datetime-local" min={localInputNow()} value={scheduleLocal} onChange={(e) => setScheduleLocal(e.target.value)} />
+            <Input
+              id="asched"
+              type="datetime-local"
+              min={localInputNow()}
+              value={scheduleLocal}
+              onChange={(e) => setScheduleLocal(e.target.value)}
+            />
           </div>
         ) : null}
       </section>
@@ -267,20 +321,37 @@ function BookAssistedPage() {
       <section className="mt-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
         <h2 className="text-base font-semibold">Pickup &amp; destination</h2>
         <div className="mt-3 space-y-3">
-          <AddressAutocomplete id="apickup" label="Pickup" value={pickupPt} onChange={setPickupPt} enableCurrentLocation />
-          <AddressAutocomplete id="adest" label="Destination" value={destPt} onChange={setDestPt} bias={pickupPt ? { lat: pickupPt.lat, lng: pickupPt.lng } : null} />
+          <AddressAutocomplete
+            id="apickup"
+            label="Pickup"
+            value={pickupPt}
+            onChange={setPickupPt}
+            enableCurrentLocation
+          />
+          <AddressAutocomplete
+            id="adest"
+            label="Destination"
+            value={destPt}
+            onChange={setDestPt}
+            bias={pickupPt ? { lat: pickupPt.lat, lng: pickupPt.lng } : null}
+          />
         </div>
         {pickupPt && destPt ? (
           <div className="mt-3 space-y-2">
             <RouteMap origin={pickupPt} destination={destPt} className="h-40" />
             <div className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm">
               <span className="text-muted-foreground">
-                {estimating ? "Estimating…" : distanceKm != null ? `${distanceKm.toFixed(2)} km${durationMin != null ? ` · ~${durationMin} min` : ""}` : "—"}
+                {estimating
+                  ? "Estimating…"
+                  : distanceKm != null
+                    ? `${distanceKm.toFixed(2)} km${durationMin != null ? ` · ~${durationMin} min` : ""}`
+                    : "—"}
               </span>
-              <span className="font-semibold">{transportEstimate != null ? formatZAR(transportEstimate) : "—"}</span>
+              <span className="font-semibold">Personalised quote</span>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              This is the transport estimate only. Our team will send you a quote for the assistance support.
+              Specialised rates remain unpublished. Our team will calculate and send a personalised
+              quote after reviewing the route and assistance requirements.
             </p>
           </div>
         ) : null}
@@ -288,7 +359,9 @@ function BookAssistedPage() {
 
       <section className="mt-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
         <h2 className="text-base font-semibold">Companion support</h2>
-        <p className="text-xs text-muted-foreground">How many trained companions should travel with you?</p>
+        <p className="text-xs text-muted-foreground">
+          How many trained companions should travel with you?
+        </p>
         <div className="mt-3 grid grid-cols-4 gap-2">
           {[1, 2, 3, 4].map((n) => (
             <Button
@@ -308,7 +381,11 @@ function BookAssistedPage() {
         <p className="text-xs text-muted-foreground">Pick at least one.</p>
         <div className="mt-3 grid gap-2">
           {ASSISTANCE_OPTIONS.filter((o) => o.code !== "other").map((opt) => (
-            <Label key={opt.code} htmlFor={`aa-${opt.code}`} className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm">
+            <Label
+              key={opt.code}
+              htmlFor={`aa-${opt.code}`}
+              className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm"
+            >
               <Checkbox
                 id={`aa-${opt.code}`}
                 checked={assistance.includes(opt.code)}
@@ -323,7 +400,11 @@ function BookAssistedPage() {
         </div>
         <div className="mt-3">
           <Label htmlFor="other-support">Other support instructions (optional)</Label>
-          <Textarea id="other-support" value={otherInstructions} onChange={(e) => setOtherInstructions(e.target.value)} />
+          <Textarea
+            id="other-support"
+            value={otherInstructions}
+            onChange={(e) => setOtherInstructions(e.target.value)}
+          />
         </div>
       </section>
 
@@ -336,7 +417,9 @@ function BookAssistedPage() {
         {submitting ? "Submitting…" : "Submit for quote"}
       </Button>
       {!hasAssistance ? (
-        <p className="mt-2 text-center text-xs text-muted-foreground">Pick at least one assistance type to continue.</p>
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          Pick at least one assistance type to continue.
+        </p>
       ) : null}
     </AppShell>
   );

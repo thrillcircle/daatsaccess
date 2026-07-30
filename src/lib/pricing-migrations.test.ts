@@ -20,12 +20,16 @@ describe("Phase 4 database contracts", () => {
   });
 
   it("keeps mock specialised pricing from being published", () => {
-    expect(foundation).toContain("IF v_version.is_mock THEN RAISE EXCEPTION 'Mock pricing cannot be published'");
+    expect(foundation).toContain(
+      "IF v_version.is_mock THEN RAISE EXCEPTION 'Mock pricing cannot be published'",
+    );
   });
 
   it("blocks direct quote writes and customer access to internal quote rows", () => {
     expect(foundation).toContain("REVOKE INSERT, UPDATE, DELETE ON public.pricing_versions");
-    expect(privacy).toContain("REVOKE SELECT ON public.service_quotes, public.service_quote_items FROM authenticated");
+    expect(privacy).toContain(
+      "REVOKE SELECT ON public.service_quotes, public.service_quote_items FROM authenticated",
+    );
     expect(privacy).toContain("WHERE quote.booking_id = p_booking_id AND item.customer_visible");
   });
 
@@ -48,7 +52,9 @@ describe("Phase 4 database contracts", () => {
 
   it("requires passenger Ride and Transport creation to use priced RPCs", () => {
     expect(estimates).toContain("CREATE OR REPLACE FUNCTION public.passenger_create_priced_ride");
-    expect(estimates).toContain("CREATE OR REPLACE FUNCTION public.passenger_create_transport_booking");
+    expect(estimates).toContain(
+      "CREATE OR REPLACE FUNCTION public.passenger_create_transport_booking",
+    );
     expect(estimates).toContain('DROP POLICY IF EXISTS "passenger creates ride"');
     expect(estimates).toContain("pricing_version_id, estimate_snapshot");
   });
