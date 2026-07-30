@@ -121,6 +121,7 @@ export type MaintenanceWorkOrder = {
 
 export type FleetConsolidationIssue = {
   id: string;
+  canonical_vehicle_id: string | null;
   issue_type: string;
   source_table: string;
   source_record_id: string | null;
@@ -192,7 +193,7 @@ export function isAssignmentEffective(
   assignment: Pick<VehicleAssignment, "status" | "start_at" | "end_at">,
   at = new Date(),
 ): boolean {
-  if (assignment.status !== "active") return false;
+  if (!["scheduled", "active"].includes(assignment.status)) return false;
   const start = new Date(assignment.start_at).getTime();
   const end = assignment.end_at ? new Date(assignment.end_at).getTime() : Number.POSITIVE_INFINITY;
   const timestamp = at.getTime();

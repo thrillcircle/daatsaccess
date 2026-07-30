@@ -59,11 +59,8 @@ type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type RideStatus = Database["public"]["Enums"]["ride_status"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
 type Profile = { user_id: string; full_name: string | null; phone: string | null };
-type Vehicle = {
+type DriverAvailability = {
   user_id: string;
-  vehicle_model: string | null;
-  license_plate: string | null;
-  vehicle_type: string | null;
   is_available: boolean;
 };
 type FleetVehicle = Database["public"]["Tables"]["vehicle_profiles"]["Row"];
@@ -158,7 +155,7 @@ function AdminTripsPage() {
   const [rides, setRides] = useState<Ride[]>([]);
   const [passengers, setPassengers] = useState<Map<string, Profile>>(new Map());
   const [drivers, setDrivers] = useState<Map<string, Profile>>(new Map());
-  const [vehicles, setVehicles] = useState<Map<string, Vehicle>>(new Map());
+  const [vehicles, setVehicles] = useState<Map<string, DriverAvailability>>(new Map());
   const [payments, setPayments] = useState<Map<string, PaymentRow>>(new Map());
   const [reviews, setReviews] = useState<Map<string, Review>>(new Map());
   const [fleetVehicles, setFleetVehicles] = useState<Map<string, FleetVehicle>>(new Map());
@@ -343,10 +340,10 @@ function AdminTripsPage() {
         if (driverIds.length) {
           const { data: vs } = await supabase
             .from("driver_profiles")
-            .select("user_id, vehicle_model, license_plate, vehicle_type, is_available")
+            .select("user_id, is_available")
             .in("user_id", driverIds);
           if (!cancelled)
-            setVehicles(new Map(((vs ?? []) as Vehicle[]).map((v) => [v.user_id, v])));
+            setVehicles(new Map(((vs ?? []) as DriverAvailability[]).map((v) => [v.user_id, v])));
         } else {
           setVehicles(new Map());
         }
@@ -361,13 +358,9 @@ function AdminTripsPage() {
             .select("*")
             .in("id", fleetIds);
           if (!cancelled) {
-            const fm = new Map<string, FleetVehicle>();
-            for (const r of list) {
-              if (!r.vehicle_id) continue;
-              const v = (fvs ?? []).find((x) => x.id === r.vehicle_id);
-              if (v) fm.set(r.id, v as FleetVehicle);
-            }
-            setFleetVehicles(fm);
+            setFleetVehicles(
+              new Map(((fvs ?? []) as FleetVehicle[]).map((vehicle) => [vehicle.id, vehicle])),
+            );
           }
         } else {
           setFleetVehicles(new Map());
@@ -452,7 +445,7 @@ function AdminTripsPage() {
         <Input
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Search name, phone, ride ID, plate, pickup or destination"
+          placeholder="Search name, phone, ride ID, pickup or destination"
           className="pl-9"
         />
       </div>
@@ -518,7 +511,7 @@ function AdminTripsPage() {
               passenger={passengers.get(r.passenger_id) ?? null}
               driver={r.driver_id ? (drivers.get(r.driver_id) ?? null) : null}
               vehicle={r.driver_id ? (vehicles.get(r.driver_id) ?? null) : null}
-              fleetVehicle={fleetVehicles.get(r.id) ?? null}
+              fleetVehicle={r.vehicle_id ? (fleetVehicles.get(r.vehicle_id) ?? null) : null}
               payment={payments.get(r.id) ?? null}
               review={reviews.get(r.id) ?? null}
               variant={active}
@@ -562,7 +555,7 @@ function TripRow({
   ride: Ride;
   passenger: Profile | null;
   driver: Profile | null;
-  vehicle: Vehicle | null;
+  vehicle: DriverAvailability | null;
   fleetVehicle: FleetVehicle | null;
   payment: PaymentRow | null;
   review: Review | null;
@@ -573,14 +566,9 @@ function TripRow({
   const vehicleModel = fleetVehicle
     ? `${fleetVehicle.vehicle_name ?? ""} ${fleetVehicle.model ?? ""}`.trim() ||
       (fleetVehicle.vehicle_name ?? "—")
-    : (vehicle?.vehicle_model ?? null);
-  const vehicleType = fleetVehicle?.vehicle_type ?? vehicle?.vehicle_type ?? null;
-  const vehiclePlate = fleetVehicle?.license_plate ?? vehicle?.license_plate ?? null;
-  const vehicleAssignmentStatus: "fleet" | "driver" | "unassigned" = fleetVehicle
-    ? "fleet"
-    : vehicle && (vehicle.vehicle_model || vehicle.license_plate)
-      ? "driver"
-      : "unassigned";
+    : null;
+  const vehicleType = fleetVehicle?.vehicle_type ?? null;
+  const vehiclePlate = fleetVehicle?.license_plate ?? null;
   const driverAvailability: "available" | "offline" | "none" = vehicle
     ? vehicle.is_available
       ? "available"
@@ -632,10 +620,10 @@ function TripRow({
             Vehicle assignment
           </div>
           <div className="text-xs">
-            {vehicleAssignmentStatus === "fleet" ? (
-              <Badge className="bg-sky-500/15 text-sky-700 dark:text-sky-300">Fleet vehicle</Badge>
-            ) : vehicleAssignmentStatus === "driver" ? (
-              <Badge variant="outline">Driver's vehicle</Badge>
+            {fleetVehicle ? (
+              <Badge className="bg-sky-500/15 text-sky-700 dark:text-sky-300">
+                Canonical vehicle
+              </Badge>
             ) : (
               <Badge
                 variant="outline"
@@ -790,8 +778,6 @@ const STATUS_TRANSITIONS: RideStatus[] = [
 type DriverOption = {
   user_id: string;
   full_name: string | null;
-  vehicle_model: string | null;
-  license_plate: string | null;
   is_available: boolean;
 };
 
@@ -807,7 +793,7 @@ function AdminActionsDialog({
   ride: Ride;
   passenger: Profile | null;
   driver: Profile | null;
-  vehicle: Vehicle | null;
+  vehicle: DriverAvailability | null;
   fleetVehicle: FleetVehicle | null;
   payment: PaymentRow | null;
   onChanged: () => void;
@@ -833,31 +819,22 @@ function AdminActionsDialog({
         .eq("role", "driver");
       const ids = (roles ?? []).map((r) => r.user_id);
       if (!ids.length) return setDrivers([]);
-      const [{ data: profs }, { data: vs }] = await Promise.all([
+      const [{ data: profs }, { data: availabilityRows }] = await Promise.all([
         supabase.from("profiles").select("user_id, full_name").in("user_id", ids),
-        supabase
-          .from("driver_profiles")
-          .select("user_id, vehicle_model, license_plate, is_available")
-          .in("user_id", ids),
+        supabase.from("driver_profiles").select("user_id, is_available").in("user_id", ids),
       ]);
-      const vMap = new Map(
-        (
-          (vs ?? []) as {
-            user_id: string;
-            vehicle_model: string | null;
-            license_plate: string | null;
-            is_available: boolean;
-          }[]
-        ).map((v) => [v.user_id, v]),
+      const availability = new Map(
+        ((availabilityRows ?? []) as DriverAvailability[]).map((row) => [
+          row.user_id,
+          row.is_available,
+        ]),
       );
       const opts: DriverOption[] = (
         (profs ?? []) as { user_id: string; full_name: string | null }[]
-      ).map((p) => ({
-        user_id: p.user_id,
-        full_name: p.full_name,
-        vehicle_model: vMap.get(p.user_id)?.vehicle_model ?? null,
-        license_plate: vMap.get(p.user_id)?.license_plate ?? null,
-        is_available: vMap.get(p.user_id)?.is_available ?? false,
+      ).map((profile) => ({
+        user_id: profile.user_id,
+        full_name: profile.full_name,
+        is_available: availability.get(profile.user_id) ?? false,
       }));
       opts.sort(
         (a, b) =>
@@ -1002,12 +979,12 @@ function AdminActionsDialog({
               Passenger: {passenger?.full_name ?? "—"} · Driver:{" "}
               {driver?.full_name ?? (ride.driver_id ? "Assigned" : "Unassigned")}
             </p>
-            {vehicle && (vehicle.vehicle_model || vehicle.license_plate) && (
+            {fleetVehicle ? (
               <p className="mt-0.5 flex items-center gap-1 text-muted-foreground">
-                <Car className="h-3 w-3" />{" "}
-                {[vehicle.vehicle_model, vehicle.license_plate].filter(Boolean).join(" · ")}
+                <Car className="h-3 w-3" /> {fleetVehicle.vehicle_name} ·{" "}
+                {fleetVehicle.license_plate}
               </p>
-            )}
+            ) : null}
           </div>
 
           {/* Contact */}

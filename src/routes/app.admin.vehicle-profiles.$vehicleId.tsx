@@ -200,7 +200,7 @@ function VehicleDetailPage() {
           .from("fleet_consolidation_issues")
           .select("*")
           .eq("status", "open")
-          .or(`source_record_id.eq.${vehicleId},registration_number.eq.${vehicleId}`)
+          .eq("canonical_vehicle_id", vehicleId)
           .order("created_at", { ascending: false }),
       ]);
       if (cancelled) return;

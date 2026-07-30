@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { fleetDb, type VehicleAssignment } from "@/lib/fleet";
+import { fleetDb, isAssignmentEffective, type VehicleAssignment } from "@/lib/fleet";
 import { toast } from "sonner";
 
 export function AdminEndVehicleAssignmentDialog({
@@ -24,6 +24,7 @@ export function AdminEndVehicleAssignmentDialog({
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+  const effective = isAssignmentEffective(assignment);
 
   async function endAssignment() {
     if (reason.trim().length < 3) {
@@ -41,7 +42,7 @@ export function AdminEndVehicleAssignmentDialog({
       toast.error(error.message);
       return;
     }
-    toast.success(assignment.status === "scheduled" ? "Assignment cancelled" : "Assignment ended");
+    toast.success(effective ? "Assignment ended" : "Assignment cancelled");
     setOpen(false);
     setReason("");
     onEnded();
@@ -52,15 +53,13 @@ export function AdminEndVehicleAssignmentDialog({
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Unplug className="mr-1 h-4 w-4" />
-          {assignment.status === "scheduled" ? "Cancel assignment" : "End assignment"}
+          {effective ? "End assignment" : "Cancel assignment"}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {assignment.status === "scheduled"
-              ? "Cancel scheduled assignment"
-              : "End active assignment"}
+            {effective ? "End active assignment" : "Cancel scheduled assignment"}
           </DialogTitle>
           <DialogDescription>
             Assignment history is preserved. The reason is stored with the completed or cancelled

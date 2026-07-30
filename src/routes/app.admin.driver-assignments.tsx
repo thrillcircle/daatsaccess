@@ -268,7 +268,9 @@ function DriverAssignmentsPage() {
                       {assignment.assignment_type.replaceAll("_", " ")}
                     </p>
                     <Badge variant="outline" className="mt-1">
-                      {ASSIGNMENT_STATUS_LABEL[assignment.status]}
+                      {isAssignmentEffective(assignment)
+                        ? "Active"
+                        : ASSIGNMENT_STATUS_LABEL[assignment.status]}
                     </Badge>
                   </div>
                   <div>

@@ -69,20 +69,21 @@ describe("fleet domain", () => {
     expect(normalizeRegistration("AA 11 BB GP")).toBe("AA11BBGP");
   });
 
-  it("resolves an active effective assignment inside its time range", () => {
-    expect(isAssignmentEffective(assignment(), new Date("2026-07-30T12:00:00.000Z"))).toBe(true);
+  it("resolves scheduled or active assignments by effective time", () => {
+    const at = new Date("2026-07-30T12:00:00.000Z");
+
+    expect(isAssignmentEffective(assignment(), at)).toBe(true);
+    expect(isAssignmentEffective(assignment({ end_at: "2026-07-30T10:00:00.000Z" }), at)).toBe(
+      false,
+    );
+    expect(isAssignmentEffective(assignment({ status: "scheduled" }), at)).toBe(true);
     expect(
       isAssignmentEffective(
-        assignment({ end_at: "2026-07-30T10:00:00.000Z" }),
-        new Date("2026-07-30T12:00:00.000Z"),
+        assignment({ status: "scheduled", start_at: "2026-07-31T08:00:00.000Z" }),
+        at,
       ),
     ).toBe(false);
-    expect(
-      isAssignmentEffective(
-        assignment({ status: "scheduled" }),
-        new Date("2026-07-30T12:00:00.000Z"),
-      ),
-    ).toBe(false);
+    expect(isAssignmentEffective(assignment({ status: "cancelled" }), at)).toBe(false);
   });
 
   it("classifies missing, expiring and expired documents", () => {

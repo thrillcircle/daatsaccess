@@ -213,11 +213,14 @@ function PassengerBookingsPage() {
           setQuoteItems([]);
         }
         const vIds = Array.from(
-          new Set(
-            ((rr.data ?? []) as Ride[])
+          new Set([
+            ...((vr.data ?? []) as VehicleAssign[])
+              .map((assignment) => assignment.vehicle_id)
+              .filter((value): value is string => !!value),
+            ...((rr.data ?? []) as Ride[])
               .map((ride) => ride.vehicle_id)
               .filter((value): value is string => !!value),
-          ),
+          ]),
         );
         const cIds = Array.from(new Set((cr.data ?? []).map((c) => c.companion_id)));
         const drIds = Array.from(
@@ -297,13 +300,15 @@ function PassengerBookingsPage() {
             const a = assistance.filter((x) => x.booking_id === b.id);
             const q = quotes.find((x) => x.booking_id === b.id);
             const dAssign = driverAssigns.find((x) => x.booking_id === b.id);
+            const vAssign = vehicleAssigns.find((x) => x.booking_id === b.id);
             const cAssigns = companionAssigns.filter((x) => x.booking_id === b.id);
             const ride = rides.find((r) => r.service_booking_id === b.id);
             const driverName = (id: string | null | undefined) =>
               id ? (driverProfiles.find((p) => p.user_id === id)?.full_name ?? "Driver") : null;
             const driver = driverName(dAssign?.driver_user_id ?? ride?.driver_id ?? null);
-            const veh = ride?.vehicle_id
-              ? fleetVehicles.find((vehicle) => vehicle.id === ride.vehicle_id)
+            const assignedVehicleId = ride?.vehicle_id ?? vAssign?.vehicle_id ?? null;
+            const veh = assignedVehicleId
+              ? fleetVehicles.find((vehicle) => vehicle.id === assignedVehicleId)
               : null;
             const comps = cAssigns
               .map((ca) => companions.find((c) => c.id === ca.companion_id))

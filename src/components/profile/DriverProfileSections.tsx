@@ -60,7 +60,7 @@ export function DriverProfileSections({ userId }: { userId: string }) {
           .from("vehicle_driver_assignments")
           .select("*")
           .eq("driver_id", userId)
-          .eq("status", "active")
+          .in("status", ["scheduled", "active"])
           .lte("start_at", new Date().toISOString())
           .order("start_at", { ascending: false }),
         supabase.from("rides").select("*").eq("driver_id", userId),
