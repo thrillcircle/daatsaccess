@@ -5,6 +5,7 @@ import {
   type VehicleProfile,
 } from "@/lib/vehicle-suitability";
 
+// Protect the assignment rules Phase 3 will reuse during canonical fleet consolidation.
 function vehicle(overrides: Partial<VehicleProfile> = {}): VehicleProfile {
   return {
     admin_notes: null,
