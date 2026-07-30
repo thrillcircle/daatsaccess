@@ -1,9 +1,9 @@
 name: Phase 3 Live Migration
 
 on:
-  push:
+  pull_request:
     branches:
-      - phase-3-live-migration
+      - main
 
 permissions:
   contents: write
