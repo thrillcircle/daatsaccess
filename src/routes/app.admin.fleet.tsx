@@ -1,1162 +1,409 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth, useUserRoles } from "@/hooks/use-auth";
+import {
+  AlertTriangle,
+  CalendarClock,
+  Car,
+  CheckCircle2,
+  ClipboardList,
+  FileWarning,
+  Gauge,
+  History,
+  Loader2,
+  ShieldAlert,
+  UserRoundCheck,
+  Wrench,
+} from "lucide-react";
 import { AdminShell } from "@/components/AdminShell";
-import { NAV_ICONS } from "@/components/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Plus, Pencil, Gauge, Wrench, UserPlus, StickyNote, Loader2, Accessibility, ExternalLink, ShieldCheck, AlertTriangle, CheckCircle2 } from "lucide-react";
+  MAINTENANCE_STATUS_LABEL,
+  VEHICLE_STATUS_LABEL,
+  documentState,
+  fleetDb,
+  isAssignmentEffective,
+  serviceState,
+  type CanonicalVehicle,
+  type FleetConsolidationIssue,
+  type MaintenanceWorkOrder,
+  type VehicleAssignment,
+  type VehicleDocument,
+  type VehicleStatusEvent,
+} from "@/lib/fleet";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
-import { getVehicleAlerts, highestSeverity } from "@/lib/vehicle-alerts";
-import { useDriverVehicles, useValidDrivers, type DriverVehicle } from "@/hooks/use-driver-vehicles";
-
-type Vehicle = Database["public"]["Tables"]["vehicle_profiles"]["Row"];
-type VehicleInsert = Database["public"]["Tables"]["vehicle_profiles"]["Insert"];
-type Profile = Database["public"]["Tables"]["profiles"]["Row"];
-
-const STATUSES = ["active", "in_maintenance", "out_of_service", "retired"] as const;
-const ACTIVE_RIDE_STATUSES = ["requested", "accepted", "driver_arriving", "arrived", "in_progress"] as const;
-
-type FleetStats = {
-  total: number;
-  available: number;
-  assignedToday: number;
-  inMaintenance: number;
-  serviceDueSoon: number;
-  expiredDocs: number;
-};
-
-type VehicleTripStats = {
-  upcoming: number;
-  completed: number;
-  estimatedKm: number;
-};
 
 export const Route = createFileRoute("/app/admin/fleet")({
-  head: () => ({ meta: [{ title: "Fleet — Admin" }] }),
-  component: VehiclesPage,
+  head: () => ({ meta: [{ title: "Fleet Dashboard — Admin" }] }),
+  component: FleetDashboardPage,
 });
 
+type DriverProfile = { user_id: string; full_name: string | null };
 
-function VehiclesPage() {
+type DashboardData = {
+  vehicles: CanonicalVehicle[];
+  assignments: VehicleAssignment[];
+  documents: VehicleDocument[];
+  workOrders: MaintenanceWorkOrder[];
+  issues: FleetConsolidationIssue[];
+  statusEvents: VehicleStatusEvent[];
+  drivers: DriverProfile[];
+};
+
+const EMPTY_DATA: DashboardData = {
+  vehicles: [],
+  assignments: [],
+  documents: [],
+  workOrders: [],
+  issues: [],
+  statusEvents: [],
+  drivers: [],
+};
+
+function FleetDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const { roles, loading: rolesLoading } = useUserRoles(user?.id);
-  const isAdmin = !!roles?.includes("admin");
   const navigate = useNavigate();
-
-
-  const nav = useMemo(() => {
-    const items: { to: string; label: string; icon: typeof NAV_ICONS.Admin }[] = [];
-    if (roles?.includes("passenger")) items.push({ to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger });
-    if (roles?.includes("driver")) items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
-    items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
-    return items;
-  }, [roles]);
-
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [drivers, setDrivers] = useState<Profile[]>([]);
-  const [tripStats, setTripStats] = useState<Map<string, VehicleTripStats>>(new Map());
-  const [assignedToday, setAssignedToday] = useState<Set<string>>(new Set());
+  const isAdmin = !!roles?.includes("admin");
+  const [data, setData] = useState<DashboardData>(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
-  const [reloadTick, setReloadTick] = useState(0);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const [vRes, rRes] = await Promise.all([
-        supabase.from("vehicle_profiles").select("*").order("vehicle_name"),
-        supabase.from("user_roles").select("user_id").eq("role", "driver"),
-      ]);
-      if (cancelled) return;
-      if (vRes.error) toast.error("Failed to load vehicles");
-      const vehicleRows = vRes.data ?? [];
-      setVehicles(vehicleRows);
-      const driverIds = (rRes.data ?? []).map((r) => r.user_id);
-      let ds: Profile[] = [];
-      if (driverIds.length) {
-        const pRes = await supabase.from("profiles").select("*").in("user_id", driverIds);
-        ds = pRes.data ?? [];
-      }
-      setDrivers(ds);
-
-      // Trip stats per vehicle.
-      const vIds = vehicleRows.map((v) => v.id);
-      if (vIds.length) {
-        const { data: rides } = await supabase
-          .from("rides")
-          .select("vehicle_id, status, distance_km, actual_distance_km, scheduled_at, created_at")
-          .in("vehicle_id", vIds);
-        const stats = new Map<string, VehicleTripStats>();
-        const todays = new Set<string>();
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
-        for (const v of vehicleRows) stats.set(v.id, { upcoming: 0, completed: 0, estimatedKm: 0 });
-        for (const r of rides ?? []) {
-          if (!r.vehicle_id) continue;
-          const s = stats.get(r.vehicle_id);
-          if (!s) continue;
-          if (r.status === "completed") {
-            s.completed += 1;
-            s.estimatedKm += Number(r.actual_distance_km ?? r.distance_km ?? 0);
-          } else if ((ACTIVE_RIDE_STATUSES as readonly string[]).includes(r.status)) {
-            s.upcoming += 1;
-          }
-          const ref = r.scheduled_at ? new Date(r.scheduled_at) : new Date(r.created_at);
-          if (ref >= todayStart && ref <= todayEnd && r.status !== "cancelled") {
-            todays.add(r.vehicle_id);
-          }
-        }
-        if (!cancelled) {
-          setTripStats(stats);
-          setAssignedToday(todays);
-        }
-      } else {
-        setTripStats(new Map());
-        setAssignedToday(new Set());
-      }
-
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [isAdmin, reloadTick]);
-
-  const refresh = () => setReloadTick((n) => n + 1);
 
   useEffect(() => {
     if (authLoading || rolesLoading || roles === null) return;
     if (!user || !isAdmin) navigate({ to: "/app" });
   }, [authLoading, rolesLoading, roles, user, isAdmin, navigate]);
 
-  if (authLoading || rolesLoading || (user && roles === null)) return <AdminShell title="Fleet"><div className="p-6 text-sm text-muted-foreground">Loading…</div></AdminShell>;
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      const [vehicleResult, assignmentResult, documentResult, workOrderResult, issueResult, statusResult] =
+        await Promise.all([
+          fleetDb.from("vehicle_profiles").select("*").order("vehicle_name"),
+          fleetDb
+            .from("vehicle_driver_assignments")
+            .select("*")
+            .in("status", ["scheduled", "active"])
+            .order("start_at", { ascending: false }),
+          fleetDb.from("vehicle_documents").select("*").eq("is_current", true),
+          fleetDb
+            .from("vehicle_maintenance_work_orders")
+            .select("*")
+            .not("status", "in", "(completed,cancelled)")
+            .order("reported_at", { ascending: false }),
+          fleetDb
+            .from("fleet_consolidation_issues")
+            .select("*")
+            .eq("status", "open")
+            .order("created_at", { ascending: false }),
+          fleetDb
+            .from("vehicle_status_events")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(12),
+        ]);
+
+      const error =
+        vehicleResult.error ||
+        assignmentResult.error ||
+        documentResult.error ||
+        workOrderResult.error ||
+        issueResult.error ||
+        statusResult.error;
+      if (cancelled) return;
+      if (error) {
+        toast.error(error.message);
+        setLoading(false);
+        return;
+      }
+
+      const assignments = (assignmentResult.data ?? []) as VehicleAssignment[];
+      const driverIds = Array.from(new Set(assignments.map((assignment) => assignment.driver_id)));
+      const driverResult = driverIds.length
+        ? await fleetDb.from("profiles").select("user_id,full_name").in("user_id", driverIds)
+        : { data: [] as DriverProfile[], error: null };
+      if (cancelled) return;
+      if (driverResult.error) toast.error(driverResult.error.message);
+
+      setData({
+        vehicles: (vehicleResult.data ?? []) as CanonicalVehicle[],
+        assignments,
+        documents: (documentResult.data ?? []) as VehicleDocument[],
+        workOrders: (workOrderResult.data ?? []) as MaintenanceWorkOrder[],
+        issues: (issueResult.data ?? []) as FleetConsolidationIssue[],
+        statusEvents: (statusResult.data ?? []) as VehicleStatusEvent[],
+        drivers: (driverResult.data ?? []) as DriverProfile[],
+      });
+      setLoading(false);
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
+
+  const dashboard = useMemo(() => {
+    const activeAssignments = data.assignments.filter((assignment) => isAssignmentEffective(assignment));
+    const assignedVehicleIds = new Set(activeAssignments.map((assignment) => assignment.vehicle_id));
+    let expiringDocuments = 0;
+    let expiredDocuments = 0;
+    let dueSoon = 0;
+    let overdue = 0;
+
+    for (const vehicle of data.vehicles) {
+      const documents = data.documents.filter((document) => document.vehicle_id === vehicle.id);
+      const states = [
+        documentState(
+          documents.find((document) => document.document_type === "roadworthy")?.expires_at ??
+            vehicle.roadworthy_expiry_date,
+        ),
+        documentState(
+          documents.find((document) => document.document_type === "license_disc")?.expires_at ??
+            vehicle.license_disc_expiry_date,
+        ),
+        documentState(
+          documents.find((document) => document.document_type === "insurance")?.expires_at ??
+            vehicle.insurance_expiry_date,
+        ),
+      ];
+      if (states.includes("expired")) expiredDocuments += 1;
+      else if (states.includes("expiring")) expiringDocuments += 1;
+
+      const service = serviceState(vehicle);
+      if (service === "overdue") overdue += 1;
+      else if (service === "due_soon") dueSoon += 1;
+    }
+
+    return {
+      activeAssignments,
+      assignedVehicleIds,
+      total: data.vehicles.length,
+      active: data.vehicles.filter((vehicle) => vehicle.status === "active").length,
+      available: data.vehicles.filter(
+        (vehicle) => vehicle.status === "active" && !assignedVehicleIds.has(vehicle.id),
+      ).length,
+      assigned: assignedVehicleIds.size,
+      unassigned: data.vehicles.filter(
+        (vehicle) => vehicle.status === "active" && !assignedVehicleIds.has(vehicle.id),
+      ).length,
+      maintenance: data.vehicles.filter((vehicle) => vehicle.status === "maintenance").length,
+      outOfService: data.vehicles.filter((vehicle) => vehicle.status === "out_of_service").length,
+      retired: data.vehicles.filter((vehicle) => vehicle.status === "retired").length,
+      expiringDocuments,
+      expiredDocuments,
+      dueSoon,
+      overdue,
+      urgentMaintenance: data.workOrders.filter(
+        (order) => order.severity === "urgent" || order.severity === "unsafe",
+      ).length,
+      openIssues: data.issues.length,
+    };
+  }, [data]);
+
+  if (authLoading || rolesLoading || loading || (user && roles === null)) {
+    return (
+      <AdminShell title="Fleet Dashboard" subtitle="Canonical vehicle operations and compliance.">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading canonical fleet…
+        </p>
+      </AdminShell>
+    );
+  }
   if (!isAdmin) return null;
 
-
-
-  const driverName = (id: string | null) => {
-    if (!id) return "Unassigned";
-    const d = drivers.find((p) => p.user_id === id);
-    return d?.full_name ?? id.slice(0, 8);
-  };
-
-  const stats: FleetStats = vehicles.reduce<FleetStats>(
-    (acc, v) => {
-      acc.total++;
-      if (v.status === "active" && !assignedToday.has(v.id)) acc.available++;
-      if (assignedToday.has(v.id)) acc.assignedToday++;
-      if (v.status === "in_maintenance") acc.inMaintenance++;
-      const alerts = getVehicleAlerts(v);
-      if (alerts.some((a) => a.label === "Service due soon" || a.label === "Service overdue"))
-        acc.serviceDueSoon++;
-      if (alerts.some((a) => /expired/i.test(a.label))) acc.expiredDocs++;
-      return acc;
-    },
-    { total: 0, available: 0, assignedToday: 0, inMaintenance: 0, serviceDueSoon: 0, expiredDocs: 0 },
-  );
+  const driverName = (driverId: string) =>
+    data.drivers.find((driver) => driver.user_id === driverId)?.full_name ?? driverId.slice(0, 8);
+  const vehicleName = (vehicleId: string) =>
+    data.vehicles.find((vehicle) => vehicle.id === vehicleId)?.vehicle_name ?? "Vehicle";
 
   return (
-    <AdminShell title="Fleet">
-      <div className="mx-auto max-w-6xl p-4">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <div>
-            <h1 className="text-xl font-semibold">Fleet Management</h1>
-            <p className="text-sm text-muted-foreground">
-              Operations, safety, accessibility &amp; maintenance planning
-            </p>
-          </div>
-          <VehicleDialog drivers={drivers} onSaved={refresh}>
-            <Button size="sm"><Plus className="mr-1 h-4 w-4" /> Add vehicle</Button>
-          </VehicleDialog>
+    <AdminShell
+      title="Fleet Dashboard"
+      subtitle="Operational overview of the canonical Access vehicle fleet."
+      actions={
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link to="/app/admin/driver-assignments">Driver assignments</Link>
+          </Button>
+          <Button asChild>
+            <Link to="/app/admin/vehicle-profiles">Vehicle profiles</Link>
+          </Button>
         </div>
-
-        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          <FleetStatCard label="Total" value={stats.total} />
-          <FleetStatCard label="Available" value={stats.available} accent="ok" />
-          <FleetStatCard label="Assigned today" value={stats.assignedToday} />
-          <FleetStatCard label="In maintenance" value={stats.inMaintenance} accent="warn" />
-          <FleetStatCard label="Service due" value={stats.serviceDueSoon} accent="warn" />
-          <FleetStatCard label="Expired docs" value={stats.expiredDocs} accent="bad" />
-        </div>
-
-        <DriverVehiclesSection isAdmin={isAdmin} />
-
-
-
-        {loading ? (
-          <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
-            <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" /> Loading fleet…
-          </div>
-        ) : vehicles.length === 0 ? (
-          <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
-            No vehicles yet. Add your first one to get started.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {vehicles.map((v) => (
-              <VehicleRow
-                key={v.id}
-                vehicle={v}
-                driverName={driverName(v.assigned_driver_id)}
-                drivers={drivers}
-                tripStats={tripStats.get(v.id) ?? { upcoming: 0, completed: 0, estimatedKm: 0 }}
-                assignedNow={assignedToday.has(v.id)}
-                onChanged={refresh}
-              />
-            ))}
-          </div>
-        )}
+      }
+    >
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+        <Metric icon={Car} label="Canonical vehicles" value={dashboard.total} />
+        <Metric icon={CheckCircle2} label="Active" value={dashboard.active} />
+        <Metric icon={Gauge} label="Available" value={dashboard.available} />
+        <Metric icon={UserRoundCheck} label="Assigned now" value={dashboard.assigned} />
+        <Metric icon={Wrench} label="Maintenance" value={dashboard.maintenance} tone="warning" />
+        <Metric icon={ShieldAlert} label="Out of service" value={dashboard.outOfService} tone="danger" />
+        <Metric icon={History} label="Retired" value={dashboard.retired} />
+        <Metric icon={FileWarning} label="Docs expiring" value={dashboard.expiringDocuments} tone="warning" />
+        <Metric icon={FileWarning} label="Docs expired" value={dashboard.expiredDocuments} tone="danger" />
+        <Metric icon={CalendarClock} label="Service due" value={dashboard.dueSoon} tone="warning" />
+        <Metric icon={AlertTriangle} label="Service overdue" value={dashboard.overdue} tone="danger" />
+        <Metric icon={ClipboardList} label="Reconciliation issues" value={dashboard.openIssues} tone="danger" />
       </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <section className="rounded-2xl border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">Vehicles requiring attention</h2>
+              <p className="text-xs text-muted-foreground">
+                Maintenance, compliance, service and migration exceptions.
+              </p>
+            </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/app/admin/maintenance">Maintenance</Link>
+            </Button>
+          </div>
+          <div className="mt-3 space-y-2">
+            {data.workOrders.slice(0, 5).map((order) => (
+              <Link
+                key={order.id}
+                to="/app/admin/vehicle-profiles/$vehicleId"
+                params={{ vehicleId: order.vehicle_id }}
+                className="flex items-start justify-between gap-3 rounded-xl border p-3 transition-colors hover:bg-muted/50"
+              >
+                <div>
+                  <p className="text-sm font-medium">
+                    {order.work_order_reference} · {vehicleName(order.vehicle_id)}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{order.description}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <Badge variant={order.severity === "urgent" || order.severity === "unsafe" ? "destructive" : "outline"}>
+                    {order.severity.replaceAll("_", " ")}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground">
+                    {MAINTENANCE_STATUS_LABEL[order.status]}
+                  </span>
+                </div>
+              </Link>
+            ))}
+            {!data.workOrders.length ? (
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                No open maintenance work orders.
+              </p>
+            ) : null}
+            {dashboard.openIssues > 0 ? (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                <p className="font-medium text-destructive">
+                  {dashboard.openIssues} unresolved fleet consolidation issue
+                  {dashboard.openIssues === 1 ? "" : "s"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Do not remove legacy fleet sources until all issues are reconciled.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">Current assignments</h2>
+              <p className="text-xs text-muted-foreground">Effective driver and vehicle pairings.</p>
+            </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/app/admin/driver-assignments">View all</Link>
+            </Button>
+          </div>
+          <div className="mt-3 space-y-2">
+            {dashboard.activeAssignments.slice(0, 6).map((assignment) => (
+              <div key={assignment.id} className="flex items-center justify-between gap-3 rounded-xl border p-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{driverName(assignment.driver_id)}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {vehicleName(assignment.vehicle_id)} · {assignment.assignment_type.replaceAll("_", " ")}
+                  </p>
+                </div>
+                <Badge>Active</Badge>
+              </div>
+            ))}
+            {!dashboard.activeAssignments.length ? (
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                No effective fleet assignments.
+              </p>
+            ) : null}
+          </div>
+        </section>
+      </div>
+
+      <section className="mt-5 rounded-2xl border bg-card p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Recent vehicle status changes</h2>
+            <p className="text-xs text-muted-foreground">Canonical status history, newest first.</p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/app/admin/vehicle-profiles">Open vehicle profiles</Link>
+          </Button>
+        </div>
+        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {data.statusEvents.map((event) => (
+            <Link
+              key={event.id}
+              to="/app/admin/vehicle-profiles/$vehicleId"
+              params={{ vehicleId: event.vehicle_id }}
+              className="rounded-xl border p-3 transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-sm font-medium">{vehicleName(event.vehicle_id)}</p>
+                <Badge variant={event.new_status === "out_of_service" ? "destructive" : "outline"}>
+                  {VEHICLE_STATUS_LABEL[event.new_status]}
+                </Badge>
+              </div>
+              <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{event.reason}</p>
+              <p className="mt-2 text-[10px] text-muted-foreground">
+                {new Date(event.created_at).toLocaleString("en-ZA")}
+              </p>
+            </Link>
+          ))}
+          {!data.statusEvents.length ? (
+            <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+              No status events recorded yet.
+            </p>
+          ) : null}
+        </div>
+      </section>
     </AdminShell>
   );
 }
 
-function FleetStatCard({
+function Metric({
+  icon: Icon,
   label,
   value,
-  accent,
+  tone = "default",
 }: {
+  icon: typeof Car;
   label: string;
   value: number;
-  accent?: "ok" | "warn" | "bad";
+  tone?: "default" | "warning" | "danger";
 }) {
-  const cls =
-    accent === "ok"
-      ? "border-emerald-500/30 bg-emerald-500/5"
-      : accent === "warn"
-      ? "border-amber-500/40 bg-amber-500/5"
-      : accent === "bad"
-      ? "border-destructive/40 bg-destructive/5"
-      : "";
-  const Icon =
-    accent === "ok" ? CheckCircle2 :
-    accent === "warn" ? AlertTriangle :
-    accent === "bad" ? AlertTriangle :
-    ShieldCheck;
   return (
-    <div className={`rounded-lg border bg-card p-3 ${cls}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
-        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+    <div
+      className={
+        tone === "danger"
+          ? "rounded-xl border border-destructive/30 bg-destructive/5 p-3"
+          : tone === "warning"
+            ? "rounded-xl border border-amber-400/40 bg-amber-50/50 p-3 dark:bg-amber-950/10"
+            : "rounded-xl border bg-card p-3"
+      }
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
-      <p className="mt-1 text-xl font-semibold">{value}</p>
+      <p className="mt-2 text-2xl font-semibold">{value}</p>
     </div>
   );
 }
-
-
-
-function VehicleRow({
-  vehicle: v,
-  driverName,
-  drivers,
-  tripStats,
-  assignedNow,
-  onChanged,
-}: {
-  vehicle: Vehicle;
-  driverName: string;
-  drivers: Profile[];
-  tripStats: VehicleTripStats;
-  assignedNow: boolean;
-  onChanged: () => void;
-}) {
-  const alerts = getVehicleAlerts(v);
-  const sev = highestSeverity(alerts);
-  const ringClass =
-    sev === "urgent" ? "ring-2 ring-destructive/40" :
-    sev === "warning" ? "ring-2 ring-amber-400/40" : "";
-
-  const statusColor: Record<string, string> = {
-    active: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-    in_maintenance: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-    out_of_service: "bg-destructive/15 text-destructive",
-    retired: "bg-muted text-muted-foreground",
-  };
-
-  const odo = Number(v.current_odometer_km ?? 0);
-  const lastKm = v.last_service_km != null ? Number(v.last_service_km) : null;
-  const dueKm = v.next_service_due_km != null ? Number(v.next_service_due_km) : null;
-  const interval = Number(v.service_interval_km ?? 0);
-  let servicePct: number | null = null;
-  if (lastKm != null && interval > 0) {
-    servicePct = Math.max(0, Math.min(100, ((odo - lastKm) / interval) * 100));
-  } else if (dueKm != null && interval > 0) {
-    servicePct = Math.max(0, Math.min(100, ((odo - (dueKm - interval)) / interval) * 100));
-  }
-
-  const lifecycleStatus = assignedNow ? "assigned" : v.status;
-  const lifecycleColor: Record<string, string> = {
-    ...statusColor,
-    assigned: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
-  };
-
-  return (
-    <div className={`rounded-xl border bg-card p-4 ${ringClass}`}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold">{v.vehicle_name}</span>
-            <Badge variant="outline" className="font-mono">{v.license_plate}</Badge>
-            <Badge className={lifecycleColor[lifecycleStatus] ?? ""}>
-              {lifecycleStatus.replace(/_/g, " ")}
-            </Badge>
-            {v.wheelchair_accessible && (
-              <Badge variant="secondary" className="gap-1"><Accessibility className="h-3 w-3" /> Accessible</Badge>
-            )}
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            {[v.vehicle_type, [v.make, v.model].filter(Boolean).join(" "), v.year].filter(Boolean).join(" · ")}
-            {v.ramp_or_lift_available && " · Ramp/lift"}
-            {v.passenger_capacity != null && ` · ${v.passenger_capacity} pax`}
-            {v.wheelchair_capacity != null && ` · ${v.wheelchair_capacity} WC`}
-          </div>
-        </div>
-        <div className="text-right text-xs">
-          <div className="text-muted-foreground">Driver</div>
-          <div className="font-medium">{driverName}</div>
-        </div>
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-        <Stat label="Odometer" value={`${odo.toLocaleString()} km`} />
-        <Stat
-          label="Next service"
-          value={dueKm != null ? `${dueKm.toLocaleString()} km` : "—"}
-        />
-        <Stat label="Service interval" value={interval ? `${interval.toLocaleString()} km` : "—"} />
-        <Stat label="Last service" value={v.last_service_date ?? (lastKm != null ? `${lastKm.toLocaleString()} km` : "—")} />
-        <Stat label="License" value={v.license_disc_expiry_date ?? "—"} />
-        <Stat label="Insurance" value={v.insurance_expiry_date ?? "—"} />
-        <Stat label="Roadworthy" value={v.roadworthy_expiry_date ?? "—"} />
-        <Stat label="VIN" value={v.vin_number ?? "—"} />
-      </div>
-
-      {servicePct != null && (
-        <div className="mt-3">
-          <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
-            <span>Service progress</span>
-            <span className="font-medium text-foreground">{servicePct.toFixed(0)}%</span>
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className={
-                "h-full " +
-                (servicePct >= 100
-                  ? "bg-destructive"
-                  : servicePct >= 90
-                  ? "bg-amber-500"
-                  : "bg-emerald-500")
-              }
-              style={{ width: `${servicePct}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-        <Stat label="Upcoming trips" value={String(tripStats.upcoming)} />
-        <Stat label="Completed trips" value={String(tripStats.completed)} />
-        <Stat label="Est. km driven" value={`${Math.round(tripStats.estimatedKm).toLocaleString()} km`} />
-      </div>
-
-      {alerts.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1">
-          {alerts.map((a, i) => (
-            <Badge
-              key={i}
-              className={a.severity === "urgent"
-                ? "bg-destructive text-destructive-foreground"
-                : "bg-amber-500/20 text-amber-800 dark:text-amber-200"}
-            >
-              {a.label}
-            </Badge>
-          ))}
-        </div>
-      )}
-
-      {v.admin_notes && (
-        <div className="mt-3 rounded-md border bg-muted/30 p-2 text-xs whitespace-pre-wrap">
-          <span className="font-medium">Notes: </span>{v.admin_notes}
-        </div>
-      )}
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        <VehicleDialog vehicle={v} drivers={drivers} onSaved={onChanged}>
-          <Button size="sm" variant="outline"><Pencil className="mr-1 h-3.5 w-3.5" /> Edit</Button>
-        </VehicleDialog>
-        <AssignDriverDialog vehicle={v} drivers={drivers} onSaved={onChanged}>
-          <Button size="sm" variant="outline"><UserPlus className="mr-1 h-3.5 w-3.5" /> Driver</Button>
-        </AssignDriverDialog>
-        <OdometerDialog vehicle={v} onSaved={onChanged}>
-          <Button size="sm" variant="outline"><Gauge className="mr-1 h-3.5 w-3.5" /> Odometer</Button>
-        </OdometerDialog>
-        <RecordServiceDialog vehicle={v} onSaved={onChanged}>
-          <Button size="sm" variant="outline"><Wrench className="mr-1 h-3.5 w-3.5" /> Record service</Button>
-        </RecordServiceDialog>
-        <NoteDialog vehicle={v} onSaved={onChanged}>
-          <Button size="sm" variant="outline"><StickyNote className="mr-1 h-3.5 w-3.5" /> Note</Button>
-        </NoteDialog>
-        <VehicleTripsDialog vehicle={v}>
-          <Button size="sm" variant="ghost"><ExternalLink className="mr-1 h-3.5 w-3.5" /> Trips</Button>
-        </VehicleTripsDialog>
-        <StatusButtons vehicle={v} onSaved={onChanged} />
-      </div>
-    </div>
-  );
-}
-
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border bg-background p-2">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="truncate text-xs font-medium">{value}</div>
-    </div>
-  );
-}
-
-function StatusButtons({ vehicle: v, onSaved }: { vehicle: Vehicle; onSaved: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const update = async (status: typeof STATUSES[number]) => {
-    setBusy(true);
-    const { error } = await supabase.from("vehicle_profiles").update({ status }).eq("id", v.id);
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success(`Marked ${status.replace(/_/g, " ")}`);
-    onSaved();
-  };
-  if (v.status === "active") {
-    return (
-      <Button size="sm" variant="outline" disabled={busy} onClick={() => update("in_maintenance")}>
-        <Wrench className="mr-1 h-3.5 w-3.5" /> Mark in maintenance
-      </Button>
-    );
-  }
-  return (
-    <Button size="sm" variant="outline" disabled={busy} onClick={() => update("active")}>
-      Mark active
-    </Button>
-  );
-}
-
-function VehicleDialog({
-  vehicle,
-  drivers,
-  children,
-  onSaved,
-}: {
-  vehicle?: Vehicle;
-  drivers: Profile[];
-  children: React.ReactNode;
-  onSaved: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState<VehicleInsert>(() => ({
-    vehicle_name: vehicle?.vehicle_name ?? "",
-    vehicle_type: vehicle?.vehicle_type ?? "",
-    make: vehicle?.make ?? "",
-    model: vehicle?.model ?? "",
-    year: vehicle?.year ?? null,
-    license_plate: vehicle?.license_plate ?? "",
-    vin_number: vehicle?.vin_number ?? "",
-    wheelchair_accessible: vehicle?.wheelchair_accessible ?? false,
-    ramp_or_lift_available: vehicle?.ramp_or_lift_available ?? false,
-    passenger_capacity: vehicle?.passenger_capacity ?? null,
-    wheelchair_capacity: vehicle?.wheelchair_capacity ?? null,
-    assigned_driver_id: vehicle?.assigned_driver_id ?? null,
-    current_odometer_km: vehicle?.current_odometer_km ?? 0,
-    last_service_km: vehicle?.last_service_km ?? null,
-    next_service_due_km: vehicle?.next_service_due_km ?? null,
-    service_interval_km: vehicle?.service_interval_km ?? 10000,
-    last_service_date: vehicle?.last_service_date ?? null,
-    roadworthy_expiry_date: vehicle?.roadworthy_expiry_date ?? null,
-    license_disc_expiry_date: vehicle?.license_disc_expiry_date ?? null,
-    insurance_expiry_date: vehicle?.insurance_expiry_date ?? null,
-    status: vehicle?.status ?? "active",
-    admin_notes: vehicle?.admin_notes ?? "",
-  }));
-
-  const set = <K extends keyof VehicleInsert>(k: K, v: VehicleInsert[K]) =>
-    setForm((f) => ({ ...f, [k]: v }));
-
-  const save = async () => {
-    if (!form.vehicle_name?.trim() || !form.license_plate?.trim()) {
-      return toast.error("Name and license plate are required");
-    }
-    setBusy(true);
-    const payload: VehicleInsert = {
-      ...form,
-      assigned_driver_id: form.assigned_driver_id || null,
-      vehicle_type: form.vehicle_type || null,
-      make: form.make || null,
-      model: form.model || null,
-      vin_number: form.vin_number || null,
-      admin_notes: form.admin_notes || null,
-    };
-    const res = vehicle
-      ? await supabase.from("vehicle_profiles").update(payload).eq("id", vehicle.id)
-      : await supabase.from("vehicle_profiles").insert(payload);
-    setBusy(false);
-    if (res.error) return toast.error(res.error.message);
-    toast.success(vehicle ? "Vehicle updated" : "Vehicle added");
-    setOpen(false);
-    onSaved();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{vehicle ? "Edit vehicle" : "Add vehicle"}</DialogTitle>
-          <DialogDescription>Manage vehicle details, accessibility, and maintenance schedule.</DialogDescription>
-        </DialogHeader>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Vehicle name *">
-            <Input value={form.vehicle_name ?? ""} onChange={(e) => set("vehicle_name", e.target.value)} />
-          </Field>
-          <Field label="License plate *">
-            <Input value={form.license_plate ?? ""} onChange={(e) => set("license_plate", e.target.value)} />
-          </Field>
-          <Field label="Type">
-            <Input placeholder="Sedan, Minivan, MPV…" value={form.vehicle_type ?? ""} onChange={(e) => set("vehicle_type", e.target.value)} />
-          </Field>
-          <Field label="Status">
-            <Select value={form.status ?? "active"} onValueChange={(val) => set("status", val)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {STATUSES.map((s) => <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field label="Make"><Input value={form.make ?? ""} onChange={(e) => set("make", e.target.value)} /></Field>
-          <Field label="Model"><Input value={form.model ?? ""} onChange={(e) => set("model", e.target.value)} /></Field>
-          <Field label="Year">
-            <Input type="number" value={form.year ?? ""} onChange={(e) => set("year", e.target.value ? Number(e.target.value) : null)} />
-          </Field>
-          <Field label="VIN"><Input value={form.vin_number ?? ""} onChange={(e) => set("vin_number", e.target.value)} /></Field>
-          <Field label="Passenger capacity">
-            <Input type="number" value={form.passenger_capacity ?? ""} onChange={(e) => set("passenger_capacity", e.target.value ? Number(e.target.value) : null)} />
-          </Field>
-          <Field label="Wheelchair capacity">
-            <Input type="number" value={form.wheelchair_capacity ?? ""} onChange={(e) => set("wheelchair_capacity", e.target.value ? Number(e.target.value) : null)} />
-          </Field>
-          <Field label="Assigned driver">
-            <Select
-              value={form.assigned_driver_id ?? "none"}
-              onValueChange={(val) => set("assigned_driver_id", val === "none" ? null : val)}
-            >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Unassigned</SelectItem>
-                {drivers.map((d) => (
-                  <SelectItem key={d.user_id} value={d.user_id}>{d.full_name ?? d.user_id.slice(0, 8)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <div className="flex items-center justify-between rounded-md border p-2">
-            <Label>Wheelchair accessible</Label>
-            <Switch checked={!!form.wheelchair_accessible} onCheckedChange={(c) => set("wheelchair_accessible", c)} />
-          </div>
-          <div className="flex items-center justify-between rounded-md border p-2">
-            <Label>Ramp / lift available</Label>
-            <Switch checked={!!form.ramp_or_lift_available} onCheckedChange={(c) => set("ramp_or_lift_available", c)} />
-          </div>
-          <Field label="Current odometer (km)">
-            <Input type="number" value={form.current_odometer_km ?? 0} onChange={(e) => set("current_odometer_km", e.target.value ? Number(e.target.value) : 0)} />
-          </Field>
-          <Field label="Service interval (km)">
-            <Input type="number" value={form.service_interval_km ?? 10000} onChange={(e) => set("service_interval_km", e.target.value ? Number(e.target.value) : 10000)} />
-          </Field>
-          <Field label="Last service (km)">
-            <Input type="number" value={form.last_service_km ?? ""} onChange={(e) => set("last_service_km", e.target.value ? Number(e.target.value) : null)} />
-          </Field>
-          <Field label="Next service due (km)">
-            <Input type="number" value={form.next_service_due_km ?? ""} onChange={(e) => set("next_service_due_km", e.target.value ? Number(e.target.value) : null)} />
-          </Field>
-          <Field label="Last service date">
-            <Input type="date" value={form.last_service_date ?? ""} onChange={(e) => set("last_service_date", e.target.value || null)} />
-          </Field>
-          <Field label="Roadworthy expiry">
-            <Input type="date" value={form.roadworthy_expiry_date ?? ""} onChange={(e) => set("roadworthy_expiry_date", e.target.value || null)} />
-          </Field>
-          <Field label="License disc expiry">
-            <Input type="date" value={form.license_disc_expiry_date ?? ""} onChange={(e) => set("license_disc_expiry_date", e.target.value || null)} />
-          </Field>
-          <Field label="Insurance expiry">
-            <Input type="date" value={form.insurance_expiry_date ?? ""} onChange={(e) => set("insurance_expiry_date", e.target.value || null)} />
-          </Field>
-          <div className="sm:col-span-2">
-            <Field label="Admin notes">
-              <Textarea rows={3} value={form.admin_notes ?? ""} onChange={(e) => set("admin_notes", e.target.value)} />
-            </Field>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={save} disabled={busy}>
-            {busy && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Save
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      {children}
-    </div>
-  );
-}
-
-function AssignDriverDialog({
-  vehicle,
-  drivers,
-  children,
-  onSaved,
-}: {
-  vehicle: Vehicle;
-  drivers: Profile[];
-  children: React.ReactNode;
-  onSaved: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState<string>(vehicle.assigned_driver_id ?? "none");
-  const [busy, setBusy] = useState(false);
-  const save = async () => {
-    setBusy(true);
-    const { error } = await supabase.from("vehicle_profiles")
-      .update({ assigned_driver_id: value === "none" ? null : value })
-      .eq("id", vehicle.id);
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Driver updated");
-    setOpen(false);
-    onSaved();
-  };
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Assign driver</DialogTitle></DialogHeader>
-        <Select value={value} onValueChange={setValue}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Unassigned</SelectItem>
-            {drivers.map((d) => (
-              <SelectItem key={d.user_id} value={d.user_id}>{d.full_name ?? d.user_id.slice(0, 8)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={save} disabled={busy}>Save</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function OdometerDialog({
-  vehicle,
-  children,
-  onSaved,
-}: {
-  vehicle: Vehicle;
-  children: React.ReactNode;
-  onSaved: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState<string>(String(vehicle.current_odometer_km ?? 0));
-  const [busy, setBusy] = useState(false);
-  const save = async () => {
-    const km = Number(value);
-    if (Number.isNaN(km) || km < 0) return toast.error("Enter a valid km value");
-    if (km < Number(vehicle.current_odometer_km ?? 0)) {
-      return toast.error("Odometer cannot decrease");
-    }
-    setBusy(true);
-    const { error } = await supabase.from("vehicle_profiles")
-      .update({ current_odometer_km: km })
-      .eq("id", vehicle.id);
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Odometer updated");
-    setOpen(false);
-    onSaved();
-  };
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Update odometer</DialogTitle>
-          <DialogDescription>Current: {Number(vehicle.current_odometer_km).toLocaleString()} km</DialogDescription>
-        </DialogHeader>
-        <Input type="number" value={value} onChange={(e) => setValue(e.target.value)} />
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={save} disabled={busy}>Save</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function NoteDialog({
-  vehicle,
-  children,
-  onSaved,
-}: {
-  vehicle: Vehicle;
-  children: React.ReactNode;
-  onSaved: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState<string>(vehicle.admin_notes ?? "");
-  const [busy, setBusy] = useState(false);
-  const save = async () => {
-    setBusy(true);
-    const { error } = await supabase.from("vehicle_profiles")
-      .update({ admin_notes: value || null })
-      .eq("id", vehicle.id);
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Note saved");
-    setOpen(false);
-    onSaved();
-  };
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Admin note</DialogTitle></DialogHeader>
-        <Textarea rows={5} value={value} onChange={(e) => setValue(e.target.value)} />
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={save} disabled={busy}>Save</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function RecordServiceDialog({
-  vehicle,
-  children,
-  onSaved,
-}: {
-  vehicle: Vehicle;
-  children: React.ReactNode;
-  onSaved: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [km, setKm] = useState<string>(String(vehicle.current_odometer_km ?? 0));
-  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [intervalKm, setIntervalKm] = useState<string>(String(vehicle.service_interval_km ?? 10000));
-  const [busy, setBusy] = useState(false);
-
-  const save = async () => {
-    const lastKm = Number(km);
-    const interval = Number(intervalKm);
-    if (Number.isNaN(lastKm) || lastKm < 0) return toast.error("Enter valid service km");
-    if (Number.isNaN(interval) || interval <= 0) return toast.error("Enter valid interval");
-    setBusy(true);
-    const odo = Math.max(Number(vehicle.current_odometer_km ?? 0), lastKm);
-    const { error } = await supabase
-      .from("vehicle_profiles")
-      .update({
-        last_service_km: lastKm,
-        last_service_date: date || null,
-        service_interval_km: interval,
-        next_service_due_km: lastKm + interval,
-        current_odometer_km: odo,
-        status: vehicle.status === "in_maintenance" ? "active" : vehicle.status,
-      })
-      .eq("id", vehicle.id);
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Service recorded · next due at " + (lastKm + interval).toLocaleString() + " km");
-    setOpen(false);
-    onSaved();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Record completed service</DialogTitle>
-          <DialogDescription>
-            Updates last service km/date and recalculates the next service due km.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Service km">
-            <Input type="number" value={km} onChange={(e) => setKm(e.target.value)} />
-          </Field>
-          <Field label="Service date">
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </Field>
-          <Field label="Service interval (km)">
-            <Input type="number" value={intervalKm} onChange={(e) => setIntervalKm(e.target.value)} />
-          </Field>
-          <div className="rounded-md border bg-muted/30 p-2 text-xs">
-            <div className="text-muted-foreground">Next service due</div>
-            <div className="font-medium">
-              {(Number(km || 0) + Number(intervalKm || 0)).toLocaleString()} km
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={save} disabled={busy}>
-            {busy && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Save
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-type VehicleTrip = {
-  id: string;
-  status: string;
-  pickup_address: string;
-  destination_address: string;
-  scheduled_at: string | null;
-  created_at: string;
-  completed_at: string | null;
-  distance_km: number;
-  actual_distance_km: number | null;
-};
-
-function VehicleTripsDialog({
-  vehicle,
-  children,
-}: {
-  vehicle: Vehicle;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [trips, setTrips] = useState<VehicleTrip[]>([]);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("rides")
-        .select("id,status,pickup_address,destination_address,scheduled_at,created_at,completed_at,distance_km,actual_distance_km")
-        .eq("vehicle_id", vehicle.id)
-        .order("created_at", { ascending: false })
-        .limit(100);
-      if (cancelled) return;
-      if (error) toast.error(error.message);
-      setTrips((data ?? []) as VehicleTrip[]);
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [open, vehicle.id]);
-
-  const upcoming = trips.filter((t) => (ACTIVE_RIDE_STATUSES as readonly string[]).includes(t.status));
-  const past = trips.filter((t) => !(ACTIVE_RIDE_STATUSES as readonly string[]).includes(t.status));
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{vehicle.vehicle_name} · trips</DialogTitle>
-          <DialogDescription>Upcoming and recent trips assigned to this vehicle.</DialogDescription>
-        </DialogHeader>
-        {loading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">
-            <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" /> Loading trips…
-          </div>
-        ) : trips.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">No trips assigned to this vehicle yet.</p>
-        ) : (
-          <div className="space-y-4">
-            <TripsSection title="Upcoming / active" trips={upcoming} />
-            <TripsSection title="Past trips" trips={past} />
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function TripsSection({ title, trips }: { title: string; trips: VehicleTrip[] }) {
-  if (!trips.length) return null;
-  return (
-    <div>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
-      <ul className="divide-y rounded-md border">
-        {trips.map((t) => (
-          <li key={t.id} className="space-y-1 px-3 py-2 text-xs">
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate font-medium">{t.destination_address}</span>
-              <Badge variant="outline" className="capitalize">{t.status.replace(/_/g, " ")}</Badge>
-            </div>
-            <p className="truncate text-muted-foreground">From {t.pickup_address}</p>
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>
-                {t.scheduled_at
-                  ? new Date(t.scheduled_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "short", timeStyle: "short" })
-                  : new Date(t.created_at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
-              </span>
-              <span>
-                {Number(t.actual_distance_km ?? t.distance_km).toFixed(1)} km
-              </span>
-              <Link to="/app/trip/$rideId" params={{ rideId: t.id }} className="text-primary hover:underline">
-                Details
-              </Link>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-// Used by other admin surfaces to link in
-export { Link };
-
-// ============================================================
-// Driver Vehicles section — sourced from driver_profiles
-// ============================================================
-
-function fmtAgo(iso: string | null) {
-  if (!iso) return "never";
-  const s = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (s < 60) return `${Math.round(s)}s ago`;
-  if (s < 3600) return `${Math.round(s / 60)}m ago`;
-  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
-  return `${Math.round(s / 86400)}d ago`;
-}
-
-function DriverVehiclesSection({ isAdmin }: { isAdmin: boolean }) {
-  const { vehicles, loading, refresh } = useDriverVehicles(isAdmin);
-
-  return (
-    <div className="mb-6">
-      <div className="mb-2 flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold">Driver Vehicles</h2>
-          <p className="text-xs text-muted-foreground">
-            Vehicles linked to driver profiles. Records owned by non-drivers need admin review.
-          </p>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-          <Loader2 className="mx-auto mb-2 h-4 w-4 animate-spin" /> Loading driver vehicles…
-        </div>
-      ) : vehicles.length === 0 ? (
-        <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-          No driver vehicle records found.
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border bg-card">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 text-left">Vehicle</th>
-                <th className="px-3 py-2 text-left">Type</th>
-                <th className="px-3 py-2 text-left">Plate</th>
-                <th className="px-3 py-2 text-left">Assigned driver</th>
-                <th className="px-3 py-2 text-left">Availability</th>
-                <th className="px-3 py-2 text-left">Location</th>
-                <th className="px-3 py-2 text-left">Last update</th>
-                <th className="px-3 py-2 text-left">Fleet status</th>
-                <th className="px-3 py-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vehicles.map((v) => (
-                <DriverVehicleRow key={v.id} v={v} onChanged={refresh} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DriverVehicleRow({ v, onChanged }: { v: DriverVehicle; onChanged: () => void }) {
-  const hasLocation = v.current_lat != null && v.current_lng != null;
-  const locationLive =
-    hasLocation && v.location_updated_at &&
-    Date.now() - new Date(v.location_updated_at).getTime() < 90_000;
-
-  const fleetReady = v.isValidDriver;
-  return (
-    <tr className="border-t">
-      <td className="px-3 py-2 font-medium">{v.vehicle_model ?? "—"}</td>
-      <td className="px-3 py-2">{v.vehicle_type ?? "—"}</td>
-      <td className="px-3 py-2 font-mono text-xs">{v.license_plate ?? "—"}</td>
-      <td className="px-3 py-2">
-        {v.isValidDriver ? (
-          <div>
-            <div className="font-medium">{v.ownerName ?? v.user_id.slice(0, 8)}</div>
-            {v.ownerPhone && <div className="text-xs text-muted-foreground">{v.ownerPhone}</div>}
-          </div>
-        ) : (
-          <div>
-            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">
-              Unassigned
-            </Badge>
-            <div className="mt-1 text-[11px] text-muted-foreground">
-              Linked to {v.ownerRole}: {v.ownerName ?? v.user_id.slice(0, 8)}
-            </div>
-          </div>
-        )}
-      </td>
-      <td className="px-3 py-2">
-        {v.isValidDriver ? (
-          v.is_available ? (
-            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Available</Badge>
-          ) : (
-            <Badge variant="secondary">Offline</Badge>
-          )
-        ) : (
-          <span className="text-xs text-muted-foreground">—</span>
-        )}
-      </td>
-      <td className="px-3 py-2">
-        {hasLocation ? (
-          <Badge variant="outline" className={locationLive ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-300" : ""}>
-            {locationLive ? "Live" : "Stale"}
-          </Badge>
-        ) : (
-          <span className="text-xs text-muted-foreground">No location</span>
-        )}
-      </td>
-      <td className="px-3 py-2 text-xs text-muted-foreground">{fmtAgo(v.location_updated_at)}</td>
-      <td className="px-3 py-2">
-        {fleetReady ? (
-          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
-            <CheckCircle2 className="mr-1 h-3 w-3" /> Ready
-          </Badge>
-        ) : (
-          <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300">
-            <AlertTriangle className="mr-1 h-3 w-3" /> Needs Review
-          </Badge>
-        )}
-      </td>
-      <td className="px-3 py-2 text-right">
-        <ReassignDriverVehicleDialog v={v} onChanged={onChanged} />
-      </td>
-    </tr>
-  );
-}
-
-function ReassignDriverVehicleDialog({ v, onChanged }: { v: DriverVehicle; onChanged: () => void }) {
-  const [open, setOpen] = useState(false);
-  const { drivers, loading } = useValidDrivers(open);
-  const [target, setTarget] = useState<string>("");
-  const [busy, setBusy] = useState(false);
-
-  const eligible = drivers.filter((d) => d.user_id !== v.user_id && !d.hasVehicle);
-
-  const submit = async () => {
-    if (!target) return;
-    setBusy(true);
-    const { error } = await supabase
-      .from("driver_profiles")
-      .update({ user_id: target })
-      .eq("id", v.id);
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Vehicle reassigned");
-    setOpen(false);
-    onChanged();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <UserPlus className="mr-1 h-3.5 w-3.5" />
-          {v.isValidDriver ? "Reassign" : "Assign driver"}
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{v.isValidDriver ? "Reassign vehicle" : "Assign vehicle to driver"}</DialogTitle>
-          <DialogDescription>
-            {v.vehicle_model ?? "Vehicle"} · {v.license_plate ?? "no plate"}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-2">
-          <Label>Target driver</Label>
-          {loading ? (
-            <div className="text-sm text-muted-foreground">Loading drivers…</div>
-          ) : eligible.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No eligible drivers without an existing vehicle record. Free up a driver first.
-            </p>
-          ) : (
-            <Select value={target} onValueChange={setTarget}>
-              <SelectTrigger><SelectValue placeholder="Select a driver" /></SelectTrigger>
-              <SelectContent>
-                {eligible.map((d) => (
-                  <SelectItem key={d.user_id} value={d.user_id}>
-                    {d.full_name ?? d.user_id.slice(0, 8)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Only users with the driver role appear here. Reassignment moves this driver_profiles record to that user.
-          </p>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={!target || busy}>
-            {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
-            Confirm
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-
