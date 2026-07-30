@@ -1,0 +1,71 @@
+name: Phase 3 Audit Closeout
+
+on:
+  push:
+    branches:
+      - phase-3-fleet-consolidation
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Phase 3 branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase-3-fleet-consolidation
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Apply guarded audit closeout
+        run: python3 scripts/phase3_audit_closeout.py
+
+      - name: Format changed application files
+        run: |
+          bunx prettier --write \
+            src/lib/fleet.ts \
+            src/lib/fleet.test.ts \
+            src/components/profile/DriverProfileSections.tsx \
+            src/components/fleet/AdminEndVehicleAssignmentDialog.tsx \
+            src/routes/app.admin.driver-assignments.tsx \
+            src/routes/app.admin.trips.tsx \
+            src/routes/app.passenger.bookings.tsx \
+            'src/routes/app.admin.vehicle-profiles.$vehicleId.tsx'
+
+      - name: Lint changed application files
+        run: |
+          bunx eslint \
+            src/lib/fleet.ts \
+            src/lib/fleet.test.ts \
+            src/components/profile/DriverProfileSections.tsx \
+            src/components/fleet/AdminEndVehicleAssignmentDialog.tsx \
+            src/routes/app.admin.driver-assignments.tsx \
+            src/routes/app.admin.trips.tsx \
+            src/routes/app.passenger.bookings.tsx \
+            'src/routes/app.admin.vehicle-profiles.$vehicleId.tsx'
+
+      - name: Run full tests
+        run: bun run test
+
+      - name: Build production application
+        run: bun run build
+
+      - name: Commit verified closeout
+        run: |
+          rm scripts/phase3_audit_closeout.py
+          rm .github/workflows/phase3-audit-closeout.yml
+          git config user.name "thrillcircle"
+          git config user.email "155582963+thrillcircle@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Phase 3 audit closeout: harden fleet safety and effective assignments"
+          git push origin HEAD:phase-3-fleet-consolidation
