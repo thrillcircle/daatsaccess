@@ -164,7 +164,11 @@ function CompleteMaintenanceDialog({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5 text-sm sm:col-span-2">
             <span className="font-medium">Diagnosis</span>
-            <Textarea value={diagnosis} onChange={(event) => setDiagnosis(event.target.value)} rows={3} />
+            <Textarea
+              value={diagnosis}
+              onChange={(event) => setDiagnosis(event.target.value)}
+              rows={3}
+            />
           </label>
           <label className="space-y-1.5 text-sm sm:col-span-2">
             <span className="font-medium">Work performed</span>
@@ -177,7 +181,12 @@ function CompleteMaintenanceDialog({
           </label>
           <label className="space-y-1.5 text-sm sm:col-span-2">
             <span className="font-medium">Outcome</span>
-            <Textarea value={outcome} onChange={(event) => setOutcome(event.target.value)} rows={3} required />
+            <Textarea
+              value={outcome}
+              onChange={(event) => setOutcome(event.target.value)}
+              rows={3}
+              required
+            />
           </label>
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Completion odometer (km)</span>

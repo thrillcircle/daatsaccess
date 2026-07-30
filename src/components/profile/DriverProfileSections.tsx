@@ -83,11 +83,7 @@ export function DriverProfileSections({ userId }: { userId: string }) {
             .select("*")
             .eq("id", assignment.vehicle_id)
             .maybeSingle(),
-          fleetDb
-            .from("vehicle_documents")
-            .select("*")
-            .eq("vehicle_id", assignment.vehicle_id)
-            .eq("is_current", true),
+          fleetDb.rpc("driver_current_vehicle_document_status"),
         ]);
         if (cancelled) return;
         if (vehicleResult.error) setError(vehicleResult.error.message);

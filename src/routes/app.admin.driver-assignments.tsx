@@ -8,11 +8,11 @@ import {
   Loader2,
   Plus,
   Search,
-  Unplug,
   UserRoundCheck,
   Users,
 } from "lucide-react";
 import { AdminShell } from "@/components/AdminShell";
+import { AdminEndVehicleAssignmentDialog } from "@/components/fleet/AdminEndVehicleAssignmentDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -188,8 +188,8 @@ function DriverAssignmentsPage() {
       subtitle="Schedule, activate and end canonical driver-to-vehicle assignments."
       actions={
         <CreateAssignmentDialog
-          vehicles={unassignedVehicles}
-          drivers={unassignedDrivers}
+          vehicles={vehicles.filter((vehicle) => vehicle.status === "active")}
+          drivers={drivers}
           onCreated={() => setReload((value) => value + 1)}
         />
       }
@@ -287,7 +287,7 @@ function DriverAssignmentsPage() {
                   </div>
                 </div>
                 {assignment.status === "active" || assignment.status === "scheduled" ? (
-                  <EndAssignmentButton
+                  <AdminEndVehicleAssignmentDialog
                     assignment={assignment}
                     onEnded={() => setReload((value) => value + 1)}
                   />
@@ -508,43 +508,6 @@ function CreateAssignmentDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function EndAssignmentButton({
-  assignment,
-  onEnded,
-}: {
-  assignment: VehicleAssignment;
-  onEnded: () => void;
-}) {
-  const [saving, setSaving] = useState(false);
-
-  async function end() {
-    setSaving(true);
-    const { error } = await fleetDb.rpc("admin_end_vehicle_assignment", {
-      p_assignment_id: assignment.id,
-      p_reason: "Ended by Access administration",
-      p_expected_status: assignment.status,
-    });
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("Assignment ended");
-    onEnded();
-  }
-
-  return (
-    <Button variant="outline" size="sm" onClick={end} disabled={saving}>
-      {saving ? (
-        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-      ) : (
-        <Unplug className="mr-1 h-4 w-4" />
-      )}
-      End assignment
-    </Button>
   );
 }
 

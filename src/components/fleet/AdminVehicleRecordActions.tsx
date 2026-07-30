@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent, type ReactNode } from "react";
 import { FileUp, Loader2, PencilLine } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -58,9 +58,7 @@ function EditVehicleDialog({
   const [passengerCapacity, setPassengerCapacity] = useState(
     vehicle.passenger_capacity == null ? "" : String(vehicle.passenger_capacity),
   );
-  const [wheelchairAccessible, setWheelchairAccessible] = useState(
-    vehicle.wheelchair_accessible,
-  );
+  const [wheelchairAccessible, setWheelchairAccessible] = useState(vehicle.wheelchair_accessible);
   const [wheelchairCapacity, setWheelchairCapacity] = useState(
     vehicle.wheelchair_capacity == null ? "" : String(vehicle.wheelchair_capacity),
   );
@@ -307,10 +305,18 @@ function VehicleDocumentDialog({
             <Input value={number} onChange={(event) => setNumber(event.target.value)} />
           </Field>
           <Field label="Issued date">
-            <Input type="date" value={issuedAt} onChange={(event) => setIssuedAt(event.target.value)} />
+            <Input
+              type="date"
+              value={issuedAt}
+              onChange={(event) => setIssuedAt(event.target.value)}
+            />
           </Field>
           <Field label="Expiry date">
-            <Input type="date" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} />
+            <Input
+              type="date"
+              value={expiresAt}
+              onChange={(event) => setExpiresAt(event.target.value)}
+            />
           </Field>
           <Field label="File">
             <Input
@@ -340,7 +346,7 @@ function VehicleDocumentDialog({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="space-y-1.5 text-sm">
       <span className="font-medium">{label}</span>

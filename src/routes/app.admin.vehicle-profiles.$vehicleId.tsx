@@ -17,6 +17,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { AdminShell } from "@/components/AdminShell";
+import { AdminVehicleRecordActions } from "@/components/fleet/AdminVehicleRecordActions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -304,6 +305,11 @@ function VehicleDetailPage() {
       subtitle={`${vehicle.license_plate} · canonical vehicle profile`}
       actions={
         <div className="flex flex-wrap gap-2">
+          <AdminVehicleRecordActions
+            vehicle={vehicle}
+            documents={data.documents}
+            onChanged={() => setReload((value) => value + 1)}
+          />
           <StatusDialog vehicle={vehicle} onChanged={() => setReload((value) => value + 1)} />
           <OdometerDialog vehicle={vehicle} onRecorded={() => setReload((value) => value + 1)} />
           <MaintenanceDialog vehicle={vehicle} onCreated={() => setReload((value) => value + 1)} />

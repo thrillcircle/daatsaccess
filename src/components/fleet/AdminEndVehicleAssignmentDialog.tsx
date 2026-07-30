@@ -58,7 +58,9 @@ export function AdminEndVehicleAssignmentDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {assignment.status === "scheduled" ? "Cancel scheduled assignment" : "End active assignment"}
+            {assignment.status === "scheduled"
+              ? "Cancel scheduled assignment"
+              : "End active assignment"}
           </DialogTitle>
           <DialogDescription>
             Assignment history is preserved. The reason is stored with the completed or cancelled

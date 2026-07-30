@@ -13,6 +13,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { AdminShell } from "@/components/AdminShell";
+import { AdminMaintenanceActions } from "@/components/fleet/AdminMaintenanceActions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +32,6 @@ import {
   MAINTENANCE_STATUS_LABEL,
   fleetDb,
   type CanonicalVehicle,
-  type MaintenanceStatus,
   type MaintenanceWorkOrder,
 } from "@/lib/fleet";
 import { toast } from "sonner";
@@ -259,7 +259,10 @@ function MaintenancePage() {
                     />
                   </dl>
                 </div>
-                <WorkOrderActions order={order} onChanged={() => setReload((value) => value + 1)} />
+                <AdminMaintenanceActions
+                  order={order}
+                  onChanged={() => setReload((value) => value + 1)}
+                />
               </div>
             </article>
           );
@@ -271,72 +274,6 @@ function MaintenancePage() {
         ) : null}
       </div>
     </AdminShell>
-  );
-}
-
-function WorkOrderActions({
-  order,
-  onChanged,
-}: {
-  order: MaintenanceWorkOrder;
-  onChanged: () => void;
-}) {
-  const [saving, setSaving] = useState(false);
-
-  async function transition(status: MaintenanceStatus) {
-    setSaving(true);
-    const { error } = await fleetDb.rpc("admin_transition_maintenance_work_order", {
-      p_work_order_id: order.id,
-      p_new_status: status,
-      p_expected_status: order.status,
-      p_diagnosis: null,
-      p_work_performed:
-        status === "completed"
-          ? order.work_performed || "Maintenance completed by service provider"
-          : null,
-      p_outcome: status === "completed" ? order.outcome || "Vehicle returned to operation" : null,
-      p_odometer_at_completion: status === "completed" ? order.odometer_at_completion : null,
-      p_next_service_due_date: order.next_service_due_date,
-      p_next_service_due_km: order.next_service_due_km,
-      p_actual_cost: order.actual_cost,
-    });
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success(`Work order ${status.replaceAll("_", " ")}`);
-    onChanged();
-  }
-
-  return (
-    <div className="flex shrink-0 flex-wrap gap-2 lg:max-w-64 lg:justify-end">
-      {order.status === "open" || order.status === "scheduled" ? (
-        <Button size="sm" onClick={() => transition("in_progress")} disabled={saving}>
-          <PlayCircle className="mr-1 h-4 w-4" /> Start
-        </Button>
-      ) : null}
-      {order.status === "in_progress" ? (
-        <>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => transition("waiting_for_parts")}
-            disabled={saving}
-          >
-            <PauseCircle className="mr-1 h-4 w-4" /> Waiting for parts
-          </Button>
-          <Button size="sm" onClick={() => transition("completed")} disabled={saving}>
-            <CheckCircle2 className="mr-1 h-4 w-4" /> Complete
-          </Button>
-        </>
-      ) : null}
-      {order.status === "waiting_for_parts" ? (
-        <Button size="sm" onClick={() => transition("in_progress")} disabled={saving}>
-          Resume
-        </Button>
-      ) : null}
-    </div>
   );
 }
 
