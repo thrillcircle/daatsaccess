@@ -137,13 +137,21 @@ function PassengerQuotePage() {
   const accept = async () => {
     if (!currentQuote) return;
     setBusy("accept");
-    const { error: acceptError } = await pricingDb.rpc("passenger_accept_service_quote", {
+    const { data, error: acceptError } = await pricingDb.rpc("passenger_accept_service_quote", {
       p_quote_id: currentQuote.id,
       p_expected_row_version: currentQuote.row_version,
       p_idempotency_key: crypto.randomUUID(),
     });
     setBusy(null);
     if (acceptError) return toast.error(acceptError.message);
+    const outcome = data as unknown as { accepted?: boolean; reason?: string };
+    if (outcome.accepted === false) {
+      toast.error(
+        outcome.reason === "expired" ? "This quote has expired" : "The quote was not accepted",
+      );
+      await load();
+      return;
+    }
     toast.success("Quote accepted");
     await load();
   };
@@ -151,13 +159,21 @@ function PassengerQuotePage() {
   const decline = async () => {
     if (!currentQuote) return;
     setBusy("decline");
-    const { error: declineError } = await pricingDb.rpc("passenger_decline_service_quote", {
+    const { data, error: declineError } = await pricingDb.rpc("passenger_decline_service_quote", {
       p_quote_id: currentQuote.id,
       p_expected_row_version: currentQuote.row_version,
       p_reason: declineReason,
     });
     setBusy(null);
     if (declineError) return toast.error(declineError.message);
+    const outcome = data as unknown as { declined?: boolean; reason?: string };
+    if (outcome.declined === false) {
+      toast.error(
+        outcome.reason === "expired" ? "This quote has expired" : "The quote was not declined",
+      );
+      await load();
+      return;
+    }
     toast.success("Quote declined. Access can prepare a revised quote.");
     await load();
   };

@@ -138,6 +138,7 @@ function AdminQuoteWorkspacePage() {
   const [depositRequired, setDepositRequired] = useState(false);
   const [depositAmount, setDepositAmount] = useState(0);
   const [depositReason, setDepositReason] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -198,6 +199,38 @@ function AdminQuoteWorkspacePage() {
     setBusy(null);
     if (generateError) return toast.error(generateError.message);
     toast.success("Calculated quote revision generated");
+    await load();
+  };
+
+  const recalculate = async () => {
+    if (!selectedQuote || selectedQuote.status !== "draft") return;
+    setBusy("recalculate");
+    const { error: recalculateError } = await pricingDb.rpc("admin_recalculate_service_quote", {
+      p_quote_id: selectedQuote.id,
+      p_inputs: inputs as unknown as JsonValue,
+      p_valid_until: new Date(validUntil).toISOString(),
+      p_expected_row_version: selectedQuote.row_version,
+      p_idempotency_key: crypto.randomUUID(),
+    });
+    setBusy(null);
+    if (recalculateError) return toast.error(recalculateError.message);
+    toast.success("Draft quote recalculated using its immutable pricing version");
+    await load();
+  };
+
+  const cancelQuote = async () => {
+    if (!selectedQuote) return;
+    setBusy("cancel");
+    const { error: cancelError } = await pricingDb.rpc("admin_cancel_service_quote", {
+      p_quote_id: selectedQuote.id,
+      p_reason: cancelReason,
+      p_expected_row_version: selectedQuote.row_version,
+      p_idempotency_key: crypto.randomUUID(),
+    });
+    setBusy(null);
+    if (cancelError) return toast.error(cancelError.message);
+    toast.success("Quote revision cancelled");
+    setCancelReason("");
     await load();
   };
 
@@ -310,10 +343,24 @@ function AdminQuoteWorkspacePage() {
                 <Calculator className="h-4 w-4" />
                 Calculation inputs
               </h3>
-              <Button onClick={() => void generate()} disabled={busy === "generate"}>
-                {busy === "generate" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Generate revision
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                {selectedQuote?.status === "draft" ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => void recalculate()}
+                    disabled={busy === "recalculate"}
+                  >
+                    {busy === "recalculate" ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Recalculate draft
+                  </Button>
+                ) : null}
+                <Button onClick={() => void generate()} disabled={busy === "generate"}>
+                  {busy === "generate" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Generate revision
+                </Button>
+              </div>
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {Object.entries(inputs)
@@ -443,6 +490,26 @@ function AdminQuoteWorkspacePage() {
                     <Send className="mr-2 h-4 w-4" />
                   )}
                   Send quote
+                </Button>
+              </div>
+            </section>
+          ) : null}
+
+          {selectedQuote && !selectedQuote.accepted_at && !selectedQuote.cancelled_at ? (
+            <section className="rounded-2xl border border-destructive/25 p-4">
+              <h3 className="font-semibold">Cancel current quote revision</h3>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Input
+                  placeholder="Mandatory cancellation reason"
+                  value={cancelReason}
+                  onChange={(event) => setCancelReason(event.target.value)}
+                />
+                <Button
+                  variant="destructive"
+                  onClick={() => void cancelQuote()}
+                  disabled={busy === "cancel" || !cancelReason.trim()}
+                >
+                  Cancel revision
                 </Button>
               </div>
             </section>

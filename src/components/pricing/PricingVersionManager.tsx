@@ -79,6 +79,19 @@ function localDateTime(value: string | null): string {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
+type PricingValidation = {
+  is_valid: boolean;
+  errors: string[];
+  warnings: string[];
+  required_components: string[];
+};
+
+function asValidation(value: JsonValue | null): PricingValidation | null {
+  if (!value || Array.isArray(value) || typeof value !== "object") return null;
+  const candidate = value as unknown as PricingValidation;
+  return Array.isArray(candidate.errors) && Array.isArray(candidate.warnings) ? candidate : null;
+}
+
 function toIso(value: string): string | null {
   return value ? new Date(value).toISOString() : null;
 }
@@ -98,6 +111,8 @@ export function PricingVersionManager() {
   const [comparePreview, setComparePreview] =
     useState<ReturnType<typeof asCalculationSnapshot>>(null);
   const [publishConfirmation, setPublishConfirmation] = useState("");
+  const [validation, setValidation] = useState<PricingValidation | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
   const [retireReason, setRetireReason] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -167,6 +182,8 @@ export function PricingVersionManager() {
     setPreview(null);
     setComparePreview(null);
     setPublishConfirmation("");
+    setValidation(null);
+    setDeleteReason("");
     setRetireReason("");
   }, [components, selected]);
 
@@ -225,6 +242,7 @@ export function PricingVersionManager() {
     setBusy(null);
     if (saveError) return toast.error(saveError.message);
     toast.success("Pricing draft saved");
+    setValidation(null);
     await load();
   };
 
@@ -241,6 +259,35 @@ export function PricingVersionManager() {
     const result = asCalculationSnapshot(data);
     if (comparison) setComparePreview(result);
     else setPreview(result);
+  };
+
+  const validateVersion = async () => {
+    if (!draftVersion) return;
+    setBusy("validate");
+    const { data, error: validationError } = await pricingDb.rpc("admin_validate_pricing_version", {
+      p_version_id: draftVersion.id,
+    });
+    setBusy(null);
+    if (validationError) return toast.error(validationError.message);
+    const result = asValidation(data);
+    setValidation(result);
+    if (result?.is_valid) toast.success("Pricing draft passed server validation");
+    else toast.error("Pricing draft requires correction before publication");
+  };
+
+  const deleteDraft = async () => {
+    if (!draftVersion || draftVersion.status !== "draft") return;
+    setBusy("delete");
+    const { error: deleteError } = await pricingDb.rpc("admin_delete_pricing_draft", {
+      p_version_id: draftVersion.id,
+      p_reason: deleteReason,
+      p_expected_row_version: draftVersion.row_version,
+    });
+    setBusy(null);
+    if (deleteError) return toast.error(deleteError.message);
+    toast.success("Pricing draft deleted; the audit event was retained");
+    setSelectedId(null);
+    await load();
   };
 
   const publish = async () => {
@@ -671,6 +718,49 @@ export function PricingVersionManager() {
               </section>
 
               {draftVersion.status === "draft" ? (
+                <section className="rounded-2xl border bg-card p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h3 className="font-semibold">Server validation</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Required components, mock status and effective-window overlap are checked in
+                        the database.
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => void validateVersion()}
+                      disabled={busy === "validate"}
+                    >
+                      {busy === "validate" ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Validate draft
+                    </Button>
+                  </div>
+                  {validation ? (
+                    <div
+                      className={`mt-3 rounded-xl p-3 text-sm ${validation.is_valid ? "bg-primary/5" : "bg-destructive/5"}`}
+                    >
+                      <p className="font-medium">
+                        {validation.is_valid ? "Ready to publish" : "Not ready to publish"}
+                      </p>
+                      {validation.errors.map((message) => (
+                        <p key={message} className="text-destructive">
+                          {message}
+                        </p>
+                      ))}
+                      {validation.warnings.map((message) => (
+                        <p key={message} className="text-muted-foreground">
+                          {message}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {draftVersion.status === "draft" ? (
                 <section className="rounded-2xl border border-primary/25 bg-primary/5 p-4">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <Send className="h-4 w-4" /> Publish version
@@ -690,13 +780,37 @@ export function PricingVersionManager() {
                       disabled={
                         busy === "publish" ||
                         publishConfirmation !== "PUBLISH" ||
-                        draftVersion.is_mock
+                        draftVersion.is_mock ||
+                        !validation?.is_valid
                       }
                     >
                       {busy === "publish" ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : null}
                       Publish
+                    </Button>
+                  </div>
+                </section>
+              ) : null}
+
+              {draftVersion.status === "draft" ? (
+                <section className="rounded-2xl border border-destructive/25 p-4">
+                  <h3 className="font-semibold">Delete draft</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Only drafts may be deleted. The deletion reason remains in the audit history.
+                  </p>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      placeholder="Mandatory deletion reason"
+                      value={deleteReason}
+                      onChange={(event) => setDeleteReason(event.target.value)}
+                    />
+                    <Button
+                      variant="destructive"
+                      onClick={() => void deleteDraft()}
+                      disabled={busy === "delete" || !deleteReason.trim()}
+                    >
+                      Delete draft
                     </Button>
                   </div>
                 </section>

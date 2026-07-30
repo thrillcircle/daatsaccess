@@ -254,8 +254,16 @@ export type PricingDatabase = {
         };
         Returns: JsonValue;
       };
+      admin_validate_pricing_version: {
+        Args: { p_version_id: string };
+        Returns: JsonValue;
+      };
       admin_publish_pricing_version: {
         Args: { p_version_id: string; p_expected_row_version: number; p_confirmation: string };
+        Returns: JsonValue;
+      };
+      admin_delete_pricing_draft: {
+        Args: { p_version_id: string; p_reason: string; p_expected_row_version: number };
         Returns: JsonValue;
       };
       admin_retire_pricing_version: {
@@ -288,6 +296,25 @@ export type PricingDatabase = {
           p_adjustment: number;
           p_reason: string;
           p_expected_row_version: number;
+        };
+        Returns: JsonValue;
+      };
+      admin_recalculate_service_quote: {
+        Args: {
+          p_quote_id: string;
+          p_inputs: JsonValue;
+          p_valid_until: string;
+          p_expected_row_version: number;
+          p_idempotency_key?: string;
+        };
+        Returns: JsonValue;
+      };
+      admin_cancel_service_quote: {
+        Args: {
+          p_quote_id: string;
+          p_reason: string;
+          p_expected_row_version: number;
+          p_idempotency_key?: string;
         };
         Returns: JsonValue;
       };

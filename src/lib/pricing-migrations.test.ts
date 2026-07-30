@@ -6,10 +6,13 @@ const migration = (name: string) =>
   readFileSync(resolve(process.cwd(), "supabase/migrations", name), "utf8");
 
 const legacyPricing = migration("20260730173000_phase1_service_pricing_rules.sql");
+const legacyReconciliation = migration("20260730231400_phase4_legacy_quote_reconciliation.sql");
+const quoteStatuses = migration("20260730231450_phase4_quote_status_values.sql");
 const foundation = migration("20260730231500_phase4_pricing_quotations.sql");
 const privacy = migration("20260730232500_phase4_quote_privacy.sql");
 const estimates = migration("20260730233500_phase4_server_estimates.sql");
 const security = migration("20260730234500_phase4_pricing_security_closeout.sql");
+const integrity = migration("20260730234700_phase4_integrity_hardening.sql");
 
 describe("Phase 4 database contracts", () => {
   it("preserves confirmed Ride and Transport pricing as published version 1", () => {
@@ -17,6 +20,13 @@ describe("Phase 4 database contracts", () => {
     expect(legacyPricing).toContain("('transport', 20.00, 13.50");
     expect(foundation).toContain("FROM public.service_pricing_rules legacy");
     expect(foundation).toContain("CASE WHEN legacy.service_type IN ('ride', 'transport')");
+  });
+
+  it("reconciles legacy quote revisions and lifecycle before unique constraints", () => {
+    expect(legacyReconciliation).toContain("row_number() OVER");
+    expect(legacyReconciliation).toContain("superseded_by_quote_id");
+    expect(quoteStatuses).toContain("ADD VALUE IF NOT EXISTS 'superseded'");
+    expect(quoteStatuses).toContain("ADD VALUE IF NOT EXISTS 'cancelled'");
   });
 
   it("keeps mock specialised pricing from being published", () => {
@@ -63,5 +73,21 @@ describe("Phase 4 database contracts", () => {
     expect(security).toContain("CREATE OR REPLACE FUNCTION public.pricing_expire_due_quotes");
     expect(security).toContain("CREATE OR REPLACE FUNCTION public.admin_set_quote_deposit");
     expect(security).toContain("CREATE OR REPLACE FUNCTION public.notify_quote_sent");
+  });
+
+  it("validates publications and protects authoritative booking totals", () => {
+    expect(integrity).toContain("CREATE OR REPLACE FUNCTION public.admin_validate_pricing_version");
+    expect(integrity).toContain("pricing_validate_version_internal");
+    expect(integrity).toContain("Booking pricing and deposit fields are server-authoritative");
+    expect(integrity).toContain("REVOKE INSERT, UPDATE, DELETE ON public.service_pricing_rules");
+  });
+
+  it("supports draft recalculation, cancellation and committed expiry outcomes", () => {
+    expect(integrity).toContain(
+      "CREATE OR REPLACE FUNCTION public.admin_recalculate_service_quote",
+    );
+    expect(integrity).toContain("CREATE OR REPLACE FUNCTION public.admin_cancel_service_quote");
+    expect(integrity).toContain("'accepted', false, 'reason', 'expired'");
+    expect(integrity).toContain("'declined', false, 'reason', 'expired'");
   });
 });
