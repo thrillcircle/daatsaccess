@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/runner/work/daatsaccess/daatsaccess/scripts/phase3_audit_closeout.py", line 868, in <module>
+    raise RuntimeError(f"{relative}: direct mutation of {table} bypasses protected fleet RPCs")
+RuntimeError: src/routes/app.admin.bookings.tsx: direct mutation of vehicle_profiles bypasses protected fleet RPCs
