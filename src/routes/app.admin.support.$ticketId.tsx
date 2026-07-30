@@ -89,7 +89,9 @@ function AdminSupportTicketPage() {
               nextTicket.passenger_id,
               nextTicket.driver_id,
               nextTicket.assigned_admin_id,
-              ...((messageResult.data ?? []) as SupportMessage[]).map((message) => message.sender_id),
+              ...((messageResult.data ?? []) as SupportMessage[]).map(
+                (message) => message.sender_id,
+              ),
               ...((eventResult.data ?? []) as SupportEvent[]).map((event) => event.performed_by),
             ].filter((value): value is string => !!value),
           ),
