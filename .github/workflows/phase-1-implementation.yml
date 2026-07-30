@@ -44,8 +44,7 @@ jobs:
             src/routes/app.admin.index.tsx \
             src/routes/app.admin.drivers.tsx \
             src/routes/app.admin.passengers.tsx \
-            src/routes/app.admin.pricing-services.tsx \
-            supabase/migrations/20260730173000_phase1_service_pricing_rules.sql
+            src/routes/app.admin.pricing-services.tsx
 
       - name: Lint
         run: bun run lint
