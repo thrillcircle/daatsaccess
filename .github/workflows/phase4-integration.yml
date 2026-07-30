@@ -1,0 +1,79 @@
+name: Phase 4 Integration
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.head_ref == 'phase-4-pricing-quotations'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out Phase 4 branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase-4-pricing-quotations
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Apply guarded quote-list integration
+        run: python scripts/phase4_integrate_quote_lists.py
+
+      - name: Remove temporary integration tooling
+        run: rm scripts/phase4_integrate_quote_lists.py .github/workflows/phase4-integration.yml
+
+      - name: Format Phase 4 source
+        run: |
+          bunx prettier --write \
+            src/lib/pricing-engine.ts \
+            src/lib/pricing-engine.test.ts \
+            src/lib/pricing-api.ts \
+            src/components/pricing/PricingVersionManager.tsx \
+            src/components/ExtendedJourneyAdmin.tsx \
+            'src/routes/app.admin.bookings.$bookingId.quote.tsx' \
+            'src/routes/app.passenger.bookings.$bookingId.quote.tsx' \
+            src/routes/app.admin.pricing-services.tsx \
+            src/routes/app.admin.bookings.tsx \
+            src/routes/app.passenger.bookings.tsx
+
+      - name: Lint Phase 4 source
+        run: |
+          bunx eslint \
+            src/lib/pricing-engine.ts \
+            src/lib/pricing-engine.test.ts \
+            src/lib/pricing-api.ts \
+            src/components/pricing/PricingVersionManager.tsx \
+            src/components/ExtendedJourneyAdmin.tsx \
+            'src/routes/app.admin.bookings.$bookingId.quote.tsx' \
+            'src/routes/app.passenger.bookings.$bookingId.quote.tsx' \
+            src/routes/app.admin.pricing-services.tsx \
+            src/routes/app.admin.bookings.tsx \
+            src/routes/app.passenger.bookings.tsx
+
+      - name: Run full test suite
+        run: bun test
+
+      - name: Run production build
+        run: bun run build
+
+      - name: Commit verified integration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No integration changes to commit'
+          else
+            git commit -m 'feat(pricing): connect protected quote workspaces'
+            git push origin HEAD:phase-4-pricing-quotations
+          fi
