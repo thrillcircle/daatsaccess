@@ -32,47 +32,16 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Patch wrapped driver notice and remove obsolete guard
+      - name: Remove directly completed driver subsection from patch script
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
-          script_path = Path("scripts/phase2_closeout_apply.py")
-          script = script_path.read_text()
-          section_start = script.index("# Driver vehicle/status Support access.")
-          section_end = script.index("# Refresh the generated Supabase types", section_start)
-          section = script[section_start:section_end]
-          operation_start = section.rfind("replace_once(")
-          if operation_start < 0:
-              raise RuntimeError("Final driver profile guard was not found")
-          script_path.write_text(
-              script[:section_start] + section[:operation_start] + script[section_end:]
-          )
-
-          driver_path = Path("src/components/profile/DriverProfileSections.tsx")
-          driver = driver_path.read_text()
-          notice = """          through Support but cannot edit vehicle master data or maintenance status.
-                </p>
-          """
-          if notice not in driver:
-              raise RuntimeError("Wrapped driver notice was not found")
-          button = notice + """        <Button asChild variant="outline" className="mt-3 w-full">
-                    <Link
-                      to="/app/support"
-                      search={{
-                        rideId: "",
-                        bookingId: "",
-                        category: "vehicle_issue",
-                        subject: driver?.license_plate
-                          ? `Vehicle issue · ${driver.license_plate}`
-                          : "Vehicle or driver operations issue",
-                      }}
-                    >
-                      <LifeBuoy className="mr-1 h-4 w-4" /> Report a vehicle or operational issue
-                    </Link>
-                  </Button>
-          """
-          driver_path.write_text(driver.replace(notice, button, 1))
+          path = Path("scripts/phase2_closeout_apply.py")
+          text = path.read_text()
+          start = text.index("# Driver vehicle/status Support access.")
+          end = text.index("# Refresh the generated Supabase types", start)
+          path.write_text(text[:start] + text[end:])
           PY
 
       - name: Apply closeout patch
