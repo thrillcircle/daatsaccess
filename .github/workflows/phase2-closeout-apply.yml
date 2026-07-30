@@ -39,11 +39,36 @@ jobs:
 
           path = Path('scripts/phase2_closeout_apply.py')
           text = path.read_text()
-          text = text.replace(
-              'Vehicle and driver records are managed by Access administration. Drivers can report issues through Support but cannot edit vehicle master data or maintenance status.',
-              'Vehicle and driver records are managed by Access administration. Drivers can report issues\n           through Support but cannot edit vehicle master data or maintenance status.',
-          )
-          path.write_text(text)
+          start_marker = '''replace_once(
+              driver_profile,
+              ''' + "'''" + '''        <p className="mt-4 flex items-start gap-2 rounded-xl bg-secondary p-3 text-xs text-muted-foreground">'''
+          start = text.index(start_marker)
+          end = text.index('\n\n# Refresh the generated Supabase types', start)
+          replacement = '''driver_file = Path(driver_profile)
+          driver_text = driver_file.read_text()
+          driver_notice = ''' + '"""' + '''          through Support but cannot edit vehicle master data or maintenance status.
+                  </p>
+          ''' + '"""' + '''
+          if driver_notice not in driver_text:
+              raise RuntimeError("Driver support notice marker was not found")
+          driver_button = driver_notice + ''' + '"""' + '''        <Button asChild variant="outline" className="mt-3 w-full">
+                    <Link
+                      to="/app/support"
+                      search={{
+                        rideId: "",
+                        bookingId: "",
+                        category: "vehicle_issue",
+                        subject: driver?.license_plate
+                          ? `Vehicle issue · ${driver.license_plate}`
+                          : "Vehicle or driver operations issue",
+                      }}
+                    >
+                      <LifeBuoy className="mr-1 h-4 w-4" /> Report a vehicle or operational issue
+                    </Link>
+                  </Button>
+          ''' + '"""' + '''
+          driver_file.write_text(driver_text.replace(driver_notice, driver_button, 1))'''
+          path.write_text(text[:start] + replacement + text[end:])
           PY
 
       - name: Apply closeout patch
