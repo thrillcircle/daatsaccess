@@ -34,6 +34,7 @@ RETURNS BOOLEAN LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS
   SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role)
 $$;
 
+DROP POLICY IF EXISTS "users read own roles" ON public.user_roles;
 CREATE POLICY "users read own roles" ON public.user_roles FOR SELECT TO authenticated
   USING (auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'));
 
@@ -91,33 +92,44 @@ ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
 -- ============ POLICIES ============
 -- profiles
+DROP POLICY IF EXISTS "users read own profile" ON public.profiles;
 CREATE POLICY "users read own profile" ON public.profiles FOR SELECT TO authenticated
   USING (auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'));
+DROP POLICY IF EXISTS "users update own profile" ON public.profiles;
 CREATE POLICY "users update own profile" ON public.profiles FOR UPDATE TO authenticated
   USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "users insert own profile" ON public.profiles;
 CREATE POLICY "users insert own profile" ON public.profiles FOR INSERT TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
 -- driver_profiles
+DROP POLICY IF EXISTS "drivers manage own driver profile" ON public.driver_profiles;
 CREATE POLICY "drivers manage own driver profile" ON public.driver_profiles FOR ALL TO authenticated
   USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "authenticated can view available drivers" ON public.driver_profiles;
 CREATE POLICY "authenticated can view available drivers" ON public.driver_profiles FOR SELECT TO authenticated
   USING (is_available = true OR auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'));
 
 -- rides
+DROP POLICY IF EXISTS "passenger sees own rides" ON public.rides;
 CREATE POLICY "passenger sees own rides" ON public.rides FOR SELECT TO authenticated
   USING (auth.uid() = passenger_id);
+DROP POLICY IF EXISTS "driver sees assigned or open rides" ON public.rides;
 CREATE POLICY "driver sees assigned or open rides" ON public.rides FOR SELECT TO authenticated
   USING (
     auth.uid() = driver_id
     OR (driver_id IS NULL AND status = 'requested' AND public.has_role(auth.uid(), 'driver'))
   );
+DROP POLICY IF EXISTS "admin sees all rides" ON public.rides;
 CREATE POLICY "admin sees all rides" ON public.rides FOR SELECT TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
+DROP POLICY IF EXISTS "passenger creates ride" ON public.rides;
 CREATE POLICY "passenger creates ride" ON public.rides FOR INSERT TO authenticated
   WITH CHECK (auth.uid() = passenger_id);
+DROP POLICY IF EXISTS "passenger updates own ride" ON public.rides;
 CREATE POLICY "passenger updates own ride" ON public.rides FOR UPDATE TO authenticated
   USING (auth.uid() = passenger_id) WITH CHECK (auth.uid() = passenger_id);
+DROP POLICY IF EXISTS "driver updates assigned or claims open ride" ON public.rides;
 CREATE POLICY "driver updates assigned or claims open ride" ON public.rides FOR UPDATE TO authenticated
   USING (
     auth.uid() = driver_id
@@ -126,6 +138,7 @@ CREATE POLICY "driver updates assigned or claims open ride" ON public.rides FOR 
   WITH CHECK (auth.uid() = driver_id);
 
 -- payments
+DROP POLICY IF EXISTS "involved sees payment" ON public.payments;
 CREATE POLICY "involved sees payment" ON public.payments FOR SELECT TO authenticated
   USING (auth.uid() = passenger_id OR auth.uid() = driver_id OR public.has_role(auth.uid(), 'admin'));
 

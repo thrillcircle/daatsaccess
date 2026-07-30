@@ -107,8 +107,10 @@ DROP POLICY IF EXISTS "assigned driver reads events" ON public.service_booking_e
 DROP POLICY IF EXISTS "booker inserts events" ON public.service_booking_events;
 CREATE POLICY "booker reads events" ON public.service_booking_events
   FOR SELECT TO authenticated USING (private.is_booking_owner(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "assigned driver reads events" ON public.service_booking_events;
 CREATE POLICY "assigned driver reads events" ON public.service_booking_events
   FOR SELECT TO authenticated USING (private.is_assigned_driver_for_booking(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "booker inserts events" ON public.service_booking_events;
 CREATE POLICY "booker inserts events" ON public.service_booking_events
   FOR INSERT TO authenticated WITH CHECK (
     actor_user_id = auth.uid()

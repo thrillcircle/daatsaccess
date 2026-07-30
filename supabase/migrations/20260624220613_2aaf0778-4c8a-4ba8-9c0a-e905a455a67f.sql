@@ -263,48 +263,66 @@ $$;
 -- ============ RLS POLICIES ============
 
 -- service_bookings
+DROP POLICY IF EXISTS "booker reads own bookings" ON public.service_bookings;
 CREATE POLICY "booker reads own bookings" ON public.service_bookings
   FOR SELECT TO authenticated USING (booked_by_user_id = auth.uid());
+DROP POLICY IF EXISTS "booker inserts own bookings" ON public.service_bookings;
 CREATE POLICY "booker inserts own bookings" ON public.service_bookings
   FOR INSERT TO authenticated WITH CHECK (booked_by_user_id = auth.uid());
+DROP POLICY IF EXISTS "booker updates own bookings" ON public.service_bookings;
 CREATE POLICY "booker updates own bookings" ON public.service_bookings
   FOR UPDATE TO authenticated USING (booked_by_user_id = auth.uid()) WITH CHECK (booked_by_user_id = auth.uid());
+DROP POLICY IF EXISTS "booker deletes draft bookings" ON public.service_bookings;
 CREATE POLICY "booker deletes draft bookings" ON public.service_bookings
   FOR DELETE TO authenticated USING (booked_by_user_id = auth.uid() AND status = 'draft');
+DROP POLICY IF EXISTS "assigned drivers read booking" ON public.service_bookings;
 CREATE POLICY "assigned drivers read booking" ON public.service_bookings
   FOR SELECT TO authenticated USING (public.is_assigned_driver_for_booking(id, auth.uid()));
+DROP POLICY IF EXISTS "admins manage bookings" ON public.service_bookings;
 CREATE POLICY "admins manage bookings" ON public.service_bookings
   FOR ALL TO authenticated USING (private.has_role(auth.uid(),'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(),'admin'::app_role));
 
 -- booking_travellers
+DROP POLICY IF EXISTS "booker manages travellers" ON public.booking_travellers;
 CREATE POLICY "booker manages travellers" ON public.booking_travellers
   FOR ALL TO authenticated USING (public.is_booking_owner(booking_id, auth.uid())) WITH CHECK (public.is_booking_owner(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "linked traveller reads self" ON public.booking_travellers;
 CREATE POLICY "linked traveller reads self" ON public.booking_travellers
   FOR SELECT TO authenticated USING (linked_user_id = auth.uid());
+DROP POLICY IF EXISTS "assigned driver reads travellers" ON public.booking_travellers;
 CREATE POLICY "assigned driver reads travellers" ON public.booking_travellers
   FOR SELECT TO authenticated USING (public.is_assigned_driver_for_booking(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "admins manage travellers" ON public.booking_travellers;
 CREATE POLICY "admins manage travellers" ON public.booking_travellers
   FOR ALL TO authenticated USING (private.has_role(auth.uid(),'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(),'admin'::app_role));
 
 -- booking_assistance_requirements
+DROP POLICY IF EXISTS "booker manages assistance" ON public.booking_assistance_requirements;
 CREATE POLICY "booker manages assistance" ON public.booking_assistance_requirements
   FOR ALL TO authenticated USING (public.is_booking_owner(booking_id, auth.uid())) WITH CHECK (public.is_booking_owner(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "assigned driver reads assistance" ON public.booking_assistance_requirements;
 CREATE POLICY "assigned driver reads assistance" ON public.booking_assistance_requirements
   FOR SELECT TO authenticated USING (public.is_assigned_driver_for_booking(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "admins manage assistance" ON public.booking_assistance_requirements;
 CREATE POLICY "admins manage assistance" ON public.booking_assistance_requirements
   FOR ALL TO authenticated USING (private.has_role(auth.uid(),'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(),'admin'::app_role));
 
 -- booking_itinerary_items
+DROP POLICY IF EXISTS "booker manages itinerary" ON public.booking_itinerary_items;
 CREATE POLICY "booker manages itinerary" ON public.booking_itinerary_items
   FOR ALL TO authenticated USING (public.is_booking_owner(booking_id, auth.uid())) WITH CHECK (public.is_booking_owner(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "assigned driver reads itinerary" ON public.booking_itinerary_items;
 CREATE POLICY "assigned driver reads itinerary" ON public.booking_itinerary_items
   FOR SELECT TO authenticated USING (public.is_assigned_driver_for_booking(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "admins manage itinerary" ON public.booking_itinerary_items;
 CREATE POLICY "admins manage itinerary" ON public.booking_itinerary_items
   FOR ALL TO authenticated USING (private.has_role(auth.uid(),'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(),'admin'::app_role));
 
 -- companion_profiles (private until assigned)
+DROP POLICY IF EXISTS "admins manage companions" ON public.companion_profiles;
 CREATE POLICY "admins manage companions" ON public.companion_profiles
   FOR ALL TO authenticated USING (private.has_role(auth.uid(),'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(),'admin'::app_role));
+DROP POLICY IF EXISTS "booker reads assigned companions" ON public.companion_profiles;
 CREATE POLICY "booker reads assigned companions" ON public.companion_profiles
   FOR SELECT TO authenticated USING (
     EXISTS (
@@ -317,8 +335,10 @@ CREATE POLICY "booker reads assigned companions" ON public.companion_profiles
   );
 
 -- fleet_vehicles (admins manage; assigned drivers + bookers see assigned)
+DROP POLICY IF EXISTS "admins manage fleet_vehicles" ON public.fleet_vehicles;
 CREATE POLICY "admins manage fleet_vehicles" ON public.fleet_vehicles
   FOR ALL TO authenticated USING (private.has_role(auth.uid(),'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(),'admin'::app_role));
+DROP POLICY IF EXISTS "users read assigned fleet vehicles" ON public.fleet_vehicles;
 CREATE POLICY "users read assigned fleet vehicles" ON public.fleet_vehicles
   FOR SELECT TO authenticated USING (
     EXISTS (
@@ -331,53 +351,69 @@ CREATE POLICY "users read assigned fleet vehicles" ON public.fleet_vehicles
   );
 
 -- booking_driver_assignments
+DROP POLICY IF EXISTS "booker reads driver assignments" ON public.booking_driver_assignments;
 CREATE POLICY "booker reads driver assignments" ON public.booking_driver_assignments
   FOR SELECT TO authenticated USING (public.is_booking_owner(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "driver reads own assignments" ON public.booking_driver_assignments;
 CREATE POLICY "driver reads own assignments" ON public.booking_driver_assignments
   FOR SELECT TO authenticated USING (driver_user_id = auth.uid());
+DROP POLICY IF EXISTS "admins manage driver assignments" ON public.booking_driver_assignments;
 CREATE POLICY "admins manage driver assignments" ON public.booking_driver_assignments
   FOR ALL TO authenticated USING (private.has_role(auth.uid(),'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(),'admin'::app_role));
 
 -- booking_companion_assignments
+DROP POLICY IF EXISTS "booker reads companion assignments" ON public.booking_companion_assignments;
 CREATE POLICY "booker reads companion assignments" ON public.booking_companion_assignments
   FOR SELECT TO authenticated USING (public.is_booking_owner(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "admins manage companion assignments" ON public.booking_companion_assignments;
 CREATE POLICY "admins manage companion assignments" ON public.booking_companion_assignments
   FOR ALL TO authenticated USING (private.has_role(auth.uid(),'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(),'admin'::app_role));
 
 -- booking_vehicle_assignments
+DROP POLICY IF EXISTS "booker reads vehicle assignments" ON public.booking_vehicle_assignments;
 CREATE POLICY "booker reads vehicle assignments" ON public.booking_vehicle_assignments
   FOR SELECT TO authenticated USING (public.is_booking_owner(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "driver reads vehicle assignments" ON public.booking_vehicle_assignments;
 CREATE POLICY "driver reads vehicle assignments" ON public.booking_vehicle_assignments
   FOR SELECT TO authenticated USING (public.is_assigned_driver_for_booking(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "admins manage vehicle assignments" ON public.booking_vehicle_assignments;
 CREATE POLICY "admins manage vehicle assignments" ON public.booking_vehicle_assignments
   FOR ALL TO authenticated USING (private.has_role(auth.uid(),'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(),'admin'::app_role));
 
 -- service_quotes (booker + admin only)
+DROP POLICY IF EXISTS "booker reads quotes" ON public.service_quotes;
 CREATE POLICY "booker reads quotes" ON public.service_quotes
   FOR SELECT TO authenticated USING (public.is_booking_owner(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "admins manage quotes" ON public.service_quotes;
 CREATE POLICY "admins manage quotes" ON public.service_quotes
   FOR ALL TO authenticated USING (private.has_role(auth.uid(),'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(),'admin'::app_role));
 
 -- service_quote_items
+DROP POLICY IF EXISTS "booker reads quote items" ON public.service_quote_items;
 CREATE POLICY "booker reads quote items" ON public.service_quote_items
   FOR SELECT TO authenticated USING (
     EXISTS (SELECT 1 FROM public.service_quotes q
             WHERE q.id = quote_id AND public.is_booking_owner(q.booking_id, auth.uid()))
   );
+DROP POLICY IF EXISTS "admins manage quote items" ON public.service_quote_items;
 CREATE POLICY "admins manage quote items" ON public.service_quote_items
   FOR ALL TO authenticated USING (private.has_role(auth.uid(),'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(),'admin'::app_role));
 
 -- service_booking_events
+DROP POLICY IF EXISTS "booker reads events" ON public.service_booking_events;
 CREATE POLICY "booker reads events" ON public.service_booking_events
   FOR SELECT TO authenticated USING (public.is_booking_owner(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "assigned driver reads events" ON public.service_booking_events;
 CREATE POLICY "assigned driver reads events" ON public.service_booking_events
   FOR SELECT TO authenticated USING (public.is_assigned_driver_for_booking(booking_id, auth.uid()));
+DROP POLICY IF EXISTS "booker inserts events" ON public.service_booking_events;
 CREATE POLICY "booker inserts events" ON public.service_booking_events
   FOR INSERT TO authenticated WITH CHECK (
     actor_user_id = auth.uid()
     AND (public.is_booking_owner(booking_id, auth.uid())
          OR public.is_assigned_driver_for_booking(booking_id, auth.uid()))
   );
+DROP POLICY IF EXISTS "admins manage events" ON public.service_booking_events;
 CREATE POLICY "admins manage events" ON public.service_booking_events
   FOR ALL TO authenticated USING (private.has_role(auth.uid(),'admin'::app_role)) WITH CHECK (private.has_role(auth.uid(),'admin'::app_role));
 

@@ -1816,18 +1816,25 @@ GRANT ALL ON public.vehicle_legacy_mappings, public.fleet_consolidation_issues,
   public.vehicle_maintenance_events, public.vehicle_odometer_events,
   public.vehicle_status_events TO service_role;
 
+DROP POLICY IF EXISTS "Admins read fleet mappings" ON public.vehicle_legacy_mappings;
 CREATE POLICY "Admins read fleet mappings" ON public.vehicle_legacy_mappings
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins read fleet issues" ON public.fleet_consolidation_issues;
 CREATE POLICY "Admins read fleet issues" ON public.fleet_consolidation_issues
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins read fleet operation requests" ON public.fleet_operation_requests;
 CREATE POLICY "Admins read fleet operation requests" ON public.fleet_operation_requests
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins read all vehicle assignments" ON public.vehicle_driver_assignments;
 CREATE POLICY "Admins read all vehicle assignments" ON public.vehicle_driver_assignments
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Drivers read own vehicle assignments" ON public.vehicle_driver_assignments;
 CREATE POLICY "Drivers read own vehicle assignments" ON public.vehicle_driver_assignments
   FOR SELECT TO authenticated USING (driver_id = auth.uid());
+DROP POLICY IF EXISTS "Admins read vehicle documents" ON public.vehicle_documents;
 CREATE POLICY "Admins read vehicle documents" ON public.vehicle_documents
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Drivers read assigned vehicle document status" ON public.vehicle_documents;
 CREATE POLICY "Drivers read assigned vehicle document status" ON public.vehicle_documents
   FOR SELECT TO authenticated USING (
     EXISTS (
@@ -1840,12 +1847,16 @@ CREATE POLICY "Drivers read assigned vehicle document status" ON public.vehicle_
         AND (assignment.end_at IS NULL OR assignment.end_at > now())
     )
   );
+DROP POLICY IF EXISTS "Admins read maintenance work orders" ON public.vehicle_maintenance_work_orders;
 CREATE POLICY "Admins read maintenance work orders" ON public.vehicle_maintenance_work_orders
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins read maintenance events" ON public.vehicle_maintenance_events;
 CREATE POLICY "Admins read maintenance events" ON public.vehicle_maintenance_events
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins read odometer events" ON public.vehicle_odometer_events;
 CREATE POLICY "Admins read odometer events" ON public.vehicle_odometer_events
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins read vehicle status events" ON public.vehicle_status_events;
 CREATE POLICY "Admins read vehicle status events" ON public.vehicle_status_events
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
 
