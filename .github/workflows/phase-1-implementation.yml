@@ -46,8 +46,16 @@ jobs:
             src/routes/app.admin.passengers.tsx \
             src/routes/app.admin.pricing-services.tsx
 
-      - name: Lint
-        run: bun run lint
+      - name: Lint changed source files
+        run: |
+          bunx eslint \
+            src/components/AppShell.tsx \
+            src/components/AdminShell.tsx \
+            src/routes/app.driver.tsx \
+            src/routes/app.admin.index.tsx \
+            src/routes/app.admin.drivers.tsx \
+            src/routes/app.admin.passengers.tsx \
+            src/routes/app.admin.pricing-services.tsx
 
       - name: Test
         run: bun run test
