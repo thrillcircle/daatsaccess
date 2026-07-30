@@ -28,10 +28,13 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Apply guarded integrity controls
-        run: python scripts/phase4_integrate_integrity_controls.py
+        run: python scripts/phase4_run_integrity_controls.py
 
       - name: Remove temporary tooling
-        run: rm scripts/phase4_integrate_integrity_controls.py .github/workflows/phase4-integrity-controls.yml
+        run: |
+          rm scripts/phase4_integrate_integrity_controls.py
+          rm scripts/phase4_run_integrity_controls.py
+          rm .github/workflows/phase4-integrity-controls.yml
 
       - name: Format changed TypeScript
         run: |
