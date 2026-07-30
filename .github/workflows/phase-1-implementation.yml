@@ -36,9 +36,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Format changed source files
+      - name: Auto-fix changed passenger files
         run: |
-          bunx prettier --write \
+          bunx eslint --fix \
             src/routes/app.passenger.index.tsx \
             src/routes/app.passenger.book.index.tsx \
             src/routes/app.passenger.bookings.tsx
