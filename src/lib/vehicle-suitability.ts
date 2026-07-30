@@ -16,91 +16,94 @@ export type SuitabilityReason = {
 
 export type Suitability = {
   vehicle: VehicleProfile;
-  score: number; // higher = better. negative = unsuitable.
-  blocking: SuitabilityReason[]; // hard mismatches (status, capacity, accessibility, expired docs)
-  warnings: SuitabilityReason[]; // soft warnings (service due, doc expiring, already assigned)
-  alerts: VehicleAlert[]; // raw maintenance/document alerts for display
-  suitable: boolean; // no blocking reasons
+  score: number;
+  blocking: SuitabilityReason[];
+  warnings: SuitabilityReason[];
+  alerts: VehicleAlert[];
+  suitable: boolean;
 };
 
 export function scoreVehicleForTrip(
-  v: VehicleProfile,
+  vehicle: VehicleProfile,
   needs: TripNeeds,
-  alreadyAssignedRideIds: Set<string> | null = null,
-  myRideId: string | null = null,
+  alreadyAssignedVehicleIds: Set<string> | null = null,
 ): Suitability {
-  const alerts = getVehicleAlerts(v);
+  const alerts = getVehicleAlerts(vehicle);
   const blocking: SuitabilityReason[] = [];
   const warnings: SuitabilityReason[] = [];
 
-  // Status hard rules
-  if (v.status === "out_of_service" || v.status === "retired") {
-    blocking.push({ label: `Vehicle ${v.status.replace(/_/g, " ")}`, severity: "block" });
+  if (vehicle.status === "out_of_service" || vehicle.status === "retired") {
+    blocking.push({
+      label: `Vehicle ${vehicle.status.replace(/_/g, " ")}`,
+      severity: "block",
+    });
   }
-  if (v.status === "in_maintenance") {
+  if (vehicle.status === "in_maintenance") {
     warnings.push({ label: "Vehicle in maintenance", severity: "warning" });
   }
 
-  // Capacity rules
-  const pax = Number(needs.passengerCount ?? 0);
-  if (pax > 0 && v.passenger_capacity != null && v.passenger_capacity < pax) {
+  const passengerCount = Number(needs.passengerCount ?? 0);
+  if (
+    passengerCount > 0 &&
+    vehicle.passenger_capacity != null &&
+    vehicle.passenger_capacity < passengerCount
+  ) {
     blocking.push({
-      label: `Capacity ${v.passenger_capacity} < ${pax} pax`,
+      label: `Capacity ${vehicle.passenger_capacity} < ${passengerCount} pax`,
       severity: "block",
     });
   }
 
-  const wc = Number(needs.wheelchairCount ?? 0);
-  if (wc > 0) {
-    if (!v.wheelchair_accessible) {
+  const wheelchairCount = Number(needs.wheelchairCount ?? 0);
+  if (wheelchairCount > 0) {
+    if (!vehicle.wheelchair_accessible) {
       blocking.push({ label: "Not wheelchair accessible", severity: "block" });
-    } else if (v.wheelchair_capacity != null && v.wheelchair_capacity < wc) {
+    } else if (
+      vehicle.wheelchair_capacity != null &&
+      vehicle.wheelchair_capacity < wheelchairCount
+    ) {
       blocking.push({
-        label: `Wheelchair capacity ${v.wheelchair_capacity} < ${wc}`,
+        label: `Wheelchair capacity ${vehicle.wheelchair_capacity} < ${wheelchairCount}`,
         severity: "block",
       });
     }
   }
 
-  if (needs.requiresRampOrLift && !v.ramp_or_lift_available) {
+  if (needs.requiresRampOrLift && !vehicle.ramp_or_lift_available) {
     blocking.push({ label: "No ramp / lift", severity: "block" });
   }
 
-  // Documents — expired blocks, expiring warns (alerts already encode the date logic).
-  for (const a of alerts) {
-    if (a.severity === "urgent") {
-      // Expired roadworthy / insurance are hard blocks; expired license is a block too.
-      if (/expired/i.test(a.label)) {
-        blocking.push({ label: a.label, severity: "block" });
-      } else if (/overdue/i.test(a.label)) {
-        warnings.push({ label: a.label, severity: "warning" });
+  for (const alert of alerts) {
+    if (alert.severity === "urgent") {
+      if (/expired/i.test(alert.label)) {
+        blocking.push({ label: alert.label, severity: "block" });
+      } else if (/overdue/i.test(alert.label)) {
+        warnings.push({ label: alert.label, severity: "warning" });
       }
     } else {
-      warnings.push({ label: a.label, severity: "warning" });
+      warnings.push({ label: alert.label, severity: "warning" });
     }
   }
 
-  // Already assigned to a different active ride
-  if (alreadyAssignedRideIds && alreadyAssignedRideIds.has(v.id) && !(myRideId && myRideId in {})) {
-    warnings.push({ label: "Already assigned to another active trip", severity: "warning" });
+  if (alreadyAssignedVehicleIds?.has(vehicle.id)) {
+    warnings.push({
+      label: "Already assigned to another active trip",
+      severity: "warning",
+    });
   }
 
-  // Scoring: prefer available vehicles with closest capacity match and no warnings.
   let score = 100;
-  score -= blocking.length * 1000; // unsuitable
+  score -= blocking.length * 1000;
   score -= warnings.length * 10;
-  if (v.status !== "active") score -= 5;
-  // Prefer tighter capacity fit (don't send a 14-seater for 1 pax if a 4-seater is free).
-  if (pax > 0 && v.passenger_capacity != null) {
-    score -= Math.max(0, v.passenger_capacity - pax);
+  if (vehicle.status !== "active") score -= 5;
+  if (passengerCount > 0 && vehicle.passenger_capacity != null) {
+    score -= Math.max(0, vehicle.passenger_capacity - passengerCount);
   }
-  // Prefer dedicated wheelchair vehicles when wc>0
-  if (wc > 0 && v.wheelchair_accessible) score += 5;
-  // Prefer vehicles with an assigned driver (less coordination)
-  if (v.assigned_driver_id) score += 2;
+  if (wheelchairCount > 0 && vehicle.wheelchair_accessible) score += 5;
+  if (vehicle.assigned_driver_id) score += 2;
 
   return {
-    vehicle: v,
+    vehicle,
     score,
     blocking,
     warnings,
@@ -113,9 +116,9 @@ export function rankVehiclesForTrip(
   vehicles: VehicleProfile[],
   needs: TripNeeds,
   alreadyAssignedVehicleIds: Set<string> | null = null,
-  myRideId: string | null = null,
+  _currentRideId: string | null = null,
 ): Suitability[] {
   return vehicles
-    .map((v) => scoreVehicleForTrip(v, needs, alreadyAssignedVehicleIds, myRideId))
+    .map((vehicle) => scoreVehicleForTrip(vehicle, needs, alreadyAssignedVehicleIds))
     .sort((a, b) => b.score - a.score);
 }
