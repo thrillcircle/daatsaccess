@@ -32,6 +32,20 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Align driver profile patch guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/phase2_closeout_apply.py')
+          text = path.read_text()
+          text = text.replace(
+              'Vehicle and driver records are managed by Access administration. Drivers can report issues through Support but cannot edit vehicle master data or maintenance status.',
+              'Vehicle and driver records are managed by Access administration. Drivers can report issues\n           through Support but cannot edit vehicle master data or maintenance status.',
+          )
+          path.write_text(text)
+          PY
+
       - name: Apply closeout patch
         run: |
           set +e
