@@ -1,18 +1,134 @@
-name: Phase 2 closeout runner heartbeat
+name: Phase 2 closeout corrections
 
 on:
   push:
     branches:
       - phase-2-closeout-corrections
 
+concurrency:
+  group: phase-2-closeout-corrections
+  cancel-in-progress: true
+
 permissions:
+  contents: write
   pull-requests: write
 
 jobs:
-  heartbeat:
+  apply-and-verify:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Confirm runner start
-        run: gh pr comment 4 --repo thrillcircle/daatsaccess --body 'Phase 2 closeout branch runner started successfully.'
+      - name: Check out closeout branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase-2-closeout-corrections
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Remove directly completed driver subsection
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("scripts/phase2_closeout_apply.py")
+          text = path.read_text()
+          start = text.index("# Driver vehicle/status Support access.")
+          end = text.index("# Refresh the generated Supabase types", start)
+          path.write_text(text[:start] + text[end:])
+          PY
+
+      - name: Apply closeout patch
+        run: |
+          set +e
+          python3 scripts/phase2_closeout_apply.py > phase2-closeout-apply.log 2>&1
+          code=$?
+          cat phase2-closeout-apply.log
+          echo "APPLY_EXIT=$code" >> "$GITHUB_ENV"
+          exit 0
+
+      - name: Report patch diagnostics
+        if: env.APPLY_EXIT != '0'
+        run: |
+          {
+            echo '### Phase 2 closeout patch stopped safely'
+            echo
+            echo '```text'
+            cat phase2-closeout-apply.log
+            echo '```'
+          } > /tmp/pr-comment.md
+          gh pr comment 4 --body-file /tmp/pr-comment.md
+          exit 1
+
+      - name: Install dependencies
+        if: env.APPLY_EXIT == '0'
+        run: bun install --frozen-lockfile
+
+      - name: Format closeout source
+        if: env.APPLY_EXIT == '0'
+        run: |
+          bunx prettier --write \
+            'src/components/AddressAutocomplete.tsx' \
+            'src/components/profile/DriverProfileSections.tsx' \
+            'src/components/profile/PassengerProfileSections.tsx' \
+            'src/components/support/AdminCreateSupportTicketDialog.tsx' \
+            'src/integrations/supabase/types.ts' \
+            'src/lib/vehicle-suitability.ts' \
+            'src/lib/vehicle-suitability.test.ts' \
+            'src/routes/app.admin.passengers.tsx' \
+            'src/routes/app.admin.passengers.$passengerId.tsx' \
+            'src/routes/app.admin.pricing-services.tsx' \
+            'src/routes/app.admin.support.tsx' \
+            'src/routes/app.admin.support.$ticketId.tsx' \
+            'src/routes/app.passenger.bookings.tsx' \
+            'src/routes/app.support.tsx' \
+            'src/routes/app.support.$ticketId.tsx' \
+            'src/routes/app.trip.$rideId.tsx'
+
+      - name: Lint closeout source
+        if: env.APPLY_EXIT == '0'
+        run: |
+          bunx eslint \
+            'src/components/AddressAutocomplete.tsx' \
+            'src/components/profile/DriverProfileSections.tsx' \
+            'src/components/profile/PassengerProfileSections.tsx' \
+            'src/components/support/AdminCreateSupportTicketDialog.tsx' \
+            'src/integrations/supabase/types.ts' \
+            'src/lib/vehicle-suitability.ts' \
+            'src/lib/vehicle-suitability.test.ts' \
+            'src/routes/app.admin.passengers.tsx' \
+            'src/routes/app.admin.passengers.$passengerId.tsx' \
+            'src/routes/app.admin.pricing-services.tsx' \
+            'src/routes/app.admin.support.tsx' \
+            'src/routes/app.admin.support.$ticketId.tsx' \
+            'src/routes/app.passenger.bookings.tsx' \
+            'src/routes/app.support.tsx' \
+            'src/routes/app.support.$ticketId.tsx' \
+            'src/routes/app.trip.$rideId.tsx'
+
+      - name: Run full test suite
+        if: env.APPLY_EXIT == '0'
+        run: bun run test
+
+      - name: Run production build
+        if: env.APPLY_EXIT == '0'
+        run: bun run build
+
+      - name: Commit verified corrections
+        if: env.APPLY_EXIT == '0'
+        run: |
+          git checkout origin/main -- .github/workflows/ci.yml
+          rm -f scripts/phase2_closeout_apply.py .github/workflows/phase2-closeout-apply.yml phase2-closeout-apply.log
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src supabase scripts .github
+          git commit -m "fix(operations): close Phase 2 support and fleet gaps"
+          git pull --rebase origin phase-2-closeout-corrections
+          git push origin HEAD:phase-2-closeout-corrections
+          gh pr comment 4 --body 'Phase 2 closeout corrections applied. Scoped lint, the full test suite, and the production build passed before the verified commit was pushed.'
