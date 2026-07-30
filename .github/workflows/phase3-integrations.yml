@@ -1,4 +1,4 @@
-name: Phase 3 verification diagnostics
+name: Phase 3 verified integration commit
 
 on:
   push:
@@ -10,10 +10,11 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  contents: write
   pull-requests: write
 
 jobs:
-  diagnose:
+  integrate-verify-commit:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -31,36 +32,21 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Run and report each verification stage
+      - name: Apply guarded integrations
         run: |
-          set +e
-          report_failure() {
-            stage="$1"
-            log="$2"
-            {
-              echo "### Phase 3 verification failed: $stage"
-              echo
-              echo '```text'
-              tail -n 120 "$log"
-              echo '```'
-            } > /tmp/phase3-comment.md
-            gh pr comment 5 --body-file /tmp/phase3-comment.md
-            exit 1
-          }
-
           python3 - <<'PY'
           from pathlib import Path
           path = Path('scripts/phase3_integrations_apply.py')
           text = path.read_text().replace('{v.registration_number}', '{v.license_plate}')
           path.write_text(text)
           PY
+          python3 scripts/phase3_integrations_apply.py
 
-          python3 scripts/phase3_integrations_apply.py > /tmp/apply.log 2>&1
-          [ "$?" -eq 0 ] || report_failure "guarded source patch" /tmp/apply.log
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
-          bun install --frozen-lockfile > /tmp/install.log 2>&1
-          [ "$?" -eq 0 ] || report_failure "dependency installation" /tmp/install.log
-
+      - name: Format and lint Phase 3 source
+        run: |
           FILES=(
             'src/components/AdminShell.tsx'
             'src/components/profile/DriverProfileSections.tsx'
@@ -80,20 +66,27 @@ jobs:
             'src/routes/app.admin.trips.tsx'
             'src/routes/app.passenger.bookings.tsx'
           )
+          bunx prettier --write "${FILES[@]}"
+          bunx eslint --fix "${FILES[@]}"
+          bunx eslint "${FILES[@]}"
 
-          bunx prettier --write "${FILES[@]}" > /tmp/prettier.log 2>&1
-          [ "$?" -eq 0 ] || report_failure "formatting" /tmp/prettier.log
+      - name: Run full test suite
+        run: bun run test
 
-          bunx eslint --fix "${FILES[@]}" > /tmp/lint-fix.log 2>&1
-          [ "$?" -eq 0 ] || report_failure "safe lint formatting" /tmp/lint-fix.log
+      - name: Run production build
+        run: bun run build
 
-          bunx eslint "${FILES[@]}" > /tmp/lint.log 2>&1
-          [ "$?" -eq 0 ] || report_failure "scoped lint" /tmp/lint.log
+      - name: Commit verified integrations
+        run: |
+          rm -f scripts/phase3_integrations_apply.py .github/workflows/phase3-integrations.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(fleet): integrate canonical fleet operations"
+          git pull --rebase origin phase-3-fleet-consolidation
+          git push origin HEAD:phase-3-fleet-consolidation
+          gh pr comment 5 --body 'Phase 3 integrations are committed. Scoped lint, the full test suite, and the production build passed before the verified commit was pushed.'
 
-          bun run test > /tmp/test.log 2>&1
-          [ "$?" -eq 0 ] || report_failure "full test suite" /tmp/test.log
-
-          bun run build > /tmp/build.log 2>&1
-          [ "$?" -eq 0 ] || report_failure "production build" /tmp/build.log
-
-          gh pr comment 5 --body 'Phase 3 diagnostic verification passed every stage. The branch is ready for the verified integration commit run.'
+      - name: Report failure
+        if: failure()
+        run: gh pr comment 5 --body 'The final Phase 3 integration commit job stopped before push. No partial integration commit was created.'
