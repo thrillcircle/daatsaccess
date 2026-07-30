@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - phase-2-profiles-passengers-support
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
 
 concurrency:
   group: phase-2-verification
