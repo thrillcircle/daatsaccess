@@ -1,0 +1,81 @@
+name: Live Phase 2 schema audit
+
+on:
+  push:
+    branches:
+      - audit-live-phase2-schema
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Audit live Lovable Cloud schema without reading user data
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL=$(sed -n 's/^VITE_SUPABASE_URL="\(.*\)"/\1/p' .env)
+          KEY=$(sed -n 's/^VITE_SUPABASE_PUBLISHABLE_KEY="\(.*\)"/\1/p' .env)
+          test -n "$URL"
+          test -n "$KEY"
+
+          curl --fail --silent --show-error \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Accept: application/openapi+json" \
+            "$URL/rest/v1/" > /tmp/openapi.json
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          spec = json.loads(Path('/tmp/openapi.json').read_text())
+          paths = set(spec.get('paths', {}))
+          definitions = spec.get('definitions', {}) or spec.get('components', {}).get('schemas', {})
+
+          expected_tables = [
+              'service_pricing_rules',
+              'passenger_saved_addresses',
+              'passenger_preferences',
+              'support_tickets',
+              'support_messages',
+              'support_ticket_events',
+              'vehicle_profiles',
+              'fleet_vehicles',
+              'driver_profiles',
+          ]
+          expected_rpcs = [
+              'support_create_ticket',
+              'support_add_message',
+              'support_admin_update_ticket',
+          ]
+
+          failures = []
+          print('LIVE SCHEMA AUDIT')
+          for table in expected_tables:
+              exists = f'/{table}' in paths or table in definitions
+              print(f'TABLE {table}: {"present" if exists else "MISSING"}')
+              if not exists:
+                  failures.append(f'table:{table}')
+
+          for rpc in expected_rpcs:
+              exists = f'/rpc/{rpc}' in paths
+              print(f'RPC {rpc}: {"present" if exists else "MISSING"}')
+              if not exists:
+                  failures.append(f'rpc:{rpc}')
+
+          notification = definitions.get('notifications', {})
+          props = notification.get('properties', {}) if isinstance(notification, dict) else {}
+          support_col = 'support_ticket_id' in props
+          print(f'COLUMN notifications.support_ticket_id: {"present" if support_col else "MISSING"}')
+          if not support_col:
+              failures.append('column:notifications.support_ticket_id')
+
+          if failures:
+              raise SystemExit('Missing live schema resources: ' + ', '.join(failures))
+          PY
