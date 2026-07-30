@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 const migration = (name: string) =>
   readFileSync(resolve(process.cwd(), "supabase/migrations", name), "utf8");
 
+const source = (name: string) => readFileSync(resolve(process.cwd(), "src", name), "utf8");
+
 const legacyPricing = migration("20260730173000_phase1_service_pricing_rules.sql");
 const legacyReconciliation = migration("20260730231400_phase4_legacy_quote_reconciliation.sql");
 const quoteStatuses = migration("20260730231450_phase4_quote_status_values.sql");
@@ -13,6 +15,8 @@ const privacy = migration("20260730232500_phase4_quote_privacy.sql");
 const estimates = migration("20260730233500_phase4_server_estimates.sql");
 const security = migration("20260730234500_phase4_pricing_security_closeout.sql");
 const integrity = migration("20260730234700_phase4_integrity_hardening.sql");
+const clientBoundary = migration("20260730234800_phase4_client_financial_boundary.sql");
+const extendedJourneyAdmin = source("components/ExtendedJourneyAdmin.tsx");
 
 describe("Phase 4 database contracts", () => {
   it("preserves confirmed Ride and Transport pricing as published version 1", () => {
@@ -89,5 +93,18 @@ describe("Phase 4 database contracts", () => {
     expect(integrity).toContain("CREATE OR REPLACE FUNCTION public.admin_cancel_service_quote");
     expect(integrity).toContain("'accepted', false, 'reason', 'expired'");
     expect(integrity).toContain("'declined', false, 'reason', 'expired'");
+  });
+
+  it("blocks authenticated admin browsers from bypassing protected financial RPCs", () => {
+    expect(clientBoundary).toContain(
+      "Only database-owned or service-role execution may change the",
+    );
+    expect(clientBoundary).not.toContain("private.has_role(auth.uid(), 'admin'::app_role)");
+    expect(clientBoundary).toContain(
+      "Booking pricing and deposit fields are server-authoritative",
+    );
+    expect(extendedJourneyAdmin).not.toContain("deposit_amount:");
+    expect(extendedJourneyAdmin).not.toContain("Save deposit");
+    expect(extendedJourneyAdmin).toContain("Open quote workspace");
   });
 });
