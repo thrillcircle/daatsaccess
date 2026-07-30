@@ -80,7 +80,7 @@ replace_between(
     admin,
     '  async function saveQuote(sendNow: boolean) {',
     '  async function confirmResources() {',
-    '  async function confirmResources() {',
+    '',
 )
 replace_once(admin, '{formatZAR(Number(q.total))}', '{formatZAR(Number(q.final_total))}')
 replace_once(
@@ -199,7 +199,7 @@ replace_once(
   row_version: number;
 };''',
 )
-replace_between(passenger, 'type QuoteItem = {', 'type Itinerary = {', 'type Itinerary = {')
+replace_between(passenger, 'type QuoteItem = {', 'type Itinerary = {', '')
 replace_once(passenger, '  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);\n', '')
 replace_once(
     passenger,
@@ -220,14 +220,14 @@ replace_between(
     passenger,
     '        if (qs.length) {',
     '        const vIds = Array.from(',
-    '        const vIds = Array.from(',
+    '',
 )
 passenger_text = passenger.read_text().replace('Number(q.total)', 'Number(q.final_total)')
 passenger.write_text(passenger_text)
 replace_between(
     passenger,
     '                {b.service_type === "extended_journey" && q ? (',
-    '                {b.service_type === "extended_journey" &&\n                 itinerary.some',
+    '\n                {b.service_type === "extended_journey" &&',
     '''                {q ? (
                   <div className="mt-2 flex justify-end">
                     <Button asChild size="sm" variant="outline">
@@ -237,9 +237,7 @@ replace_between(
                     </Button>
                   </div>
                 ) : null}
-
-                {b.service_type === "extended_journey" &&
-                 itinerary.some''',
+''',
 )
 replace_between(
     passenger,
@@ -254,7 +252,7 @@ replace_between(
                     </Button>
                   </div>
                 ) : null}
-              </article>''',
+''',
 )
 
 for path in (admin, passenger):
