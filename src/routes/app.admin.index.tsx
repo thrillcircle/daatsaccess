@@ -10,18 +10,23 @@ import { formatZAR } from "@/lib/pricing";
 import { Pencil, ArrowRight } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
-const ACTIVE_STATUSES = ["requested", "accepted", "driver_arriving", "arrived", "in_progress"] as const;
+const ACTIVE_STATUSES = [
+  "requested",
+  "accepted",
+  "driver_arriving",
+  "arrived",
+  "in_progress",
+] as const;
 
-type OverviewFilter =
-  | "all"
-  | "requested"
-  | "scheduled"
-  | "active"
-  | "completed"
-  | "cancelled";
+type OverviewFilter = "all" | "requested" | "scheduled" | "active" | "completed" | "cancelled";
 
 const VALID_OVERVIEW = new Set<OverviewFilter>([
-  "all", "requested", "scheduled", "active", "completed", "cancelled",
+  "all",
+  "requested",
+  "scheduled",
+  "active",
+  "completed",
+  "cancelled",
 ]);
 
 type OverviewSearch = { filter: OverviewFilter };
@@ -41,9 +46,10 @@ type RideChange = Database["public"]["Tables"]["ride_change_log"]["Row"];
 export const Route = createFileRoute("/app/admin/")({
   head: () => ({ meta: [{ title: "Admin — Access" }] }),
   validateSearch: (raw: Record<string, unknown>): OverviewSearch => {
-    const f = typeof raw.filter === "string" && VALID_OVERVIEW.has(raw.filter as OverviewFilter)
-      ? (raw.filter as OverviewFilter)
-      : "all";
+    const f =
+      typeof raw.filter === "string" && VALID_OVERVIEW.has(raw.filter as OverviewFilter)
+        ? (raw.filter as OverviewFilter)
+        : "all";
     return { filter: f };
   },
   component: AdminPage,
@@ -66,12 +72,14 @@ function AdminPage() {
     scheduled: number;
     completed: number;
     cancelled: number;
-    earnings: number;
+    completedTripValue: number;
     ratingAvg: number | null;
     ratingCount: number;
   } | null>(null);
   const [rides, setRides] = useState<Ride[]>([]);
-  const [profilesById, setProfilesById] = useState<Record<string, { full_name: string | null; phone: string | null }>>({});
+  const [profilesById, setProfilesById] = useState<
+    Record<string, { full_name: string | null; phone: string | null }>
+  >({});
   const [edits, setEdits] = useState<RideChange[]>([]);
   const [loadingRides, setLoadingRides] = useState(true);
   const [ridesError, setRidesError] = useState<string | null>(null);
@@ -98,24 +106,66 @@ function AdminPage() {
           recentEdits,
           ratingsRes,
         ] = await Promise.all([
-          supabase.from("user_roles").select("user_id", { count: "exact", head: true }).eq("role", "passenger"),
+          supabase
+            .from("user_roles")
+            .select("user_id", { count: "exact", head: true })
+            .eq("role", "passenger"),
           supabase.from("driver_profiles").select("id", { count: "exact", head: true }),
-          supabase.from("driver_profiles").select("id", { count: "exact", head: true }).eq("is_available", true),
+          supabase
+            .from("driver_profiles")
+            .select("id", { count: "exact", head: true })
+            .eq("is_available", true),
           supabase.from("rides").select("id", { count: "exact", head: true }),
-          supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "requested"),
-          supabase.from("rides").select("id", { count: "exact", head: true }).in("status", ACTIVE_STATUSES as unknown as ("requested" | "accepted" | "driver_arriving" | "arrived" | "in_progress")[]),
-          supabase.from("rides").select("id", { count: "exact", head: true }).eq("request_type", "scheduled").in("status", ["requested", "accepted"]),
-          supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "completed"),
-          supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
-          supabase.from("rides").select("*").order("updated_at", { ascending: false, nullsFirst: false }).limit(50),
-          supabase.from("ride_change_log").select("*").order("created_at", { ascending: false }).limit(20),
+          supabase
+            .from("rides")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "requested"),
+          supabase
+            .from("rides")
+            .select("id", { count: "exact", head: true })
+            .in(
+              "status",
+              ACTIVE_STATUSES as unknown as (
+                | "requested"
+                | "accepted"
+                | "driver_arriving"
+                | "arrived"
+                | "in_progress"
+              )[],
+            ),
+          supabase
+            .from("rides")
+            .select("id", { count: "exact", head: true })
+            .eq("request_type", "scheduled")
+            .in("status", ["requested", "accepted"]),
+          supabase
+            .from("rides")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "completed"),
+          supabase
+            .from("rides")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "cancelled"),
+          supabase
+            .from("rides")
+            .select("*")
+            .order("updated_at", { ascending: false, nullsFirst: false })
+            .limit(50),
+          supabase
+            .from("ride_change_log")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(20),
           supabase.from("ride_ratings").select("rating"),
         ]);
         if (cancelled) return;
         if (allRides.error) throw allRides.error;
         const all = (allRides.data ?? []) as Ride[];
         const completedRides = all.filter((r) => r.status === "completed");
-        const earnings = completedRides.reduce((acc, r) => acc + Number(r.estimated_price ?? 0), 0);
+        const completedTripValue = completedRides.reduce(
+          (acc, r) => acc + Number(r.estimated_price ?? 0),
+          0,
+        );
         const ratings = (ratingsRes.data ?? []) as { rating: number }[];
         const ratingAvg = ratings.length
           ? ratings.reduce((a, r) => a + Number(r.rating), 0) / ratings.length
@@ -130,7 +180,7 @@ function AdminPage() {
           scheduled: scheduledRes.count ?? 0,
           completed: completedRes.count ?? 0,
           cancelled: cancelledRes.count ?? 0,
-          earnings,
+          completedTripValue,
           ratingAvg,
           ratingCount: ratings.length,
         });
@@ -164,23 +214,19 @@ function AdminPage() {
 
     const ridesCh = supabase
       .channel("admin-rides")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "rides" },
-        (payload) => {
-          setRides((prev) => {
-            if (payload.eventType === "DELETE") {
-              return prev.filter((r) => r.id !== (payload.old as Ride).id);
-            }
-            const row = payload.new as Ride;
-            const idx = prev.findIndex((r) => r.id === row.id);
-            if (idx === -1) return [row, ...prev].slice(0, 50);
-            const copy = prev.slice();
-            copy[idx] = row;
-            return copy;
-          });
-        },
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, (payload) => {
+        setRides((prev) => {
+          if (payload.eventType === "DELETE") {
+            return prev.filter((r) => r.id !== (payload.old as Ride).id);
+          }
+          const row = payload.new as Ride;
+          const idx = prev.findIndex((r) => r.id === row.id);
+          if (idx === -1) return [row, ...prev].slice(0, 50);
+          const copy = prev.slice();
+          copy[idx] = row;
+          return copy;
+        });
+      })
       .subscribe();
 
     const editsCh = supabase
@@ -204,12 +250,21 @@ function AdminPage() {
   const filteredRides = useMemo(() => {
     const list = rides;
     switch (selected) {
-      case "requested": return list.filter((r) => r.status === "requested");
-      case "scheduled": return list.filter((r) => r.request_type === "scheduled" && (r.status === "requested" || r.status === "accepted"));
-      case "active": return list.filter((r) => (ACTIVE_STATUSES as readonly string[]).includes(r.status));
-      case "completed": return list.filter((r) => r.status === "completed");
-      case "cancelled": return list.filter((r) => r.status === "cancelled");
-      default: return list;
+      case "requested":
+        return list.filter((r) => r.status === "requested");
+      case "scheduled":
+        return list.filter(
+          (r) =>
+            r.request_type === "scheduled" && (r.status === "requested" || r.status === "accepted"),
+        );
+      case "active":
+        return list.filter((r) => (ACTIVE_STATUSES as readonly string[]).includes(r.status));
+      case "completed":
+        return list.filter((r) => r.status === "completed");
+      case "cancelled":
+        return list.filter((r) => r.status === "cancelled");
+      default:
+        return list;
     }
   }, [rides, selected]);
 
@@ -235,61 +290,83 @@ function AdminPage() {
   }
 
   const recentTrips = filteredRides.slice(0, 6);
-  const selectedLabel = ({
-    all: "All trips",
-    requested: "Requested",
-    scheduled: "Scheduled",
-    active: "Active",
-    completed: "Completed",
-    cancelled: "Cancelled",
-  } as const)[selected];
+  const selectedLabel = (
+    {
+      all: "All trips",
+      requested: "Requested",
+      scheduled: "Scheduled",
+      active: "Active",
+      completed: "Completed",
+      cancelled: "Cancelled",
+    } as const
+  )[selected];
 
-  const setFilter = (filter: OverviewFilter) =>
-    navigate({ to: "/app/admin", search: { filter } });
+  const setFilter = (filter: OverviewFilter) => navigate({ to: "/app/admin", search: { filter } });
 
   return (
     <AdminShell title="Overview">
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <MetricCard
-          label="Total trips" value={metrics?.totalTrips ?? "—"}
+          label="Total trips"
+          value={metrics?.totalTrips ?? "—"}
           active={selected === "all"}
           onClick={() => setFilter("all")}
         />
         <MetricCard
-          label="Requested" value={metrics?.requested ?? "—"}
+          label="Requested"
+          value={metrics?.requested ?? "—"}
           active={selected === "requested"}
           onClick={() => setFilter("requested")}
         />
         <MetricCard
-          label="Scheduled" value={metrics?.scheduled ?? "—"}
+          label="Scheduled"
+          value={metrics?.scheduled ?? "—"}
           active={selected === "scheduled"}
           onClick={() => setFilter("scheduled")}
         />
         <MetricCard
-          label="Active" value={metrics?.active ?? "—"}
+          label="Active"
+          value={metrics?.active ?? "—"}
           active={selected === "active"}
           onClick={() => setFilter("active")}
         />
         <MetricCard
-          label="Completed" value={metrics?.completed ?? "—"}
+          label="Completed"
+          value={metrics?.completed ?? "—"}
           active={selected === "completed"}
           onClick={() => setFilter("completed")}
         />
         <MetricCard
-          label="Cancelled" value={metrics?.cancelled ?? "—"}
+          label="Cancelled"
+          value={metrics?.cancelled ?? "—"}
           active={selected === "cancelled"}
           onClick={() => setFilter("cancelled")}
         />
-        <DriverMetricCard label="Drivers" value={metrics?.drivers ?? "—"} to="/app/admin/drivers" filterKey="all" />
-        <DriverMetricCard label="Online drivers" value={metrics?.onlineDrivers ?? "—"} to="/app/admin/drivers" filterKey="online" />
+        <DriverMetricCard
+          label="Drivers"
+          value={metrics?.drivers ?? "—"}
+          to="/app/admin/drivers"
+          filterKey="all"
+        />
+        <DriverMetricCard
+          label="Online drivers"
+          value={metrics?.onlineDrivers ?? "—"}
+          to="/app/admin/drivers"
+          filterKey="online"
+        />
         <div className="col-span-2 sm:col-span-4 grid grid-cols-2 gap-3 sm:grid-cols-2">
           <MetricCard
             label="Avg rating"
-            value={metrics?.ratingAvg != null ? `${metrics.ratingAvg.toFixed(2)}★ (${metrics.ratingCount})` : "—"}
+            value={
+              metrics?.ratingAvg != null
+                ? `${metrics.ratingAvg.toFixed(2)}★ (${metrics.ratingCount})`
+                : "—"
+            }
           />
           <MetricCard
-            label="Estimated earnings (completed)"
-            value={metrics ? formatZAR(metrics.earnings) : "—"}
+            label="Completed Trip Value"
+            description="Sum of estimated prices for completed trips. This is not confirmed revenue or driver earnings."
+            value={metrics ? formatZAR(metrics.completedTripValue) : "—"}
           />
         </div>
       </section>
@@ -306,7 +383,10 @@ function AdminPage() {
               </Link>
             </Button>
             <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
-              <Link to="/app/admin/trip-history" search={{ status: "all", q: "", from: "", to: "" }}>
+              <Link
+                to="/app/admin/trip-history"
+                search={{ status: "all", q: "", from: "", to: "" }}
+              >
                 Trip History
               </Link>
             </Button>
@@ -316,7 +396,9 @@ function AdminPage() {
           {ridesError ? (
             <li className="px-4 py-6 text-center text-sm text-destructive">{ridesError}</li>
           ) : loadingRides && !rides.length ? (
-            <li className="px-4 py-6 text-center text-sm text-muted-foreground">Loading recent trips…</li>
+            <li className="px-4 py-6 text-center text-sm text-muted-foreground">
+              Loading recent trips…
+            </li>
           ) : !recentTrips.length ? (
             <li className="px-4 py-6 text-center text-sm text-muted-foreground">
               No trips match this filter.
@@ -332,21 +414,35 @@ function AdminPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1 space-y-0.5">
                         <p className="truncate text-sm font-medium">{r.destination_address}</p>
-                        <p className="truncate text-xs text-muted-foreground">From {r.pickup_address}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          From {r.pickup_address}
+                        </p>
                         <p className="truncate text-[11px] text-muted-foreground">
-                          Passenger: {pax?.full_name ?? "—"} · Driver: {drv?.full_name ?? (r.driver_id ? "Assigned" : "Unassigned")}
+                          Passenger: {pax?.full_name ?? "—"} · Driver:{" "}
+                          {drv?.full_name ?? (r.driver_id ? "Assigned" : "Unassigned")}
                         </p>
                         {r.scheduled_at && (
                           <p className="text-[11px] text-muted-foreground">
-                            Scheduled {new Date(r.scheduled_at).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "short", timeStyle: "short" })}
+                            Scheduled{" "}
+                            {new Date(r.scheduled_at).toLocaleString("en-ZA", {
+                              timeZone: "Africa/Johannesburg",
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })}
                           </p>
                         )}
                       </div>
                       <div className="shrink-0 text-right">
-                        <p className="text-sm font-semibold">{formatZAR(Number(r.estimated_price))}</p>
+                        <p className="text-sm font-semibold">
+                          {formatZAR(Number(r.estimated_price))}
+                        </p>
                         <RideStatusBadge status={r.status} />
                         <p className="mt-1 text-[10px] text-muted-foreground">
-                          Updated {new Date(updated).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                          Updated{" "}
+                          {new Date(updated).toLocaleTimeString(undefined, {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </p>
                       </div>
                     </div>
@@ -404,12 +500,17 @@ function AdminPage() {
 }
 
 function MetricCard({
-  label, value, active, onClick,
+  label,
+  value,
+  active,
+  onClick,
+  description,
 }: {
   label: string;
   value: string | number;
   active?: boolean;
   onClick?: () => void;
+  description?: string;
 }) {
   const base =
     "rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)] text-left transition-colors";
@@ -419,9 +520,19 @@ function MetricCard({
   const activeCls = active ? " ring-2 ring-primary" : "";
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} aria-pressed={!!active} className={base + clickable + activeCls}>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={!!active}
+        className={base + clickable + activeCls}
+      >
         <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
         <p className="mt-1 text-2xl font-semibold">{value}</p>
+        {description ? (
+          <p className="mt-1 text-[11px] font-normal normal-case text-muted-foreground">
+            {description}
+          </p>
+        ) : null}
       </button>
     );
   }
@@ -429,14 +540,25 @@ function MetricCard({
     <div className={base + activeCls}>
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
+      {description ? (
+        <p className="mt-1 text-[11px] font-normal normal-case text-muted-foreground">
+          {description}
+        </p>
+      ) : null}
     </div>
   );
 }
 
 function DriverMetricCard({
-  label, value, to, filterKey,
+  label,
+  value,
+  to,
+  filterKey,
 }: {
-  label: string; value: string | number; to: "/app/admin/drivers"; filterKey: string;
+  label: string;
+  value: string | number;
+  to: "/app/admin/drivers";
+  filterKey: string;
 }) {
   return (
     <Link

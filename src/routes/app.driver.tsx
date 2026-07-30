@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth, useUserRoles } from "@/hooks/use-auth";
-import { AppShell, NAV_ICONS } from "@/components/AppShell";
+import { useAuth } from "@/hooks/use-auth";
+import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -20,10 +20,18 @@ import {
   AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { formatZAR } from "@/lib/pricing";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
-import { MapPin, Navigation, AlertTriangle, Bell, Phone, Clock, Pencil, ExternalLink } from "lucide-react";
+import {
+  MapPin,
+  Navigation,
+  AlertTriangle,
+  Bell,
+  Phone,
+  Clock,
+  Pencil,
+  ExternalLink,
+} from "lucide-react";
 import { useLiveLocation } from "@/hooks/use-live-location";
 import { useRideChanges } from "@/hooks/use-ride-changes";
 import { useRideLiveLocations } from "@/hooks/use-ride-live-locations";
@@ -35,10 +43,7 @@ import {
   completeTrip,
   startScheduledPickup,
 } from "@/lib/ride-driver.functions";
-import {
-  getRidePassengerDetails,
-  type PassengerDetails,
-} from "@/lib/driver-trip.functions";
+import { getRidePassengerDetails, type PassengerDetails } from "@/lib/driver-trip.functions";
 import { StartTripPinDialog } from "@/components/StartTripPinDialog";
 
 const PICKUP_WINDOW_MS = 30 * 60 * 1000;
@@ -60,7 +65,6 @@ function openMapsNav(lat: number, lng: number): Window | null {
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
 
-
 export const Route = createFileRoute("/app/driver")({
   head: () => ({ meta: [{ title: "Driver — Access" }] }),
   component: DriverPage,
@@ -68,19 +72,10 @@ export const Route = createFileRoute("/app/driver")({
 
 function DriverPage() {
   const { user } = useAuth();
-  const { roles } = useUserRoles(user?.id);
   const [profile, setProfile] = useState<DriverProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [activeRide, setActiveRide] = useState<Ride | null>(null);
   const [openRides, setOpenRides] = useState<Ride[]>([]);
-
-  const nav = useMemo(() => {
-    const items = [];
-    if (roles?.includes("passenger")) items.push({ to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger });
-    items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
-    if (roles?.includes("admin")) items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
-    return items;
-  }, [roles]);
 
   // Load driver profile
   useEffect(() => {
@@ -143,7 +138,6 @@ function DriverPage() {
       setOpenRides([]);
       return;
     }
-    let unsub: (() => void) | undefined;
     const load = async () => {
       const nowIso = new Date().toISOString();
       const { data } = await supabase
@@ -155,23 +149,20 @@ function DriverPage() {
         .order("created_at", { ascending: false })
         .limit(20);
       setOpenRides((data ?? []) as Ride[]);
-
     };
     load();
     const ch = supabase
       .channel("driver-open-rides")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "rides" },
-        () => load(),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, () => load())
       .subscribe();
-    unsub = () => supabase.removeChannel(ch);
-    return () => unsub?.();
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [user, profile?.is_available, activeRide]);
 
   const trackingRideId =
-    activeRide && ["accepted", "driver_arriving", "arrived", "in_progress"].includes(activeRide.status)
+    activeRide &&
+    ["accepted", "driver_arriving", "arrived", "in_progress"].includes(activeRide.status)
       ? activeRide.id
       : null;
   const live = useLiveLocation({
@@ -184,7 +175,7 @@ function DriverPage() {
 
   if (loadingProfile) {
     return (
-      <AppShell title="Driver" nav={nav}>
+      <AppShell title="Driver">
         <p className="text-sm text-muted-foreground">Loading…</p>
       </AppShell>
     );
@@ -192,15 +183,14 @@ function DriverPage() {
 
   if (!profile) {
     return (
-      <AppShell title="Driver" nav={nav}>
+      <AppShell title="Driver">
         <DriverOnboarding userId={user!.id} onCreated={setProfile} />
       </AppShell>
     );
   }
 
-
   return (
-    <AppShell title="Driver" nav={nav}>
+    <AppShell title="Driver">
       <OnlineToggle profile={profile} onChange={setProfile} />
       {profile.is_available && (live.status === "denied" || live.status === "unavailable") && (
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -216,8 +206,7 @@ function DriverPage() {
             rides={openRides.filter(
               (r) =>
                 r.request_type !== "scheduled" ||
-                (r.scheduled_at != null &&
-                  new Date(r.scheduled_at).getTime() <= Date.now()),
+                (r.scheduled_at != null && new Date(r.scheduled_at).getTime() <= Date.now()),
             )}
             driverId={user!.id}
           />
@@ -228,9 +217,12 @@ function DriverPage() {
           You're offline. Go online to see ride requests.
         </div>
       )}
-      <UpcomingScheduledTrips driverId={user!.id} onActivate={setActiveRide} />
-      <DriverHistory driverId={user!.id} />
-
+      <div id="upcoming" className="scroll-mt-20">
+        <UpcomingScheduledTrips driverId={user!.id} onActivate={setActiveRide} />
+      </div>
+      <div id="history" className="scroll-mt-20">
+        <DriverHistory driverId={user!.id} />
+      </div>
     </AppShell>
   );
 }
@@ -375,14 +367,13 @@ function OnlineToggle({
             ? "Loading rating…"
             : rating.count === 0
               ? "No ratings yet"
-              : `★ ${rating.avg.toFixed(2)} · ${rating.count} rating${rating.count === 1 ? "" : "s"}`}
+              : `★ ${rating.avg.toFixed(2)} from ${rating.count} rating${rating.count === 1 ? "" : "s"}`}
         </p>
       </div>
       <Switch checked={profile.is_available} onCheckedChange={toggle} disabled={busy} />
     </section>
   );
 }
-
 
 function OpenRidesList({ rides }: { rides: Ride[]; driverId: string }) {
   const accept = useServerFn(acceptRide);
@@ -399,7 +390,6 @@ function OpenRidesList({ rides }: { rides: Ride[]; driverId: string }) {
     }
   }
 
-
   if (!rides.length) {
     return (
       <div className="mt-4 rounded-2xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
@@ -413,7 +403,10 @@ function OpenRidesList({ rides }: { rides: Ride[]; driverId: string }) {
         Open requests ({rides.length})
       </h3>
       {rides.map((r) => (
-        <div key={r.id} className="space-y-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
+        <div
+          key={r.id}
+          className="space-y-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]"
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-2 text-sm">
               <p className="flex items-start gap-2">
@@ -426,14 +419,13 @@ function OpenRidesList({ rides }: { rides: Ride[]; driverId: string }) {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-base font-semibold">{formatZAR(Number(r.estimated_price))}</p>
-              <p className="text-xs text-muted-foreground">{Number(r.distance_km).toFixed(1)} km</p>
+              <p className="text-sm font-medium">{Number(r.distance_km).toFixed(1)} km</p>
+              <p className="text-xs text-muted-foreground">Trip distance</p>
             </div>
           </div>
           <Button className="w-full" onClick={() => onAccept(r)}>
             Accept ride
           </Button>
-
         </div>
       ))}
     </section>
@@ -483,7 +475,6 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
     if (fresh) onUpdate(fresh as Ride);
   }
 
-
   async function onComplete() {
     setBusy(true);
     try {
@@ -508,7 +499,6 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
       toast.success("Ride cancelled");
     }
   }
-
 
   // Passenger contact (active rides only — hidden after completion/cancel).
   const fetchPassenger = useServerFn(getRidePassengerDetails);
@@ -551,9 +541,7 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
       ? Math.max(1, Math.round(ride.estimated_duration_seconds / 60))
       : null;
   const pickupEtaClock = etaToPickupMin != null ? clockIn(etaToPickupMin) : null;
-  const destEtaClock = etaToDestMin != null
-    ? clockIn((etaToPickupMin ?? 0) + etaToDestMin)
-    : null;
+  const destEtaClock = etaToDestMin != null ? clockIn((etaToPickupMin ?? 0) + etaToDestMin) : null;
 
   const wasEdited = (ride.route_version ?? 1) > 1;
 
@@ -609,7 +597,7 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
             label={beforePickup ? "Pickup ETA" : "Trip time"}
             value={
               beforePickup
-                ? pickupEtaClock ?? "—"
+                ? (pickupEtaClock ?? "—")
                 : etaToDestMin != null
                   ? `~${etaToDestMin} min`
                   : "—"
@@ -619,7 +607,6 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
             label="Drop-off ETA"
             value={destEtaClock ?? (etaToDestMin != null ? `~${etaToDestMin} min` : "—")}
           />
-          <Stat label="Fare" value={formatZAR(Number(ride.estimated_price))} />
         </div>
 
         {wasEdited && ride.last_route_updated_at && (
@@ -685,12 +672,7 @@ function ActiveRideCard({ ride, onUpdate }: { ride: Ride; onUpdate: (r: Ride | n
   );
 }
 
-
-function PassengerCard({
-  passenger,
-}: {
-  passenger: PassengerDetails | null | undefined;
-}) {
+function PassengerCard({ passenger }: { passenger: PassengerDetails | null | undefined }) {
   if (passenger === undefined) {
     return (
       <div className="mt-3 flex items-center gap-3 rounded-xl border bg-background p-3">
@@ -706,21 +688,20 @@ function PassengerCard({
         {passenger.avatarUrl && (
           <AvatarImage src={passenger.avatarUrl} alt={passenger.fullName ?? "Passenger"} />
         )}
-        <AvatarFallback>
-          {(passenger.fullName ?? "P").slice(0, 1).toUpperCase()}
-        </AvatarFallback>
+        <AvatarFallback>{(passenger.fullName ?? "P").slice(0, 1).toUpperCase()}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">
-          {passenger.fullName ?? "Your passenger"}
-        </p>
+        <p className="truncate text-sm font-medium">{passenger.fullName ?? "Your passenger"}</p>
         <p className="truncate text-xs text-muted-foreground">
           {passenger.phone ?? "No phone on file"}
         </p>
       </div>
       {passenger.phone && (
         <Button asChild size="sm" variant="outline" className="shrink-0">
-          <a href={`tel:${passenger.phone}`} aria-label={`Call ${passenger.fullName ?? "passenger"}`}>
+          <a
+            href={`tel:${passenger.phone}`}
+            aria-label={`Call ${passenger.fullName ?? "passenger"}`}
+          >
             <Phone className="h-4 w-4" />
           </a>
         </Button>
@@ -745,9 +726,7 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
   const dLng = toRad(b.lng - a.lng);
   const lat1 = toRad(a.lat);
   const lat2 = toRad(b.lat);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
@@ -763,13 +742,7 @@ function timeAgo(iso: string) {
   return `${Math.floor(diff / 3_600_000)}h ago`;
 }
 
-function TripChangeAlerts({
-  ride,
-  passengerName,
-}: {
-  ride: Ride;
-  passengerName: string | null;
-}) {
+function TripChangeAlerts({ ride, passengerName }: { ride: Ride; passengerName: string | null }) {
   const changes = useRideChanges(ride.id);
   const ack = useServerFn(acknowledgeRideChange);
   const [busy, setBusy] = useState<string | null>(null);
@@ -841,23 +814,15 @@ function TripChangeAlerts({
               newValue={String(next.destination_address)}
             />
           )}
-          <div className="grid grid-cols-3 gap-2 rounded-lg bg-secondary px-3 py-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 rounded-lg bg-secondary px-3 py-2 text-xs">
             <Stat label="Distance" value={`${Number(next.distance_km ?? 0).toFixed(1)} km`} />
             <Stat label="ETA" value={newDurationMin != null ? `${newDurationMin} min` : "—"} />
-            <Stat label="Fare" value={formatZAR(Number(next.estimated_price ?? 0))} />
           </div>
         </div>
 
         <AlertDialogFooter>
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={onAck}
-            disabled={busy === current.id}
-          >
-            {busy === current.id
-              ? "Acknowledging…"
-              : "Acknowledge and update navigation"}
+          <Button className="w-full" size="lg" onClick={onAck} disabled={busy === current.id}>
+            {busy === current.id ? "Acknowledging…" : "Acknowledge and update navigation"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -905,10 +870,7 @@ function DriverHistory({ driverId }: { driverId: string }) {
       const list = (data ?? []) as Ride[];
       const passengerIds = Array.from(new Set(list.map((r) => r.passenger_id)));
       const { data: profs } = passengerIds.length
-        ? await supabase
-            .from("profiles")
-            .select("user_id, full_name")
-            .in("user_id", passengerIds)
+        ? await supabase.from("profiles").select("user_id, full_name").in("user_id", passengerIds)
         : { data: [] as { user_id: string; full_name: string | null }[] };
       const pMap = new Map((profs ?? []).map((p) => [p.user_id, p]));
       const enriched: DriverHistoryRow[] = list.map((r) => ({
@@ -926,15 +888,9 @@ function DriverHistory({ driverId }: { driverId: string }) {
   }, [driverId]);
 
   const completed = rows.filter((r) => r.status === "completed");
-  const totals = completed.reduce(
-    (acc, r) => {
-      const km = Number(r.actual_distance_km ?? r.distance_km) || 0;
-      const fare = Number(r.estimated_price) || 0;
-      acc.km += km;
-      acc.earnings += fare;
-      return acc;
-    },
-    { km: 0, earnings: 0 },
+  const totalKm = completed.reduce(
+    (sum, r) => sum + (Number(r.actual_distance_km ?? r.distance_km) || 0),
+    0,
   );
 
   return (
@@ -944,10 +900,9 @@ function DriverHistory({ driverId }: { driverId: string }) {
           Trip history
         </h3>
       </div>
-      <div className="mb-4 grid grid-cols-3 gap-2">
+      <div className="mb-4 grid grid-cols-2 gap-2">
         <SummaryStat label="Completed" value={String(completed.length)} />
-        <SummaryStat label="Distance" value={`${totals.km.toFixed(1)} km`} />
-        <SummaryStat label="Earnings" value={formatZAR(totals.earnings)} />
+        <SummaryStat label="Distance" value={`${totalKm.toFixed(1)} km`} />
       </div>
       {loading ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
@@ -962,9 +917,7 @@ function DriverHistory({ driverId }: { driverId: string }) {
               r.actual_duration_seconds ??
               (r.started_at && r.completed_at
                 ? Math.round(
-                    (new Date(r.completed_at).getTime() -
-                      new Date(r.started_at).getTime()) /
-                      1000,
+                    (new Date(r.completed_at).getTime() - new Date(r.started_at).getTime()) / 1000,
                   )
                 : null);
             const km = Number(r.actual_distance_km ?? r.distance_km);
@@ -979,9 +932,7 @@ function DriverHistory({ driverId }: { driverId: string }) {
                         timeStyle: "short",
                       })}
                     </p>
-                    <p className="mt-1 truncate text-sm font-medium">
-                      {r.destination_address}
-                    </p>
+                    <p className="mt-1 truncate text-sm font-medium">{r.destination_address}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       From {r.pickup_address}
                     </p>
@@ -994,9 +945,6 @@ function DriverHistory({ driverId }: { driverId: string }) {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold">
-                      {formatZAR(Number(r.estimated_price))}
-                    </p>
                     <RideStatusBadge status={r.status} />
                   </div>
                 </div>
@@ -1017,7 +965,6 @@ function SummaryStat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
 
 type PassengerLite = { user_id: string; full_name: string | null };
 
@@ -1065,11 +1012,7 @@ function ScheduledOpenRequests({ driverId, online }: { driverId: string; online:
     load();
     const ch = supabase
       .channel("driver-scheduled-open")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "rides" },
-        () => load(),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, () => load())
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
@@ -1120,20 +1063,12 @@ function ScheduledOpenRequests({ driverId, online }: { driverId: string; online:
                   <span className="truncate">{r.destination_address}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {p?.full_name ?? "Passenger"} ·{" "}
-                  {Number(r.distance_km).toFixed(1)} km
+                  {p?.full_name ?? "Passenger"} · {Number(r.distance_km).toFixed(1)} km
                   {durMin != null ? ` · ~${durMin} min` : ""}
                 </p>
               </div>
-              <p className="text-base font-semibold">
-                {formatZAR(Number(r.estimated_price))}
-              </p>
             </div>
-            <Button
-              className="w-full"
-              onClick={() => onAccept(r)}
-              disabled={busyId === r.id}
-            >
+            <Button className="w-full" onClick={() => onAccept(r)} disabled={busyId === r.id}>
               {busyId === r.id ? "Accepting…" : "Accept scheduled trip"}
             </Button>
           </div>
@@ -1251,13 +1186,9 @@ function UpcomingScheduledTrips({
                   <span className="truncate">{r.destination_address}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {p?.full_name ?? "Passenger"} ·{" "}
-                  {Number(r.distance_km).toFixed(1)} km
+                  {p?.full_name ?? "Passenger"} · {Number(r.distance_km).toFixed(1)} km
                 </p>
               </div>
-              <p className="text-base font-semibold">
-                {formatZAR(Number(r.estimated_price))}
-              </p>
             </div>
             <Button
               className="w-full"
@@ -1277,6 +1208,3 @@ function UpcomingScheduledTrips({
     </section>
   );
 }
-
-
-
