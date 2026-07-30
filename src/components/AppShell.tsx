@@ -6,6 +6,7 @@ import {
   Car,
   History,
   LayoutDashboard,
+  LifeBuoy,
   ListChecks,
   LogOut,
   MapPin,
@@ -88,13 +89,14 @@ export function AppShell({
   const hasDriver = !!roles?.includes("driver");
   const hasAdmin = !!roles?.includes("admin");
   const isProfile = pathname === "/app/profile";
+  const isSupport = pathname.startsWith("/app/support");
 
   let resolvedNav = nav ?? [];
   if (pathname.startsWith("/app/passenger")) {
     resolvedNav = PASSENGER_NAV;
   } else if (pathname.startsWith("/app/driver")) {
     resolvedNav = DRIVER_NAV;
-  } else if (isProfile) {
+  } else if (isProfile || isSupport) {
     if (hasPassenger || roles == null) resolvedNav = PASSENGER_NAV;
     else if (hasDriver) resolvedNav = DRIVER_NAV;
     else if (hasAdmin) resolvedNav = ADMIN_PROFILE_NAV;
@@ -118,6 +120,11 @@ export function AppShell({
           {user ? (
             <div className="flex items-center gap-1">
               <NotificationBell />
+              <Button asChild variant="ghost" size="icon">
+                <Link to="/app/support" aria-label="Open Access Support">
+                  <LifeBuoy className="h-4 w-4" />
+                </Link>
+              </Button>
               {portalCount > 1 ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

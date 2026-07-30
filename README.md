@@ -1,174 +1,92 @@
 # Access
 
-Build a mobile-first web app called Access.
+Access is a mobile-first South African transport and mobility-management platform for passengers, drivers and Access administrators.
 
-Access is a transport/ride-hailing MVP for South Africa. The goal is to help passengers request rides and help drivers accept and complete trips.
+## Architecture
 
-Use this architecture:
+- Frontend: React, TypeScript, TanStack Start/Router and Tailwind
+- Backend, database and authentication: Lovable Cloud/Supabase
+- Maps and location: Google Maps APIs
+- Realtime trip and operational updates: Supabase Realtime
+- Payments and WhatsApp: planned for later commercial-readiness phases
 
-Frontend: React + Tailwind
+## Roles
 
-Backend/database/auth: Supabase
+### Passenger
+- Request immediate and scheduled rides
+- Book Access Transport, Assisted, Appointment and Extended Journey services
+- View active, upcoming, quoted and historical trips
+- Maintain profile photo, personal details, saved addresses and assistance preferences
+- Create and track support tickets
 
-Maps/location: Google Maps API
+### Driver
+- Go online or offline
+- View and accept suitable ride requests
+- Progress assigned trips through their operational lifecycle
+- View read-only identity and current vehicle information
+- View rating and operational trip history without customer fares or earnings
+- Report trip, account or vehicle issues through Access Support
 
-Payments: prepare structure for future integration, but do not fully implement payments yet
+### Administrator
+- Monitor overview metrics, trips and live operations
+- Manage passenger and driver operational records
+- Manage specialised service bookings and quotations
+- Manage service pricing through Admin → Pricing & Services
+- Triage, assign, reply to and resolve support tickets
+- Maintain audit visibility over support status, priority and assignment changes
 
-WhatsApp chatbot: prepare structure only, do not integrate yet
+## Pricing
 
-Build only the MVP features first to reduce cost and complexity.
+The confirmed standard formula remains:
 
-Core user roles:
+```text
+R20.00 base fare + R13.50 per kilometre
+```
 
-Passenger
+Normal Ride and Access Transport retain this confirmed formula. Specialised service rates are controlled through Admin → Pricing & Services and remain editable mock values until approved business figures are available.
 
-Driver
+## Phase status
 
-Admin
+- Phase 1: navigation, role visibility, terminology and pricing-control foundation
+- Phase 2: passenger profiles, saved addresses, passenger operations and support workflows
+- Phase 3: fleet consolidation, daily driver vehicle assignment and maintenance separation
+- Phase 4: specialised service pricing and quotation automation
+- Phase 5: trip reliability, reconnection, idempotency and scheduling controls
+- Phase 6: controlled production-readiness testing
+- Phase 7: payments, safety, compliance and commercial readiness
 
-Authentication:
+## Phase 2 database foundation
 
-Use Supabase Auth
+Phase 2 adds:
 
-Allow sign up and login with email/password
+- `passenger_saved_addresses`
+- `passenger_preferences`
+- `support_tickets`
+- `support_messages`
+- `support_ticket_events`
+- Support-linked in-app notifications
+- Protected support RPCs
+- RLS and table-boundary identity, internal-note and resolution guards
 
-On first login, user must choose role: Passenger or Driver
+Apply these migrations after merge:
 
-Store user profile in Supabase
+- `supabase/migrations/20260730183000_phase2_profiles_support.sql`
+- `supabase/migrations/20260730184500_phase2_support_hardening.sql`
 
-Passenger features:
+After the migrations are live, regenerate Supabase TypeScript database types from the deployed Lovable Cloud schema.
 
-Dashboard
-
-Set pickup location
-
-Set destination
-
-Show route/map using Google Maps
-
-Estimate distance and trip price
-
-Request ride
-
-See ride status: requested, accepted, driver arriving, in progress, completed, cancelled
-
-View basic trip history
-
-Driver features:
-
-Driver dashboard
-
-Toggle availability online/offline
-
-View nearby ride requests
-
-Accept a ride
-
-Update ride status
-
-Complete trip
-
-
-
-Admin features:
-
-View basic earnings/trip history
-
-Simple admin dashboard
-
-View users
-
-View drivers
-
-View trips
-
-View ride statuses
-
-Basic metrics: total users, total drivers, total trips, completed trips
-
-Database tables:
-
-profiles: id, user_id, full_name, phone, role, created_at
-
-driver_profiles: id, user_id, vehicle_type, vehicle_model, license_plate, is_available, current_lat, current_lng, created_at
-
-rides: id, passenger_id, driver_id, pickup_address, pickup_lat, pickup_lng, destination_address, destination_lat, destination_lng, distance_km, estimated_price, status, created_at, updated_at
-
-payments: id, ride_id, passenger_id, driver_id, amount, status, payment_method, created_at
-
-Pricing logic:
-
-Base fare: R20
-
-Per km: R13.5
-
-Estimated price = base fare + distance_km * per_km_rate
-
-Design:
-
-Clean, modern, mobile-first interface
-
-App name: Access
-
-Use a simple color palette: dark text, white background, blue primary buttons
-
-Make it feel trustworthy and easy to use
-
-Use clear navigation for Passenger, Driver, and Admin
-
-Important implementation instructions:
-
-Do not overbuild
-
-Do not add unnecessary features
-
-Do not integrate payment gateway yet
-
-Do not integrate WhatsApp yet
-
-Create clean reusable components
-
-Add placeholder environment variables for Google Maps API and future payment/WhatsApp integrations
-
-Make sure Supabase RLS policies are included or clearly explained
-
-Make the app functional enough for testing passenger ride requests and driver acceptance
-
-Deliverables:
-
-Working MVP app
-
-Supabase schema
-
-Authentication flow
-
-Passenger ride request flow
-
-Driver accept and complete flow
-
-Admin dashboard
-
-Clear setup notes for environment variables
-
-This project was built with [Lovable](https://lovable.dev).
-
-**Live app**: https://daatsaccess.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/f96f4986-6396-4e06-9fe2-51bdf8c72bd1).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+## Build and verification
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+bun install --frozen-lockfile
+bun run test
+bun run build
 ```
+
+Pull requests run the permanent Access CI workflow, which lints changed TypeScript files, runs the full test suite and creates a production build.
+
+## Lovable
+
+**Live app:** https://daatsaccess.lovable.app
+
+Continue development in the linked Lovable project. Changes merged into `main` synchronise back to Lovable for publication.

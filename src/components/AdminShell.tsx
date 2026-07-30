@@ -53,7 +53,7 @@ const SECTIONS: NavSection[] = [
       { to: "/app/admin/passengers", label: "Passengers", icon: UserCircle2 },
       { to: "/app/admin/drivers", label: "Drivers", icon: Users },
       { to: "/app/admin/bookings", label: "Service Bookings", icon: CalendarRange },
-      { to: "/app/admin/support", label: "Support", icon: LifeBuoy, soon: true },
+      { to: "/app/admin/support", label: "Support", icon: LifeBuoy },
     ],
   },
   {
@@ -161,7 +161,7 @@ export function AdminShell({
   children: ReactNode;
 }) {
   const { signOut } = useAuth();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
