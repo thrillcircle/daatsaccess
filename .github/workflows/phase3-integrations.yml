@@ -61,44 +61,33 @@ jobs:
           bun install --frozen-lockfile > /tmp/install.log 2>&1
           [ "$?" -eq 0 ] || report_failure "dependency installation" /tmp/install.log
 
-          bunx prettier --write \
-            'src/components/AdminShell.tsx' \
-            'src/components/profile/DriverProfileSections.tsx' \
-            'src/components/support/AdminSupportVehicleActions.tsx' \
-            'src/lib/fleet.ts' \
-            'src/lib/fleet.test.ts' \
-            'src/lib/support.ts' \
-            'src/lib/vehicle-suitability.ts' \
-            'src/lib/vehicle-suitability.test.ts' \
-            'src/routes/app.admin.fleet.tsx' \
-            'src/routes/app.admin.vehicle-profiles.tsx' \
-            'src/routes/app.admin.vehicle-profiles.$vehicleId.tsx' \
-            'src/routes/app.admin.maintenance.tsx' \
-            'src/routes/app.admin.driver-assignments.tsx' \
-            'src/routes/app.admin.support.$ticketId.tsx' \
-            'src/routes/app.admin.bookings.tsx' \
-            'src/routes/app.admin.trips.tsx' \
-            'src/routes/app.passenger.bookings.tsx' > /tmp/prettier.log 2>&1
+          FILES=(
+            'src/components/AdminShell.tsx'
+            'src/components/profile/DriverProfileSections.tsx'
+            'src/components/support/AdminSupportVehicleActions.tsx'
+            'src/lib/fleet.ts'
+            'src/lib/fleet.test.ts'
+            'src/lib/support.ts'
+            'src/lib/vehicle-suitability.ts'
+            'src/lib/vehicle-suitability.test.ts'
+            'src/routes/app.admin.fleet.tsx'
+            'src/routes/app.admin.vehicle-profiles.tsx'
+            'src/routes/app.admin.vehicle-profiles.$vehicleId.tsx'
+            'src/routes/app.admin.maintenance.tsx'
+            'src/routes/app.admin.driver-assignments.tsx'
+            'src/routes/app.admin.support.$ticketId.tsx'
+            'src/routes/app.admin.bookings.tsx'
+            'src/routes/app.admin.trips.tsx'
+            'src/routes/app.passenger.bookings.tsx'
+          )
+
+          bunx prettier --write "${FILES[@]}" > /tmp/prettier.log 2>&1
           [ "$?" -eq 0 ] || report_failure "formatting" /tmp/prettier.log
 
-          bunx eslint \
-            'src/components/AdminShell.tsx' \
-            'src/components/profile/DriverProfileSections.tsx' \
-            'src/components/support/AdminSupportVehicleActions.tsx' \
-            'src/lib/fleet.ts' \
-            'src/lib/fleet.test.ts' \
-            'src/lib/support.ts' \
-            'src/lib/vehicle-suitability.ts' \
-            'src/lib/vehicle-suitability.test.ts' \
-            'src/routes/app.admin.fleet.tsx' \
-            'src/routes/app.admin.vehicle-profiles.tsx' \
-            'src/routes/app.admin.vehicle-profiles.$vehicleId.tsx' \
-            'src/routes/app.admin.maintenance.tsx' \
-            'src/routes/app.admin.driver-assignments.tsx' \
-            'src/routes/app.admin.support.$ticketId.tsx' \
-            'src/routes/app.admin.bookings.tsx' \
-            'src/routes/app.admin.trips.tsx' \
-            'src/routes/app.passenger.bookings.tsx' > /tmp/lint.log 2>&1
+          bunx eslint --fix "${FILES[@]}" > /tmp/lint-fix.log 2>&1
+          [ "$?" -eq 0 ] || report_failure "safe lint formatting" /tmp/lint-fix.log
+
+          bunx eslint "${FILES[@]}" > /tmp/lint.log 2>&1
           [ "$?" -eq 0 ] || report_failure "scoped lint" /tmp/lint.log
 
           bun run test > /tmp/test.log 2>&1
