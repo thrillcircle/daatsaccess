@@ -182,7 +182,10 @@ export const MAINTENANCE_STATUS_LABEL: Record<MaintenanceStatus, string> = {
 };
 
 export function normalizeRegistration(value: string | null | undefined): string {
-  return (value ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return (value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
 }
 
 export function isAssignmentEffective(
@@ -221,7 +224,10 @@ export function vehicleDocumentSummary(
     documents.find((document) => document.document_type === type && document.is_current);
 
   return {
-    roadworthy: documentState(current("roadworthy")?.expires_at ?? vehicle.roadworthy_expiry_date, at),
+    roadworthy: documentState(
+      current("roadworthy")?.expires_at ?? vehicle.roadworthy_expiry_date,
+      at,
+    ),
     license_disc: documentState(
       current("license_disc")?.expires_at ?? vehicle.license_disc_expiry_date,
       at,
@@ -254,7 +260,9 @@ export function serviceState(
   return "current";
 }
 
-export function vehicleDisplayName(vehicle: Pick<CanonicalVehicle, "vehicle_name" | "license_plate">) {
+export function vehicleDisplayName(
+  vehicle: Pick<CanonicalVehicle, "vehicle_name" | "license_plate">,
+) {
   return `${vehicle.vehicle_name} · ${vehicle.license_plate}`;
 }
 
@@ -263,7 +271,9 @@ export function accessibilityLabels(vehicle: CanonicalVehicle): string[] {
   if (vehicle.wheelchair_accessible) labels.push("Wheelchair accessible");
   if (vehicle.ramp_or_lift_available) labels.push("Ramp or lift");
   if (Number(vehicle.wheelchair_capacity ?? 0) > 0) {
-    labels.push(`${vehicle.wheelchair_capacity} wheelchair space${vehicle.wheelchair_capacity === 1 ? "" : "s"}`);
+    labels.push(
+      `${vehicle.wheelchair_capacity} wheelchair space${vehicle.wheelchair_capacity === 1 ? "" : "s"}`,
+    );
   }
   if (Array.isArray(vehicle.accessibility_features)) {
     for (const feature of vehicle.accessibility_features) {

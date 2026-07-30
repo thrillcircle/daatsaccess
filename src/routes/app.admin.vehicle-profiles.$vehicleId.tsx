@@ -179,7 +179,9 @@ function VehicleDetailPage() {
           .order("created_at", { ascending: false }),
         fleetDb
           .from("rides")
-          .select("id,status,pickup_address,destination_address,driver_id,passenger_id,scheduled_at,created_at")
+          .select(
+            "id,status,pickup_address,destination_address,driver_id,passenger_id,scheduled_at,created_at",
+          )
           .eq("vehicle_id", vehicleId)
           .order("created_at", { ascending: false })
           .limit(50),
@@ -221,7 +223,9 @@ function VehicleDetailPage() {
       const assignments = (assignmentResult.data ?? []) as VehicleAssignment[];
       const bookingAssignments = (bookingAssignmentResult.data ?? []) as BookingAssignment[];
       const driverIds = Array.from(new Set(assignments.map((assignment) => assignment.driver_id)));
-      const bookingIds = Array.from(new Set(bookingAssignments.map((assignment) => assignment.booking_id)));
+      const bookingIds = Array.from(
+        new Set(bookingAssignments.map((assignment) => assignment.booking_id)),
+      );
       const [driverResult, bookingResult] = await Promise.all([
         driverIds.length
           ? fleetDb.from("profiles").select("user_id,full_name,phone").in("user_id", driverIds)
@@ -281,10 +285,13 @@ function VehicleDetailPage() {
   }
 
   const vehicle = data.vehicle;
-  const effectiveAssignment = data.assignments.find((assignment) => isAssignmentEffective(assignment));
+  const effectiveAssignment = data.assignments.find((assignment) =>
+    isAssignmentEffective(assignment),
+  );
   const driverName = (driverId: string | null | undefined) =>
     driverId
-      ? data.drivers.find((driver) => driver.user_id === driverId)?.full_name ?? driverId.slice(0, 8)
+      ? (data.drivers.find((driver) => driver.user_id === driverId)?.full_name ??
+        driverId.slice(0, 8))
       : "Unassigned";
   const documentFor = (type: VehicleDocument["document_type"]) =>
     data.documents.find((document) => document.document_type === type && document.is_current);
@@ -331,20 +338,35 @@ function VehicleDetailPage() {
               <Detail label="VIN" value={vehicle.vin_number || "Not recorded"} />
               <Detail
                 label="Make / model / year"
-                value={[vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(" ") || "Incomplete"}
+                value={
+                  [vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(" ") ||
+                  "Incomplete"
+                }
               />
               <Detail label="Vehicle type" value={vehicle.vehicle_type || "Not recorded"} />
               <Detail label="Status" value={VEHICLE_STATUS_LABEL[vehicle.status]} />
-              <Detail label="Odometer" value={`${Number(vehicle.current_odometer_km).toLocaleString("en-ZA")} km`} />
+              <Detail
+                label="Odometer"
+                value={`${Number(vehicle.current_odometer_km).toLocaleString("en-ZA")} km`}
+              />
               <Detail label="Service state" value={service.replaceAll("_", " ")} />
             </dl>
           </Card>
 
           <Card title="Capacity and accessibility" icon={<Accessibility className="h-4 w-4" />}>
             <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <Detail label="Passenger capacity" value={vehicle.passenger_capacity ?? "Not recorded"} />
-              <Detail label="Wheelchair capacity" value={vehicle.wheelchair_capacity ?? "Not recorded"} />
-              <Detail label="Wheelchair accessible" value={vehicle.wheelchair_accessible ? "Yes" : "No"} />
+              <Detail
+                label="Passenger capacity"
+                value={vehicle.passenger_capacity ?? "Not recorded"}
+              />
+              <Detail
+                label="Wheelchair capacity"
+                value={vehicle.wheelchair_capacity ?? "Not recorded"}
+              />
+              <Detail
+                label="Wheelchair accessible"
+                value={vehicle.wheelchair_accessible ? "Yes" : "No"}
+              />
               <Detail label="Ramp or lift" value={vehicle.ramp_or_lift_available ? "Yes" : "No"} />
             </dl>
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -361,8 +383,14 @@ function VehicleDetailPage() {
             {effectiveAssignment ? (
               <div className="space-y-3 text-sm">
                 <Detail label="Driver" value={driverName(effectiveAssignment.driver_id)} />
-                <Detail label="Type" value={effectiveAssignment.assignment_type.replaceAll("_", " ")} />
-                <Detail label="Started" value={new Date(effectiveAssignment.start_at).toLocaleString("en-ZA")} />
+                <Detail
+                  label="Type"
+                  value={effectiveAssignment.assignment_type.replaceAll("_", " ")}
+                />
+                <Detail
+                  label="Started"
+                  value={new Date(effectiveAssignment.start_at).toLocaleString("en-ZA")}
+                />
                 <Button asChild variant="outline" size="sm" className="w-full">
                   <Link to="/app/admin/driver-assignments">Manage assignments</Link>
                 </Button>
@@ -400,7 +428,9 @@ function VehicleDetailPage() {
                   <div key={type} className="rounded-xl border p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium capitalize">{type.replaceAll("_", " ")}</p>
-                      <Badge variant={state === "expired" ? "destructive" : "outline"}>{state}</Badge>
+                      <Badge variant={state === "expired" ? "destructive" : "outline"}>
+                        {state}
+                      </Badge>
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">
                       Expires {document?.expires_at ?? legacyExpiry ?? "not recorded"}
@@ -414,14 +444,19 @@ function VehicleDetailPage() {
           <Card title="Assignment history" icon={<History className="h-4 w-4" />}>
             <div className="space-y-2">
               {data.assignments.map((assignment) => (
-                <div key={assignment.id} className="grid gap-2 rounded-xl border p-3 text-sm md:grid-cols-4">
+                <div
+                  key={assignment.id}
+                  className="grid gap-2 rounded-xl border p-3 text-sm md:grid-cols-4"
+                >
                   <Detail label="Driver" value={driverName(assignment.driver_id)} />
                   <Detail label="Type" value={assignment.assignment_type.replaceAll("_", " ")} />
                   <Detail label="Status" value={ASSIGNMENT_STATUS_LABEL[assignment.status]} />
                   <Detail
                     label="Period"
                     value={`${new Date(assignment.start_at).toLocaleString("en-ZA")} — ${
-                      assignment.end_at ? new Date(assignment.end_at).toLocaleString("en-ZA") : "ongoing"
+                      assignment.end_at
+                        ? new Date(assignment.end_at).toLocaleString("en-ZA")
+                        : "ongoing"
                     }`}
                   />
                 </div>
@@ -439,7 +474,13 @@ function VehicleDetailPage() {
                       {order.work_order_reference} · {order.maintenance_type.replaceAll("_", " ")}
                     </p>
                     <div className="flex gap-1.5">
-                      <Badge variant={order.severity === "urgent" || order.severity === "unsafe" ? "destructive" : "outline"}>
+                      <Badge
+                        variant={
+                          order.severity === "urgent" || order.severity === "unsafe"
+                            ? "destructive"
+                            : "outline"
+                        }
+                      >
                         {order.severity}
                       </Badge>
                       <Badge variant="secondary">{MAINTENANCE_STATUS_LABEL[order.status]}</Badge>
@@ -465,10 +506,14 @@ function VehicleDetailPage() {
                     <p className="truncate text-sm font-medium">{ride.destination_address}</p>
                     <Badge variant="outline">{ride.status.replaceAll("_", " ")}</Badge>
                   </div>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">From {ride.pickup_address}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    From {ride.pickup_address}
+                  </p>
                 </Link>
               ))}
-              {!data.rides.length ? <Empty text="No trips reference this canonical vehicle." /> : null}
+              {!data.rides.length ? (
+                <Empty text="No trips reference this canonical vehicle." />
+              ) : null}
             </div>
           </Card>
 
@@ -479,26 +524,41 @@ function VehicleDetailPage() {
                 return (
                   <div key={assignment.id} className="rounded-xl border p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium">{booking?.booking_reference ?? assignment.booking_id}</p>
+                      <p className="text-sm font-medium">
+                        {booking?.booking_reference ?? assignment.booking_id}
+                      </p>
                       <Badge variant="outline">{assignment.status}</Badge>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {booking ? `${booking.service_type.replaceAll("_", " ")} · ${booking.status.replaceAll("_", " ")}` : "Booking details unavailable"}
+                      {booking
+                        ? `${booking.service_type.replaceAll("_", " ")} · ${booking.status.replaceAll("_", " ")}`
+                        : "Booking details unavailable"}
                     </p>
                   </div>
                 );
               })}
-              {!data.bookingAssignments.length ? <Empty text="No service-booking assignments." /> : null}
+              {!data.bookingAssignments.length ? (
+                <Empty text="No service-booking assignments." />
+              ) : null}
             </div>
           </Card>
 
           <Card title="Odometer history" icon={<Gauge className="h-4 w-4" />}>
             <div className="space-y-2">
               {data.odometerEvents.map((event) => (
-                <div key={event.id} className="grid gap-2 rounded-xl border p-3 text-sm sm:grid-cols-3">
-                  <Detail label="Reading" value={`${Number(event.odometer_km).toLocaleString("en-ZA")} km`} />
+                <div
+                  key={event.id}
+                  className="grid gap-2 rounded-xl border p-3 text-sm sm:grid-cols-3"
+                >
+                  <Detail
+                    label="Reading"
+                    value={`${Number(event.odometer_km).toLocaleString("en-ZA")} km`}
+                  />
                   <Detail label="Source" value={event.source.replaceAll("_", " ")} />
-                  <Detail label="Recorded" value={new Date(event.recorded_at).toLocaleString("en-ZA")} />
+                  <Detail
+                    label="Recorded"
+                    value={new Date(event.recorded_at).toLocaleString("en-ZA")}
+                  />
                 </div>
               ))}
               {!data.odometerEvents.length ? <Empty text="No odometer history." /> : null}
@@ -511,7 +571,9 @@ function VehicleDetailPage() {
                 <div key={event.id} className="rounded-xl border p-3 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-medium">
-                      {event.previous_status ? `${event.previous_status.replaceAll("_", " ")} → ` : ""}
+                      {event.previous_status
+                        ? `${event.previous_status.replaceAll("_", " ")} → `
+                        : ""}
                       {VEHICLE_STATUS_LABEL[event.new_status]}
                     </p>
                     <span className="text-xs text-muted-foreground">
@@ -527,11 +589,17 @@ function VehicleDetailPage() {
           <Card title="Legacy migration information" icon={<ClipboardList className="h-4 w-4" />}>
             <div className="space-y-2">
               {data.mappings.map((mapping) => (
-                <div key={mapping.id} className="grid gap-2 rounded-xl border p-3 text-sm md:grid-cols-4">
+                <div
+                  key={mapping.id}
+                  className="grid gap-2 rounded-xl border p-3 text-sm md:grid-cols-4"
+                >
                   <Detail label="Source" value={mapping.legacy_source.replaceAll("_", " ")} />
                   <Detail label="Registration" value={mapping.legacy_registration || "None"} />
                   <Detail label="Method" value={mapping.match_method.replaceAll("_", " ")} />
-                  <Detail label="Status" value={`${mapping.migration_status} · ${mapping.match_confidence}%`} />
+                  <Detail
+                    label="Status"
+                    value={`${mapping.migration_status} · ${mapping.match_confidence}%`}
+                  />
                 </div>
               ))}
               {!data.mappings.length ? <Empty text="No legacy mappings recorded." /> : null}
@@ -565,10 +633,18 @@ function Detail({ label, value }: { label: string; value: ReactNode }) {
 }
 
 function Empty({ text }: { text: string }) {
-  return <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{text}</p>;
+  return (
+    <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{text}</p>
+  );
 }
 
-function StatusDialog({ vehicle, onChanged }: { vehicle: CanonicalVehicle; onChanged: () => void }) {
+function StatusDialog({
+  vehicle,
+  onChanged,
+}: {
+  vehicle: CanonicalVehicle;
+  onChanged: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<VehicleOperationalStatus>(vehicle.status);
   const [reason, setReason] = useState("");
@@ -645,7 +721,13 @@ function StatusDialog({ vehicle, onChanged }: { vehicle: CanonicalVehicle; onCha
   );
 }
 
-function OdometerDialog({ vehicle, onRecorded }: { vehicle: CanonicalVehicle; onRecorded: () => void }) {
+function OdometerDialog({
+  vehicle,
+  onRecorded,
+}: {
+  vehicle: CanonicalVehicle;
+  onRecorded: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [odometer, setOdometer] = useState(String(vehicle.current_odometer_km));
   const [notes, setNotes] = useState("");
@@ -695,7 +777,12 @@ function OdometerDialog({ vehicle, onRecorded }: { vehicle: CanonicalVehicle; on
         <div className="space-y-4">
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Odometer kilometres</span>
-            <Input type="number" min="0" value={odometer} onChange={(event) => setOdometer(event.target.value)} />
+            <Input
+              type="number"
+              min="0"
+              value={odometer}
+              onChange={(event) => setOdometer(event.target.value)}
+            />
           </label>
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Notes or correction reason</span>
@@ -716,7 +803,13 @@ function OdometerDialog({ vehicle, onRecorded }: { vehicle: CanonicalVehicle; on
   );
 }
 
-function MaintenanceDialog({ vehicle, onCreated }: { vehicle: CanonicalVehicle; onCreated: () => void }) {
+function MaintenanceDialog({
+  vehicle,
+  onCreated,
+}: {
+  vehicle: CanonicalVehicle;
+  onCreated: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("repair");
   const [severity, setSeverity] = useState("attention");
@@ -770,7 +863,11 @@ function MaintenanceDialog({ vehicle, onCreated }: { vehicle: CanonicalVehicle; 
         <div className="space-y-4">
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Maintenance type</span>
-            <select value={type} onChange={(event) => setType(event.target.value)} className="h-10 w-full rounded-md border bg-background px-3">
+            <select
+              value={type}
+              onChange={(event) => setType(event.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3"
+            >
               <option value="scheduled_service">Scheduled service</option>
               <option value="repair">Repair</option>
               <option value="inspection">Inspection</option>
@@ -786,7 +883,11 @@ function MaintenanceDialog({ vehicle, onCreated }: { vehicle: CanonicalVehicle; 
           </label>
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Severity</span>
-            <select value={severity} onChange={(event) => setSeverity(event.target.value)} className="h-10 w-full rounded-md border bg-background px-3">
+            <select
+              value={severity}
+              onChange={(event) => setSeverity(event.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3"
+            >
               <option value="routine">Routine</option>
               <option value="attention">Attention</option>
               <option value="urgent">Urgent</option>
@@ -799,7 +900,11 @@ function MaintenanceDialog({ vehicle, onCreated }: { vehicle: CanonicalVehicle; 
           </label>
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Description</span>
-            <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={4} />
+            <Textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              rows={4}
+            />
           </label>
         </div>
         <DialogFooter>

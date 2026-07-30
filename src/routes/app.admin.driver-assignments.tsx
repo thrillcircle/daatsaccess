@@ -111,7 +111,9 @@ function DriverAssignmentsPage() {
   }, [isAdmin, reload]);
 
   const now = new Date();
-  const activeAssignments = assignments.filter((assignment) => isAssignmentEffective(assignment, now));
+  const activeAssignments = assignments.filter((assignment) =>
+    isAssignmentEffective(assignment, now),
+  );
   const upcomingAssignments = assignments.filter(
     (assignment) => assignment.status === "scheduled" && new Date(assignment.start_at) > now,
   );
@@ -148,10 +150,22 @@ function DriverAssignmentsPage() {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query));
     });
-  }, [activeAssignments, drivers, historyAssignments, search.q, search.view, upcomingAssignments, vehicles]);
+  }, [
+    activeAssignments,
+    drivers,
+    historyAssignments,
+    search.q,
+    search.view,
+    upcomingAssignments,
+    vehicles,
+  ]);
 
   function setSearch(next: Partial<typeof search>) {
-    navigate({ to: "/app/admin/driver-assignments", search: { ...search, ...next }, replace: true });
+    navigate({
+      to: "/app/admin/driver-assignments",
+      search: { ...search, ...next },
+      replace: true,
+    });
   }
 
   if (authLoading || rolesLoading || loading || (user && roles === null)) {
@@ -223,12 +237,18 @@ function DriverAssignmentsPage() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="grid min-w-0 flex-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Driver</p>
-                    <p className="mt-1 font-semibold">{driver?.full_name ?? assignment.driver_id}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Driver
+                    </p>
+                    <p className="mt-1 font-semibold">
+                      {driver?.full_name ?? assignment.driver_id}
+                    </p>
                     <p className="text-xs text-muted-foreground">{driver?.phone ?? "No phone"}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Vehicle</p>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Vehicle
+                    </p>
                     <Link
                       to="/app/admin/vehicle-profiles/$vehicleId"
                       params={{ vehicleId: assignment.vehicle_id }}
@@ -236,20 +256,33 @@ function DriverAssignmentsPage() {
                     >
                       {vehicle?.vehicle_name ?? assignment.vehicle_id}
                     </Link>
-                    <p className="text-xs text-muted-foreground">{vehicle?.license_plate ?? "Registration unavailable"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {vehicle?.license_plate ?? "Registration unavailable"}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Assignment</p>
-                    <p className="mt-1 font-medium capitalize">{assignment.assignment_type.replaceAll("_", " ")}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Assignment
+                    </p>
+                    <p className="mt-1 font-medium capitalize">
+                      {assignment.assignment_type.replaceAll("_", " ")}
+                    </p>
                     <Badge variant="outline" className="mt-1">
                       {ASSIGNMENT_STATUS_LABEL[assignment.status]}
                     </Badge>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Effective period</p>
-                    <p className="mt-1 text-sm">{new Date(assignment.start_at).toLocaleString("en-ZA")}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Effective period
+                    </p>
+                    <p className="mt-1 text-sm">
+                      {new Date(assignment.start_at).toLocaleString("en-ZA")}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      to {assignment.end_at ? new Date(assignment.end_at).toLocaleString("en-ZA") : "ongoing"}
+                      to{" "}
+                      {assignment.end_at
+                        ? new Date(assignment.end_at).toLocaleString("en-ZA")
+                        : "ongoing"}
                     </p>
                   </div>
                 </div>
@@ -262,7 +295,8 @@ function DriverAssignmentsPage() {
               </div>
               {vehicle && vehicle.status !== "active" ? (
                 <p className="mt-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                  Conflict: assigned vehicle is {VEHICLE_STATUS_LABEL[vehicle.status].toLowerCase()}.
+                  Conflict: assigned vehicle is {VEHICLE_STATUS_LABEL[vehicle.status].toLowerCase()}
+                  .
                 </p>
               ) : null}
             </article>
@@ -278,7 +312,9 @@ function DriverAssignmentsPage() {
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <section className="rounded-2xl border bg-card p-4 shadow-sm">
           <h2 className="font-semibold">Unassigned drivers</h2>
-          <p className="text-xs text-muted-foreground">Drivers without an effective canonical vehicle.</p>
+          <p className="text-xs text-muted-foreground">
+            Drivers without an effective canonical vehicle.
+          </p>
           <div className="mt-3 space-y-2">
             {unassignedDrivers.slice(0, 8).map((driver) => (
               <div key={driver.user_id} className="rounded-xl border p-3 text-sm">
@@ -286,13 +322,17 @@ function DriverAssignmentsPage() {
                 <p className="text-xs text-muted-foreground">{driver.phone ?? "No phone"}</p>
               </div>
             ))}
-            {!unassignedDrivers.length ? <Empty text="All drivers have an effective assignment." /> : null}
+            {!unassignedDrivers.length ? (
+              <Empty text="All drivers have an effective assignment." />
+            ) : null}
           </div>
         </section>
 
         <section className="rounded-2xl border bg-card p-4 shadow-sm">
           <h2 className="font-semibold">Unassigned active vehicles</h2>
-          <p className="text-xs text-muted-foreground">Available canonical vehicles without a current driver.</p>
+          <p className="text-xs text-muted-foreground">
+            Available canonical vehicles without a current driver.
+          </p>
           <div className="mt-3 space-y-2">
             {unassignedVehicles.slice(0, 8).map((vehicle) => (
               <Link
@@ -389,7 +429,11 @@ function CreateAssignmentDialog({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Driver</span>
-            <select value={driverId} onChange={(event) => setDriverId(event.target.value)} className="h-10 w-full rounded-md border bg-background px-3">
+            <select
+              value={driverId}
+              onChange={(event) => setDriverId(event.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3"
+            >
               <option value="">Select driver</option>
               {drivers.map((driver) => (
                 <option key={driver.user_id} value={driver.user_id}>
@@ -400,7 +444,11 @@ function CreateAssignmentDialog({
           </label>
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Vehicle</span>
-            <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} className="h-10 w-full rounded-md border bg-background px-3">
+            <select
+              value={vehicleId}
+              onChange={(event) => setVehicleId(event.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3"
+            >
               <option value="">Select vehicle</option>
               {vehicles.map((vehicle) => (
                 <option key={vehicle.id} value={vehicle.id}>
@@ -411,7 +459,11 @@ function CreateAssignmentDialog({
           </label>
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Assignment type</span>
-            <select value={type} onChange={(event) => setType(event.target.value as AssignmentType)} className="h-10 w-full rounded-md border bg-background px-3">
+            <select
+              value={type}
+              onChange={(event) => setType(event.target.value as AssignmentType)}
+              className="h-10 w-full rounded-md border bg-background px-3"
+            >
               <option value="primary">Primary</option>
               <option value="shift">Shift</option>
               <option value="temporary">Temporary</option>
@@ -422,11 +474,19 @@ function CreateAssignmentDialog({
           <div />
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Start</span>
-            <Input type="datetime-local" value={startAt} onChange={(event) => setStartAt(event.target.value)} />
+            <Input
+              type="datetime-local"
+              value={startAt}
+              onChange={(event) => setStartAt(event.target.value)}
+            />
           </label>
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">End</span>
-            <Input type="datetime-local" value={endAt} onChange={(event) => setEndAt(event.target.value)} />
+            <Input
+              type="datetime-local"
+              value={endAt}
+              onChange={(event) => setEndAt(event.target.value)}
+            />
           </label>
           <label className="space-y-1.5 text-sm sm:col-span-2">
             <span className="font-medium">Assignment reason</span>
@@ -478,7 +538,11 @@ function EndAssignmentButton({
 
   return (
     <Button variant="outline" size="sm" onClick={end} disabled={saving}>
-      {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Unplug className="mr-1 h-4 w-4" />}
+      {saving ? (
+        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+      ) : (
+        <Unplug className="mr-1 h-4 w-4" />
+      )}
       End assignment
     </Button>
   );
@@ -497,5 +561,7 @@ function Metric({ icon: Icon, label, value }: { icon: typeof Car; label: string;
 }
 
 function Empty({ text }: { text: string }) {
-  return <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">{text}</p>;
+  return (
+    <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">{text}</p>
+  );
 }

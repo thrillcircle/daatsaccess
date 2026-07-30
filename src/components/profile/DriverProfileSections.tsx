@@ -67,7 +67,8 @@ export function DriverProfileSections({ userId }: { userId: string }) {
         supabase.from("ride_reviews").select("rating").eq("driver_id", userId),
       ]);
       if (cancelled) return;
-      const firstError = driverResult.error || assignmentResult.error || rideResult.error || ratingResult.error;
+      const firstError =
+        driverResult.error || assignmentResult.error || rideResult.error || ratingResult.error;
       if (firstError) setError(firstError.message);
 
       const assignment = ((assignmentResult.data ?? []) as VehicleAssignment[]).find((item) =>
@@ -77,7 +78,11 @@ export function DriverProfileSections({ userId }: { userId: string }) {
       let documents: VehicleDocument[] = [];
       if (assignment) {
         const [vehicleResult, documentResult] = await Promise.all([
-          fleetDb.from("vehicle_profiles").select("*").eq("id", assignment.vehicle_id).maybeSingle(),
+          fleetDb
+            .from("vehicle_profiles")
+            .select("*")
+            .eq("id", assignment.vehicle_id)
+            .maybeSingle(),
           fleetDb
             .from("vehicle_documents")
             .select("*")
@@ -149,16 +154,16 @@ export function DriverProfileSections({ userId }: { userId: string }) {
   const documentStates = vehicle
     ? [
         documentState(
-          canonical.documents.find((document) => document.document_type === "roadworthy")?.expires_at ??
-            vehicle.roadworthy_expiry_date,
+          canonical.documents.find((document) => document.document_type === "roadworthy")
+            ?.expires_at ?? vehicle.roadworthy_expiry_date,
         ),
         documentState(
-          canonical.documents.find((document) => document.document_type === "license_disc")?.expires_at ??
-            vehicle.license_disc_expiry_date,
+          canonical.documents.find((document) => document.document_type === "license_disc")
+            ?.expires_at ?? vehicle.license_disc_expiry_date,
         ),
         documentState(
-          canonical.documents.find((document) => document.document_type === "insurance")?.expires_at ??
-            vehicle.insurance_expiry_date,
+          canonical.documents.find((document) => document.document_type === "insurance")
+            ?.expires_at ?? vehicle.insurance_expiry_date,
         ),
       ]
     : [];
@@ -213,16 +218,26 @@ export function DriverProfileSections({ userId }: { userId: string }) {
               <ReadOnlyField label="Registration" value={vehicle.license_plate} />
               <ReadOnlyField
                 label="Passenger capacity"
-                value={vehicle.passenger_capacity == null ? "Not recorded" : String(vehicle.passenger_capacity)}
+                value={
+                  vehicle.passenger_capacity == null
+                    ? "Not recorded"
+                    : String(vehicle.passenger_capacity)
+                }
               />
               <ReadOnlyField
                 label="Wheelchair capacity"
-                value={vehicle.wheelchair_capacity == null ? "Not recorded" : String(vehicle.wheelchair_capacity)}
+                value={
+                  vehicle.wheelchair_capacity == null
+                    ? "Not recorded"
+                    : String(vehicle.wheelchair_capacity)
+                }
               />
               <ReadOnlyField
                 label="Assignment period"
                 value={`${new Date(assignment.start_at).toLocaleString("en-ZA")} — ${
-                  assignment.end_at ? new Date(assignment.end_at).toLocaleString("en-ZA") : "ongoing"
+                  assignment.end_at
+                    ? new Date(assignment.end_at).toLocaleString("en-ZA")
+                    : "ongoing"
                 }`}
               />
               <ReadOnlyField label="Compliance" value={complianceSummary} />
@@ -282,7 +297,9 @@ export function DriverProfileSections({ userId }: { userId: string }) {
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat
             label="Average rating"
-            value={stats.averageRating == null ? "No ratings" : `${stats.averageRating.toFixed(2)}★`}
+            value={
+              stats.averageRating == null ? "No ratings" : `${stats.averageRating.toFixed(2)}★`
+            }
           />
           <Stat label="Ratings" value={ratings.length} />
           <Stat label="Completed" value={stats.completed} />

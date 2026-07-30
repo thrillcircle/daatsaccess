@@ -9,7 +9,22 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatZAR } from "@/lib/pricing";
-import { Search, Star, KeyRound, Loader2, Eye, EyeOff, ShieldAlert, Check, Settings2, Phone, MessageSquare, ExternalLink, Car, History } from "lucide-react";
+import {
+  Search,
+  Star,
+  KeyRound,
+  Loader2,
+  Eye,
+  EyeOff,
+  ShieldAlert,
+  Check,
+  Settings2,
+  Phone,
+  MessageSquare,
+  ExternalLink,
+  Car,
+  History,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -20,20 +35,45 @@ import {
 import type { Database } from "@/integrations/supabase/types";
 import { getVehicleAlerts } from "@/lib/vehicle-alerts";
 import { rankVehiclesForTrip, type Suitability } from "@/lib/vehicle-suitability";
+import { fleetDb } from "@/lib/fleet";
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type RideStatus = Database["public"]["Enums"]["ride_status"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
 type Profile = { user_id: string; full_name: string | null; phone: string | null };
-type Vehicle = { user_id: string; vehicle_model: string | null; license_plate: string | null; vehicle_type: string | null; is_available: boolean };
+type Vehicle = {
+  user_id: string;
+  vehicle_model: string | null;
+  license_plate: string | null;
+  vehicle_type: string | null;
+  is_available: boolean;
+};
 type FleetVehicle = Database["public"]["Tables"]["vehicle_profiles"]["Row"];
-type PaymentRow = { ride_id: string; status: PaymentStatus; amount: number; payment_method: string | null };
+type PaymentRow = {
+  ride_id: string;
+  status: PaymentStatus;
+  amount: number;
+  payment_method: string | null;
+};
 type Review = { ride_id: string; rating: number; comment: string | null };
-
 
 type FilterKey =
   | "all"
@@ -61,7 +101,13 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 ];
 
 const VALID_FILTERS = new Set<FilterKey>(FILTERS.map((f) => f.key));
-const ACTIVE_STATUSES = ["requested", "accepted", "driver_arriving", "arrived", "in_progress"] as const;
+const ACTIVE_STATUSES = [
+  "requested",
+  "accepted",
+  "driver_arriving",
+  "arrived",
+  "in_progress",
+] as const;
 const PIN_LOCK_WINDOW_MIN = 15;
 const PIN_LOCK_THRESHOLD = 5;
 const PAGE_SIZE = 6;
@@ -74,15 +120,15 @@ type StatusCounts = {
   cancelled: number;
 };
 
-
 type TripsSearch = { status: FilterKey; q: string };
 
 export const Route = createFileRoute("/app/admin/trips")({
   head: () => ({ meta: [{ title: "Trips — Admin" }] }),
   validateSearch: (raw: Record<string, unknown>): TripsSearch => {
-    const status = typeof raw.status === "string" && VALID_FILTERS.has(raw.status as FilterKey)
-      ? (raw.status as FilterKey)
-      : "all";
+    const status =
+      typeof raw.status === "string" && VALID_FILTERS.has(raw.status as FilterKey)
+        ? (raw.status as FilterKey)
+        : "all";
     const q = typeof raw.q === "string" ? raw.q : "";
     return { status, q };
   },
@@ -98,8 +144,10 @@ function AdminTripsPage() {
 
   const nav = useMemo(() => {
     const items = [];
-    if (roles?.includes("passenger")) items.push({ to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger });
-    if (roles?.includes("driver")) items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
+    if (roles?.includes("passenger"))
+      items.push({ to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger });
+    if (roles?.includes("driver"))
+      items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
     items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
     return items;
   }, [roles]);
@@ -157,8 +205,14 @@ function AdminTripsPage() {
           .from("rides")
           .select("id", { count: "exact", head: true })
           .in("status", ACTIVE_STATUSES as unknown as Ride["status"][]),
-        supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "completed"),
-        supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
+        supabase
+          .from("rides")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "completed"),
+        supabase
+          .from("rides")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "cancelled"),
       ]);
       if (cancelled) return;
       setCounts({
@@ -173,7 +227,6 @@ function AdminTripsPage() {
       cancelled = true;
     };
   }, [isAdmin, reloadKey]);
-
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -221,9 +274,7 @@ function AdminTripsPage() {
 
         let query = supabase.from("rides").select("*");
         if (active === "scheduled") {
-          query = query
-            .eq("request_type", "scheduled")
-            .in("status", ["requested", "accepted"]);
+          query = query.eq("request_type", "scheduled").in("status", ["requested", "accepted"]);
         } else if (active === "pin_required") {
           query = query
             .in("status", ACTIVE_STATUSES as unknown as Ride["status"][])
@@ -248,9 +299,11 @@ function AdminTripsPage() {
         }
 
         const orderCol =
-          active === "scheduled" ? "scheduled_at"
-          : active === "completed" ? "completed_at"
-          : "created_at";
+          active === "scheduled"
+            ? "scheduled_at"
+            : active === "completed"
+              ? "completed_at"
+              : "created_at";
         const { data, error: err } = await query
           .order(orderCol, { ascending: active === "scheduled", nullsFirst: false })
           .limit(pageSize + 1);
@@ -262,12 +315,9 @@ function AdminTripsPage() {
         const list = rows.slice(0, pageSize);
         setRides(list);
 
-
         const personIds = Array.from(
           new Set(
-            list
-              .flatMap((r) => [r.passenger_id, r.driver_id])
-              .filter((v): v is string => !!v),
+            list.flatMap((r) => [r.passenger_id, r.driver_id]).filter((v): v is string => !!v),
           ),
         );
         if (personIds.length) {
@@ -287,19 +337,24 @@ function AdminTripsPage() {
           setDrivers(new Map());
         }
 
-        const driverIds = Array.from(new Set(list.map((r) => r.driver_id).filter((v): v is string => !!v)));
+        const driverIds = Array.from(
+          new Set(list.map((r) => r.driver_id).filter((v): v is string => !!v)),
+        );
         if (driverIds.length) {
           const { data: vs } = await supabase
             .from("driver_profiles")
             .select("user_id, vehicle_model, license_plate, vehicle_type, is_available")
             .in("user_id", driverIds);
-          if (!cancelled) setVehicles(new Map(((vs ?? []) as Vehicle[]).map((v) => [v.user_id, v])));
+          if (!cancelled)
+            setVehicles(new Map(((vs ?? []) as Vehicle[]).map((v) => [v.user_id, v])));
         } else {
           setVehicles(new Map());
         }
 
         // Fleet vehicles assigned to these rides (rides.vehicle_id).
-        const fleetIds = Array.from(new Set(list.map((r) => r.vehicle_id).filter((v): v is string => !!v)));
+        const fleetIds = Array.from(
+          new Set(list.map((r) => r.vehicle_id).filter((v): v is string => !!v)),
+        );
         if (fleetIds.length) {
           const { data: fvs } = await supabase
             .from("vehicle_profiles")
@@ -318,7 +373,6 @@ function AdminTripsPage() {
           setFleetVehicles(new Map());
         }
 
-
         if (list.length) {
           const rideIds = list.map((r) => r.id);
           const { data: pays } = await supabase
@@ -326,14 +380,11 @@ function AdminTripsPage() {
             .select("ride_id, status, amount, payment_method")
             .in("ride_id", rideIds);
           if (!cancelled) {
-            setPayments(
-              new Map(((pays ?? []) as PaymentRow[]).map((p) => [p.ride_id, p])),
-            );
+            setPayments(new Map(((pays ?? []) as PaymentRow[]).map((p) => [p.ride_id, p])));
           }
         } else {
           setPayments(new Map());
         }
-
 
         if (active === "completed" && list.length) {
           const rideIds = list.map((r) => r.id);
@@ -342,9 +393,7 @@ function AdminTripsPage() {
             .select("ride_id, rating, comment")
             .in("ride_id", rideIds);
           if (!cancelled) {
-            setReviews(
-              new Map(((revs ?? []) as Review[]).map((r) => [r.ride_id, r])),
-            );
+            setReviews(new Map(((revs ?? []) as Review[]).map((r) => [r.ride_id, r])));
           }
         } else {
           setReviews(new Map());
@@ -398,8 +447,6 @@ function AdminTripsPage() {
         </Button>
       </div>
 
-
-
       <div className="relative mb-3">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -417,9 +464,7 @@ function AdminTripsPage() {
             size="sm"
             variant={active === f.key ? "default" : "outline"}
             className="h-8 text-xs"
-            onClick={() =>
-              navigate({ search: (p: TripsSearch) => ({ ...p, status: f.key }) })
-            }
+            onClick={() => navigate({ search: (p: TripsSearch) => ({ ...p, status: f.key }) })}
           >
             {f.label}
           </Button>
@@ -430,7 +475,10 @@ function AdminTripsPage() {
         <span className="text-muted-foreground">
           Showing <span className="font-medium text-foreground">{activeLabel}</span>
           {debouncedSearch && (
-            <> matching "<span className="font-medium text-foreground">{debouncedSearch}</span>"</>
+            <>
+              {" "}
+              matching "<span className="font-medium text-foreground">{debouncedSearch}</span>"
+            </>
           )}{" "}
           · {rides.length} result{rides.length === 1 ? "" : "s"}
         </span>
@@ -457,9 +505,7 @@ function AdminTripsPage() {
 
       <ul className="divide-y rounded-2xl border bg-card">
         {loading ? (
-          <li className="px-4 py-6 text-center text-sm text-muted-foreground">
-            Loading…
-          </li>
+          <li className="px-4 py-6 text-center text-sm text-muted-foreground">Loading…</li>
         ) : !rides.length ? (
           <li className="px-4 py-6 text-center text-sm text-muted-foreground">
             No trips match these filters.
@@ -470,10 +516,9 @@ function AdminTripsPage() {
               key={r.id}
               ride={r}
               passenger={passengers.get(r.passenger_id) ?? null}
-              driver={r.driver_id ? drivers.get(r.driver_id) ?? null : null}
-              vehicle={r.driver_id ? vehicles.get(r.driver_id) ?? null : null}
+              driver={r.driver_id ? (drivers.get(r.driver_id) ?? null) : null}
+              vehicle={r.driver_id ? (vehicles.get(r.driver_id) ?? null) : null}
               fleetVehicle={fleetVehicles.get(r.id) ?? null}
-
               payment={payments.get(r.id) ?? null}
               review={reviews.get(r.id) ?? null}
               variant={active}
@@ -499,11 +544,9 @@ function AdminTripsPage() {
           )}
         </div>
       )}
-
     </AdminShell>
   );
 }
-
 
 function TripRow({
   ride,
@@ -527,14 +570,17 @@ function TripRow({
   onChanged: () => void;
 }) {
   const fleetAlerts = fleetVehicle ? getVehicleAlerts(fleetVehicle) : [];
-  const vehicleModel = fleetVehicle ? `${fleetVehicle.vehicle_name ?? ""} ${fleetVehicle.model ?? ""}`.trim() || (fleetVehicle.vehicle_name ?? "—") : vehicle?.vehicle_model ?? null;
+  const vehicleModel = fleetVehicle
+    ? `${fleetVehicle.vehicle_name ?? ""} ${fleetVehicle.model ?? ""}`.trim() ||
+      (fleetVehicle.vehicle_name ?? "—")
+    : (vehicle?.vehicle_model ?? null);
   const vehicleType = fleetVehicle?.vehicle_type ?? vehicle?.vehicle_type ?? null;
   const vehiclePlate = fleetVehicle?.license_plate ?? vehicle?.license_plate ?? null;
   const vehicleAssignmentStatus: "fleet" | "driver" | "unassigned" = fleetVehicle
     ? "fleet"
     : vehicle && (vehicle.vehicle_model || vehicle.license_plate)
-    ? "driver"
-    : "unassigned";
+      ? "driver"
+      : "unassigned";
   const driverAvailability: "available" | "offline" | "none" = vehicle
     ? vehicle.is_available
       ? "available"
@@ -546,14 +592,10 @@ function TripRow({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{ride.destination_address}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            From {ride.pickup_address}
-          </p>
+          <p className="truncate text-xs text-muted-foreground">From {ride.pickup_address}</p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-sm font-semibold">
-            {formatZAR(Number(ride.estimated_price))}
-          </p>
+          <p className="text-sm font-semibold">{formatZAR(Number(ride.estimated_price))}</p>
           <RideStatusBadge status={ride.status} />
           <PaymentBadge payment={payment} />
         </div>
@@ -567,10 +609,14 @@ function TripRow({
           value={driver?.full_name ?? (ride.driver_id ? "Assigned" : "Unassigned")}
         />
         <div>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Driver availability</div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Driver availability
+          </div>
           <div className="text-xs">
             {driverAvailability === "available" ? (
-              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Available</Badge>
+              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                Available
+              </Badge>
             ) : driverAvailability === "offline" ? (
               <Badge variant="secondary">Offline</Badge>
             ) : (
@@ -582,14 +628,21 @@ function TripRow({
         <Field label="Vehicle type" value={vehicleType ?? "—"} />
         <Field label="License plate" value={vehiclePlate ?? "—"} />
         <div>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Vehicle assignment</div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Vehicle assignment
+          </div>
           <div className="text-xs">
             {vehicleAssignmentStatus === "fleet" ? (
               <Badge className="bg-sky-500/15 text-sky-700 dark:text-sky-300">Fleet vehicle</Badge>
             ) : vehicleAssignmentStatus === "driver" ? (
               <Badge variant="outline">Driver's vehicle</Badge>
             ) : (
-              <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">Unassigned</Badge>
+              <Badge
+                variant="outline"
+                className="border-amber-500/40 text-amber-700 dark:text-amber-300"
+              >
+                Unassigned
+              </Badge>
             )}
           </div>
         </div>
@@ -608,10 +661,7 @@ function TripRow({
                   : "—"
               }
             />
-            <Field
-              label="Est. distance"
-              value={`${Number(ride.distance_km).toFixed(1)} km`}
-            />
+            <Field label="Est. distance" value={`${Number(ride.distance_km).toFixed(1)} km`} />
           </>
         )}
         {variant === "completed" && (
@@ -642,9 +692,7 @@ function TripRow({
             <Star className="h-3.5 w-3.5 fill-current text-amber-500" />
             {review.rating} / 5
           </div>
-          {review.comment && (
-            <p className="mt-1 text-muted-foreground">"{review.comment}"</p>
-          )}
+          {review.comment && <p className="mt-1 text-muted-foreground">"{review.comment}"</p>}
         </div>
       )}
 
@@ -666,10 +714,9 @@ function TripRow({
         </div>
       )}
 
-      {ride.driver_id &&
-        !["completed", "cancelled"].includes(ride.status) && (
-          <AdminPinRow rideId={ride.id} />
-        )}
+      {ride.driver_id && !["completed", "cancelled"].includes(ride.status) && (
+        <AdminPinRow rideId={ride.id} />
+      )}
 
       <div className="flex items-center justify-between gap-2">
         <Badge variant="outline" className="font-mono text-[10px]">
@@ -688,13 +735,16 @@ function TripRow({
               </Link>
             </Button>
           )}
-          {(ride.vehicle_id || vehicle?.license_plate) && (
+          {ride.vehicle_id ? (
             <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
-              <Link to="/app/admin/fleet">
+              <Link
+                to="/app/admin/vehicle-profiles/$vehicleId"
+                params={{ vehicleId: ride.vehicle_id }}
+              >
                 <Car className="mr-1 h-3 w-3" /> Vehicle
               </Link>
             </Button>
-          )}
+          ) : null}
           <AdminActionsDialog
             ride={ride}
             passenger={passenger}
@@ -705,7 +755,6 @@ function TripRow({
             onChanged={onChanged}
           />
         </div>
-
       </div>
     </li>
   );
@@ -717,10 +766,10 @@ function PaymentBadge({ payment }: { payment: PaymentRow | null }) {
     payment.status === "paid"
       ? "default"
       : payment.status === "failed"
-      ? "destructive"
-      : payment.status === "refunded"
-      ? "outline"
-      : "secondary";
+        ? "destructive"
+        : payment.status === "refunded"
+          ? "outline"
+          : "secondary";
   return (
     <Badge variant={variant} className="ml-1 mt-1 text-[10px] capitalize">
       {payment.status}
@@ -772,7 +821,6 @@ function AdminActionsDialog({
   const [fleetRanked, setFleetRanked] = useState<Suitability[]>([]);
   const [selectedFleet, setSelectedFleet] = useState<string>(ride.vehicle_id ?? "");
 
-
   useEffect(() => {
     if (!open) return;
     setSelectedDriver(ride.driver_id ?? "");
@@ -792,15 +840,30 @@ function AdminActionsDialog({
           .select("user_id, vehicle_model, license_plate, is_available")
           .in("user_id", ids),
       ]);
-      const vMap = new Map(((vs ?? []) as { user_id: string; vehicle_model: string | null; license_plate: string | null; is_available: boolean }[]).map((v) => [v.user_id, v]));
-      const opts: DriverOption[] = ((profs ?? []) as { user_id: string; full_name: string | null }[]).map((p) => ({
+      const vMap = new Map(
+        (
+          (vs ?? []) as {
+            user_id: string;
+            vehicle_model: string | null;
+            license_plate: string | null;
+            is_available: boolean;
+          }[]
+        ).map((v) => [v.user_id, v]),
+      );
+      const opts: DriverOption[] = (
+        (profs ?? []) as { user_id: string; full_name: string | null }[]
+      ).map((p) => ({
         user_id: p.user_id,
         full_name: p.full_name,
         vehicle_model: vMap.get(p.user_id)?.vehicle_model ?? null,
         license_plate: vMap.get(p.user_id)?.license_plate ?? null,
         is_available: vMap.get(p.user_id)?.is_available ?? false,
       }));
-      opts.sort((a, b) => Number(b.is_available) - Number(a.is_available) || (a.full_name ?? "").localeCompare(b.full_name ?? ""));
+      opts.sort(
+        (a, b) =>
+          Number(b.is_available) - Number(a.is_available) ||
+          (a.full_name ?? "").localeCompare(b.full_name ?? ""),
+      );
       setDrivers(opts);
     })();
 
@@ -830,7 +893,6 @@ function AdminActionsDialog({
     })();
   }, [open, ride.id, ride.driver_id, ride.status, ride.vehicle_id, payment?.status]);
 
-
   async function runUpdate(patch: Partial<Ride>, successMsg: string) {
     setBusy(true);
     try {
@@ -845,23 +907,36 @@ function AdminActionsDialog({
     }
   }
 
-  async function onAssignDriver() {
-    if (!selectedDriver || selectedDriver === ride.driver_id) {
-      setOpen(false);
+  async function onAssignResources() {
+    if (!selectedDriver || !selectedFleet) {
+      toast.error("Select both a driver and a suitable canonical vehicle");
       return;
     }
-    await runUpdate(
-      { driver_id: selectedDriver, status: ride.status === "requested" ? "accepted" : ride.status, accepted_at: ride.accepted_at ?? new Date().toISOString() },
-      "Driver assigned",
-    );
-  }
+    const suitability = fleetRanked.find((item) => item.vehicle.id === selectedFleet);
+    if (suitability && !suitability.suitable) {
+      toast.error("The selected vehicle has blocking suitability conditions");
+      return;
+    }
 
-  async function onAssignFleetVehicle() {
-    const nextId = selectedFleet || null;
-    if (nextId === (ride.vehicle_id ?? null)) return;
-    await runUpdate({ vehicle_id: nextId }, nextId ? "Vehicle assigned" : "Vehicle cleared");
+    setBusy(true);
+    try {
+      const { error } = await fleetDb.rpc("admin_assign_ride_resources", {
+        p_ride_id: ride.id,
+        p_driver_id: selectedDriver,
+        p_vehicle_id: selectedFleet,
+        p_expected_status: ride.status,
+        p_idempotency_key: crypto.randomUUID(),
+      });
+      if (error) throw error;
+      toast.success("Driver and canonical vehicle assigned atomically");
+      setOpen(false);
+      onChanged();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Resource assignment failed");
+    } finally {
+      setBusy(false);
+    }
   }
-
 
   async function onChangeStatus() {
     if (selectedStatus === ride.status) return;
@@ -924,11 +999,13 @@ function AdminActionsDialog({
             <p className="font-medium">{ride.destination_address}</p>
             <p className="text-muted-foreground">From {ride.pickup_address}</p>
             <p className="mt-1 text-muted-foreground">
-              Passenger: {passenger?.full_name ?? "—"} · Driver: {driver?.full_name ?? (ride.driver_id ? "Assigned" : "Unassigned")}
+              Passenger: {passenger?.full_name ?? "—"} · Driver:{" "}
+              {driver?.full_name ?? (ride.driver_id ? "Assigned" : "Unassigned")}
             </p>
             {vehicle && (vehicle.vehicle_model || vehicle.license_plate) && (
               <p className="mt-0.5 flex items-center gap-1 text-muted-foreground">
-                <Car className="h-3 w-3" /> {[vehicle.vehicle_model, vehicle.license_plate].filter(Boolean).join(" · ")}
+                <Car className="h-3 w-3" />{" "}
+                {[vehicle.vehicle_model, vehicle.license_plate].filter(Boolean).join(" · ")}
               </p>
             )}
           </div>
@@ -937,22 +1014,46 @@ function AdminActionsDialog({
           <div className="space-y-1">
             <Label className="text-xs">Contact</Label>
             <div className="flex flex-wrap gap-1.5">
-              <Button asChild size="sm" variant="outline" disabled={!passenger?.phone} className="h-8 text-xs">
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                disabled={!passenger?.phone}
+                className="h-8 text-xs"
+              >
                 <a href={passenger?.phone ? `tel:${passenger.phone}` : "#"}>
                   <Phone className="mr-1 h-3 w-3" /> Call passenger
                 </a>
               </Button>
-              <Button asChild size="sm" variant="outline" disabled={!passenger?.phone} className="h-8 text-xs">
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                disabled={!passenger?.phone}
+                className="h-8 text-xs"
+              >
                 <a href={passenger?.phone ? `sms:${passenger.phone}` : "#"}>
                   <MessageSquare className="mr-1 h-3 w-3" /> SMS passenger
                 </a>
               </Button>
-              <Button asChild size="sm" variant="outline" disabled={!driver?.phone} className="h-8 text-xs">
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                disabled={!driver?.phone}
+                className="h-8 text-xs"
+              >
                 <a href={driver?.phone ? `tel:${driver.phone}` : "#"}>
                   <Phone className="mr-1 h-3 w-3" /> Call driver
                 </a>
               </Button>
-              <Button asChild size="sm" variant="outline" disabled={!driver?.phone} className="h-8 text-xs">
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                disabled={!driver?.phone}
+                className="h-8 text-xs"
+              >
                 <a href={driver?.phone ? `sms:${driver.phone}` : "#"}>
                   <MessageSquare className="mr-1 h-3 w-3" /> SMS driver
                 </a>
@@ -960,112 +1061,112 @@ function AdminActionsDialog({
             </div>
           </div>
 
-          {/* Assign driver / vehicle */}
-          <div className="space-y-1">
-            <Label className="text-xs">Assign driver &amp; vehicle</Label>
+          {/* Assign driver and canonical vehicle atomically */}
+          <div className="space-y-3">
+            <Label className="text-xs">Assign driver and canonical vehicle</Label>
             <Select value={selectedDriver} onValueChange={setSelectedDriver}>
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="Select a driver" />
               </SelectTrigger>
               <SelectContent>
-                {drivers.length === 0 && (
+                {drivers.length === 0 ? (
                   <SelectItem value="__none" disabled>
                     No drivers found
                   </SelectItem>
-                )}
-                {drivers.map((d) => (
-                  <SelectItem key={d.user_id} value={d.user_id}>
-                    {(d.full_name ?? d.user_id.slice(0, 8))}
-                    {d.vehicle_model || d.license_plate
-                      ? ` — ${[d.vehicle_model, d.license_plate].filter(Boolean).join(" · ")}`
-                      : ""}
-                    {d.is_available ? " · available" : ""}
+                ) : null}
+                {drivers.map((driverOption) => (
+                  <SelectItem key={driverOption.user_id} value={driverOption.user_id}>
+                    {driverOption.full_name ?? driverOption.user_id.slice(0, 8)}
+                    {driverOption.is_available ? " · available" : " · offline"}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-[10px] text-muted-foreground">
-              The vehicle assigned to the driver is used for this trip.
-            </p>
-            <Button size="sm" disabled={busy || !selectedDriver || terminal} onClick={onAssignDriver} className="h-8 text-xs">
-              {busy && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}Assign
-            </Button>
-          </div>
 
-          {/* Assign fleet vehicle (suitability-ranked) */}
-          <div className="space-y-1">
-            <Label className="text-xs">Assign fleet vehicle</Label>
-            <Select value={selectedFleet || "__none"} onValueChange={(v) => setSelectedFleet(v === "__none" ? "" : v)}>
+            <Select value={selectedFleet} onValueChange={setSelectedFleet}>
               <SelectTrigger className="h-9 text-xs">
-                <SelectValue placeholder="Select a vehicle" />
+                <SelectValue placeholder="Select a canonical vehicle" />
               </SelectTrigger>
               <SelectContent className="max-h-80">
-                <SelectItem value="__none">Unassigned</SelectItem>
-                {fleetRanked.length === 0 && (
+                {fleetRanked.length === 0 ? (
                   <SelectItem value="__empty" disabled>
-                    No fleet vehicles
+                    No canonical vehicles
                   </SelectItem>
-                )}
-                {fleetRanked.map((s) => {
-                  const v = s.vehicle;
-                  const tag = s.suitable
-                    ? s.warnings.length
+                ) : null}
+                {fleetRanked.map((suitability) => {
+                  const candidate = suitability.vehicle;
+                  const tag = suitability.suitable
+                    ? suitability.warnings.length
                       ? " ⚠"
                       : " ✓"
                     : " ✕";
                   return (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.vehicle_name} · {v.license_plate}
-                      {v.passenger_capacity != null ? ` · ${v.passenger_capacity} pax` : ""}
-                      {v.wheelchair_accessible ? " · WC" : ""}
+                    <SelectItem
+                      key={candidate.id}
+                      value={candidate.id}
+                      disabled={!suitability.suitable}
+                    >
+                      {candidate.vehicle_name} · {candidate.license_plate}
+                      {candidate.passenger_capacity != null
+                        ? ` · ${candidate.passenger_capacity} pax`
+                        : ""}
+                      {candidate.wheelchair_accessible ? " · WC" : ""}
                       {tag}
                     </SelectItem>
                   );
                 })}
               </SelectContent>
             </Select>
+
             {(() => {
-              const picked = fleetRanked.find((s) => s.vehicle.id === selectedFleet);
+              const picked = fleetRanked.find((item) => item.vehicle.id === selectedFleet);
               if (!picked) return null;
               return (
                 <div className="flex flex-wrap gap-1">
-                  {picked.blocking.map((r, i) => (
-                    <Badge key={`b${i}`} variant="destructive" className="text-[10px]">{r.label}</Badge>
-                  ))}
-                  {picked.warnings.map((r, i) => (
-                    <Badge key={`w${i}`} className="bg-amber-500/20 text-amber-800 text-[10px] dark:text-amber-200">
-                      {r.label}
+                  {picked.blocking.map((reason, index) => (
+                    <Badge key={`b${index}`} variant="destructive" className="text-[10px]">
+                      {reason.label}
                     </Badge>
                   ))}
-                  {picked.suitable && picked.warnings.length === 0 && (
-                    <Badge variant="secondary" className="text-[10px]">Suitable</Badge>
-                  )}
+                  {picked.warnings.map((reason, index) => (
+                    <Badge
+                      key={`w${index}`}
+                      className="bg-amber-500/20 text-[10px] text-amber-800 dark:text-amber-200"
+                    >
+                      {reason.label}
+                    </Badge>
+                  ))}
+                  {picked.suitable && picked.warnings.length === 0 ? (
+                    <Badge variant="secondary" className="text-[10px]">
+                      Suitable
+                    </Badge>
+                  ) : null}
                 </div>
               );
             })()}
+
             <Button
               size="sm"
-              disabled={busy || terminal || selectedFleet === (ride.vehicle_id ?? "")}
-              onClick={onAssignFleetVehicle}
+              disabled={busy || terminal || !selectedDriver || !selectedFleet}
+              onClick={onAssignResources}
               className="h-8 text-xs"
             >
-              {busy && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-              {selectedFleet ? "Assign vehicle" : "Clear vehicle"}
+              {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+              Assign resources
             </Button>
             <p className="text-[10px] text-muted-foreground">
-              {fleetVehicle
-                ? `Currently: ${fleetVehicle.vehicle_name} · ${fleetVehicle.license_plate}`
-                : "No fleet vehicle assigned to this trip."}
+              Driver and vehicle are validated and written in one protected transaction.
             </p>
           </div>
-
-
 
           {/* Change status */}
           <div className="space-y-1">
             <Label className="text-xs">Change status</Label>
             <div className="flex gap-1.5">
-              <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as RideStatus)}>
+              <Select
+                value={selectedStatus}
+                onValueChange={(v) => setSelectedStatus(v as RideStatus)}
+              >
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue />
                 </SelectTrigger>
@@ -1077,7 +1178,12 @@ function AdminActionsDialog({
                   ))}
                 </SelectContent>
               </Select>
-              <Button size="sm" disabled={busy || selectedStatus === ride.status} onClick={onChangeStatus} className="h-9 text-xs">
+              <Button
+                size="sm"
+                disabled={busy || selectedStatus === ride.status}
+                onClick={onChangeStatus}
+                className="h-9 text-xs"
+              >
                 Apply
               </Button>
             </div>
@@ -1088,7 +1194,10 @@ function AdminActionsDialog({
             <div className="space-y-1">
               <Label className="text-xs">Payment status</Label>
               <div className="flex gap-1.5">
-                <Select value={selectedPayment || undefined} onValueChange={(v) => setSelectedPayment(v as PaymentStatus)}>
+                <Select
+                  value={selectedPayment || undefined}
+                  onValueChange={(v) => setSelectedPayment(v as PaymentStatus)}
+                >
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue />
                   </SelectTrigger>
@@ -1114,12 +1223,7 @@ function AdminActionsDialog({
         </div>
 
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
-          <Button
-            variant="destructive"
-            size="sm"
-            disabled={busy || terminal}
-            onClick={onCancel}
-          >
+          <Button variant="destructive" size="sm" disabled={busy || terminal} onClick={onCancel}>
             Cancel trip
           </Button>
           <Button
@@ -1134,7 +1238,6 @@ function AdminActionsDialog({
     </Dialog>
   );
 }
-
 
 const LOCK_WINDOW_MS = 15 * 60 * 1000;
 const MAX_FAILURES = 5;
@@ -1188,7 +1291,12 @@ function AdminPinRow({ rideId }: { rideId: string }) {
       .channel(`admin-pin-${rideId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "ride_pin_attempts", filter: `ride_id=eq.${rideId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "ride_pin_attempts",
+          filter: `ride_id=eq.${rideId}`,
+        },
         () => loadAttempts(),
       )
       .on(
@@ -1214,7 +1322,8 @@ function AdminPinRow({ rideId }: { rideId: string }) {
   );
   const latestFailIso = recentFailures[0]?.attempted_at ?? null;
   const locked = recentFailures.length >= MAX_FAILURES;
-  const lockExpiresAt = locked && latestFailIso ? new Date(latestFailIso).getTime() + LOCK_WINDOW_MS : null;
+  const lockExpiresAt =
+    locked && latestFailIso ? new Date(latestFailIso).getTime() + LOCK_WINDOW_MS : null;
   const lockSecondsLeft = lockExpiresAt ? Math.max(0, Math.round((lockExpiresAt - now) / 1000)) : 0;
   const hasOpenAlert = !!alert && alert.read_at === null;
 
@@ -1260,9 +1369,7 @@ function AdminPinRow({ rideId }: { rideId: string }) {
     <div
       className={
         "space-y-2 rounded-md border px-2.5 py-2 text-xs " +
-        (hasOpenAlert
-          ? "border-destructive/60 bg-destructive/10"
-          : "border-dashed bg-secondary/40")
+        (hasOpenAlert ? "border-destructive/60 bg-destructive/10" : "border-dashed bg-secondary/40")
       }
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1340,14 +1447,11 @@ function AdminPinRow({ rideId }: { rideId: string }) {
   );
 }
 
-
 function formatDuration(r: Ride): string {
   const secs =
     r.actual_duration_seconds ??
     (r.started_at && r.completed_at
-      ? Math.round(
-          (new Date(r.completed_at).getTime() - new Date(r.started_at).getTime()) / 1000,
-        )
+      ? Math.round((new Date(r.completed_at).getTime() - new Date(r.started_at).getTime()) / 1000)
       : null);
   if (secs == null) return "—";
   const mins = Math.round(secs / 60);
@@ -1365,12 +1469,9 @@ function CountChip({ label, value }: { label: string; value: string | number }) 
 }
 
 function Field({ label, value }: { label: string; value: string }) {
-
   return (
     <div className="min-w-0">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="truncate text-xs">{value}</p>
     </div>
   );

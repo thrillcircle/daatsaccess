@@ -31,6 +31,7 @@ export type SupportTicket = {
   assigned_admin_id: string | null;
   ride_id: string | null;
   service_booking_id: string | null;
+  vehicle_id: string | null;
   category: SupportCategory;
   priority: SupportPriority;
   status: SupportStatus;

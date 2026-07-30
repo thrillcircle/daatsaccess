@@ -155,7 +155,12 @@ function MaintenancePage() {
     <AdminShell
       title="Maintenance"
       subtitle="Open, schedule, progress and complete canonical vehicle work orders."
-      actions={<CreateMaintenanceDialog vehicles={vehicles} onCreated={() => setReload((value) => value + 1)} />}
+      actions={
+        <CreateMaintenanceDialog
+          vehicles={vehicles}
+          onCreated={() => setReload((value) => value + 1)}
+        />
+      }
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <Metric icon={Wrench} label="Open" value={stats.open} />
@@ -225,7 +230,13 @@ function MaintenancePage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold">{order.work_order_reference}</p>
-                    <Badge variant={order.severity === "urgent" || order.severity === "unsafe" ? "destructive" : "outline"}>
+                    <Badge
+                      variant={
+                        order.severity === "urgent" || order.severity === "unsafe"
+                          ? "destructive"
+                          : "outline"
+                      }
+                    >
                       {order.severity}
                     </Badge>
                     <Badge variant="secondary">{MAINTENANCE_STATUS_LABEL[order.status]}</Badge>
@@ -235,7 +246,8 @@ function MaintenancePage() {
                     params={{ vehicleId: order.vehicle_id }}
                     className="mt-2 inline-flex text-sm font-medium text-primary hover:underline"
                   >
-                    {vehicle?.vehicle_name ?? "Vehicle"} · {vehicle?.license_plate ?? order.vehicle_id}
+                    {vehicle?.vehicle_name ?? "Vehicle"} ·{" "}
+                    {vehicle?.license_plate ?? order.vehicle_id}
                   </Link>
                   <p className="mt-2 text-sm text-muted-foreground">{order.description}</p>
                   <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
@@ -262,7 +274,13 @@ function MaintenancePage() {
   );
 }
 
-function WorkOrderActions({ order, onChanged }: { order: MaintenanceWorkOrder; onChanged: () => void }) {
+function WorkOrderActions({
+  order,
+  onChanged,
+}: {
+  order: MaintenanceWorkOrder;
+  onChanged: () => void;
+}) {
   const [saving, setSaving] = useState(false);
 
   async function transition(status: MaintenanceStatus) {
@@ -273,7 +291,9 @@ function WorkOrderActions({ order, onChanged }: { order: MaintenanceWorkOrder; o
       p_expected_status: order.status,
       p_diagnosis: null,
       p_work_performed:
-        status === "completed" ? order.work_performed || "Maintenance completed by service provider" : null,
+        status === "completed"
+          ? order.work_performed || "Maintenance completed by service provider"
+          : null,
       p_outcome: status === "completed" ? order.outcome || "Vehicle returned to operation" : null,
       p_odometer_at_completion: status === "completed" ? order.odometer_at_completion : null,
       p_next_service_due_date: order.next_service_due_date,
@@ -298,7 +318,12 @@ function WorkOrderActions({ order, onChanged }: { order: MaintenanceWorkOrder; o
       ) : null}
       {order.status === "in_progress" ? (
         <>
-          <Button size="sm" variant="outline" onClick={() => transition("waiting_for_parts")} disabled={saving}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => transition("waiting_for_parts")}
+            disabled={saving}
+          >
             <PauseCircle className="mr-1 h-4 w-4" /> Waiting for parts
           </Button>
           <Button size="sm" onClick={() => transition("completed")} disabled={saving}>
@@ -380,7 +405,11 @@ function CreateMaintenanceDialog({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5 text-sm sm:col-span-2">
             <span className="font-medium">Vehicle</span>
-            <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} className="h-10 w-full rounded-md border bg-background px-3">
+            <select
+              value={vehicleId}
+              onChange={(event) => setVehicleId(event.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3"
+            >
               <option value="">Select vehicle</option>
               {vehicles.map((vehicle) => (
                 <option key={vehicle.id} value={vehicle.id}>
@@ -391,7 +420,11 @@ function CreateMaintenanceDialog({
           </label>
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Type</span>
-            <select value={type} onChange={(event) => setType(event.target.value)} className="h-10 w-full rounded-md border bg-background px-3">
+            <select
+              value={type}
+              onChange={(event) => setType(event.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3"
+            >
               <option value="scheduled_service">Scheduled service</option>
               <option value="repair">Repair</option>
               <option value="inspection">Inspection</option>
@@ -407,7 +440,11 @@ function CreateMaintenanceDialog({
           </label>
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Severity</span>
-            <select value={severity} onChange={(event) => setSeverity(event.target.value)} className="h-10 w-full rounded-md border bg-background px-3">
+            <select
+              value={severity}
+              onChange={(event) => setSeverity(event.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3"
+            >
               <option value="routine">Routine</option>
               <option value="attention">Attention</option>
               <option value="urgent">Urgent</option>
@@ -420,11 +457,19 @@ function CreateMaintenanceDialog({
           </label>
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Scheduled date and time</span>
-            <Input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} />
+            <Input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(event) => setScheduledAt(event.target.value)}
+            />
           </label>
           <label className="space-y-1.5 text-sm sm:col-span-2">
             <span className="font-medium">Description</span>
-            <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={4} />
+            <Textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              rows={4}
+            />
           </label>
         </div>
         <DialogFooter>

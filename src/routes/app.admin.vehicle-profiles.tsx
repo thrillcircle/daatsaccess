@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Accessibility,
   Car,
@@ -96,7 +96,9 @@ function VehicleProfilesPage() {
       }
 
       const nextAssignments = (assignmentResult.data ?? []) as VehicleAssignment[];
-      const driverIds = Array.from(new Set(nextAssignments.map((assignment) => assignment.driver_id)));
+      const driverIds = Array.from(
+        new Set(nextAssignments.map((assignment) => assignment.driver_id)),
+      );
       const driverResult = driverIds.length
         ? await fleetDb.from("profiles").select("user_id,full_name").in("user_id", driverIds)
         : { data: [] as DriverProfile[], error: null };
@@ -125,12 +127,12 @@ function VehicleProfilesPage() {
       const vehicleDocuments = documents.filter((document) => document.vehicle_id === vehicle.id);
       const docStates = [
         documentState(
-          vehicleDocuments.find((document) => document.document_type === "roadworthy")?.expires_at ??
-            vehicle.roadworthy_expiry_date,
+          vehicleDocuments.find((document) => document.document_type === "roadworthy")
+            ?.expires_at ?? vehicle.roadworthy_expiry_date,
         ),
         documentState(
-          vehicleDocuments.find((document) => document.document_type === "license_disc")?.expires_at ??
-            vehicle.license_disc_expiry_date,
+          vehicleDocuments.find((document) => document.document_type === "license_disc")
+            ?.expires_at ?? vehicle.license_disc_expiry_date,
         ),
         documentState(
           vehicleDocuments.find((document) => document.document_type === "insurance")?.expires_at ??
@@ -157,7 +159,9 @@ function VehicleProfilesPage() {
       const matchesAttention =
         search.attention === "all" ||
         (search.attention === "documents" &&
-          (docStates.includes("expired") || docStates.includes("expiring") || docStates.includes("missing"))) ||
+          (docStates.includes("expired") ||
+            docStates.includes("expiring") ||
+            docStates.includes("missing"))) ||
         (search.attention === "service" && (service === "due_soon" || service === "overdue")) ||
         (search.attention === "accessibility" && vehicle.wheelchair_accessible);
       return matchesQuery && matchesStatus && matchesAssignment && matchesAttention;
@@ -189,7 +193,7 @@ function VehicleProfilesPage() {
     );
   const driverName = (driverId: string | undefined) =>
     driverId
-      ? drivers.find((driver) => driver.user_id === driverId)?.full_name ?? driverId.slice(0, 8)
+      ? (drivers.find((driver) => driver.user_id === driverId)?.full_name ?? driverId.slice(0, 8))
       : "Unassigned";
 
   return (
@@ -245,19 +249,21 @@ function VehicleProfilesPage() {
       <div className="mt-4 space-y-3">
         {filtered.map((vehicle) => {
           const assignment = assignmentFor(vehicle.id);
-          const vehicleDocuments = documents.filter((document) => document.vehicle_id === vehicle.id);
+          const vehicleDocuments = documents.filter(
+            (document) => document.vehicle_id === vehicle.id,
+          );
           const documentStates = [
             documentState(
-              vehicleDocuments.find((document) => document.document_type === "roadworthy")?.expires_at ??
-                vehicle.roadworthy_expiry_date,
+              vehicleDocuments.find((document) => document.document_type === "roadworthy")
+                ?.expires_at ?? vehicle.roadworthy_expiry_date,
             ),
             documentState(
-              vehicleDocuments.find((document) => document.document_type === "license_disc")?.expires_at ??
-                vehicle.license_disc_expiry_date,
+              vehicleDocuments.find((document) => document.document_type === "license_disc")
+                ?.expires_at ?? vehicle.license_disc_expiry_date,
             ),
             documentState(
-              vehicleDocuments.find((document) => document.document_type === "insurance")?.expires_at ??
-                vehicle.insurance_expiry_date,
+              vehicleDocuments.find((document) => document.document_type === "insurance")
+                ?.expires_at ?? vehicle.insurance_expiry_date,
             ),
           ];
           const service = serviceState(vehicle);
@@ -278,10 +284,14 @@ function VehicleProfilesPage() {
                     <div>
                       <h2 className="font-semibold">{vehicle.vehicle_name}</h2>
                       <p className="text-sm text-muted-foreground">
-                        {vehicle.license_plate} · {[vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(" ") || "Vehicle details incomplete"}
+                        {vehicle.license_plate} ·{" "}
+                        {[vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(" ") ||
+                          "Vehicle details incomplete"}
                       </p>
                     </div>
-                    <Badge variant={vehicle.status === "out_of_service" ? "destructive" : "outline"}>
+                    <Badge
+                      variant={vehicle.status === "out_of_service" ? "destructive" : "outline"}
+                    >
                       {VEHICLE_STATUS_LABEL[vehicle.status]}
                     </Badge>
                   </div>
@@ -291,7 +301,9 @@ function VehicleProfilesPage() {
                         <Accessibility className="mr-1 h-3 w-3" /> {label}
                       </Badge>
                     ))}
-                    {!accessibility.length ? <Badge variant="outline">Accessibility not recorded</Badge> : null}
+                    {!accessibility.length ? (
+                      <Badge variant="outline">Accessibility not recorded</Badge>
+                    ) : null}
                   </div>
                 </div>
 
@@ -504,7 +516,7 @@ function CreateVehicleDialog({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="space-y-1.5 text-sm">
       <span className="font-medium">{label}</span>

@@ -35,9 +35,7 @@ export function AdminSupportVehicleActions({
         </Button>
       ) : null}
       <LinkVehicleDialog ticketId={ticketId} currentVehicleId={vehicleId} />
-      {vehicleId ? (
-        <CreateMaintenanceDialog ticketId={ticketId} description={description} />
-      ) : null}
+      {vehicleId ? <CreateMaintenanceDialog ticketId={ticketId} description={description} /> : null}
     </div>
   );
 }
@@ -128,14 +126,19 @@ function LinkVehicleDialog({
                 <option value="">Select canonical vehicle</option>
                 {vehicles.map((vehicle) => (
                   <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.vehicle_name} · {vehicle.license_plate} · {vehicle.status.replaceAll("_", " ")}
+                    {vehicle.vehicle_name} · {vehicle.license_plate} ·{" "}
+                    {vehicle.status.replaceAll("_", " ")}
                   </option>
                 ))}
               </select>
             </label>
             <label className="space-y-1.5 text-sm">
               <span className="font-medium">Reason for link or correction</span>
-              <Textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={3} />
+              <Textarea
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                rows={3}
+              />
             </label>
           </div>
         )}
@@ -153,7 +156,13 @@ function LinkVehicleDialog({
   );
 }
 
-function CreateMaintenanceDialog({ ticketId, description }: { ticketId: string; description: string }) {
+function CreateMaintenanceDialog({
+  ticketId,
+  description,
+}: {
+  ticketId: string;
+  description: string;
+}) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("repair");
   const [severity, setSeverity] = useState("attention");

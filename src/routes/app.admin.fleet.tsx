@@ -80,31 +80,37 @@ function FleetDashboardPage() {
 
     async function load() {
       setLoading(true);
-      const [vehicleResult, assignmentResult, documentResult, workOrderResult, issueResult, statusResult] =
-        await Promise.all([
-          fleetDb.from("vehicle_profiles").select("*").order("vehicle_name"),
-          fleetDb
-            .from("vehicle_driver_assignments")
-            .select("*")
-            .in("status", ["scheduled", "active"])
-            .order("start_at", { ascending: false }),
-          fleetDb.from("vehicle_documents").select("*").eq("is_current", true),
-          fleetDb
-            .from("vehicle_maintenance_work_orders")
-            .select("*")
-            .not("status", "in", "(completed,cancelled)")
-            .order("reported_at", { ascending: false }),
-          fleetDb
-            .from("fleet_consolidation_issues")
-            .select("*")
-            .eq("status", "open")
-            .order("created_at", { ascending: false }),
-          fleetDb
-            .from("vehicle_status_events")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .limit(12),
-        ]);
+      const [
+        vehicleResult,
+        assignmentResult,
+        documentResult,
+        workOrderResult,
+        issueResult,
+        statusResult,
+      ] = await Promise.all([
+        fleetDb.from("vehicle_profiles").select("*").order("vehicle_name"),
+        fleetDb
+          .from("vehicle_driver_assignments")
+          .select("*")
+          .in("status", ["scheduled", "active"])
+          .order("start_at", { ascending: false }),
+        fleetDb.from("vehicle_documents").select("*").eq("is_current", true),
+        fleetDb
+          .from("vehicle_maintenance_work_orders")
+          .select("*")
+          .not("status", "in", "(completed,cancelled)")
+          .order("reported_at", { ascending: false }),
+        fleetDb
+          .from("fleet_consolidation_issues")
+          .select("*")
+          .eq("status", "open")
+          .order("created_at", { ascending: false }),
+        fleetDb
+          .from("vehicle_status_events")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(12),
+      ]);
 
       const error =
         vehicleResult.error ||
@@ -147,8 +153,12 @@ function FleetDashboardPage() {
   }, [isAdmin]);
 
   const dashboard = useMemo(() => {
-    const activeAssignments = data.assignments.filter((assignment) => isAssignmentEffective(assignment));
-    const assignedVehicleIds = new Set(activeAssignments.map((assignment) => assignment.vehicle_id));
+    const activeAssignments = data.assignments.filter((assignment) =>
+      isAssignmentEffective(assignment),
+    );
+    const assignedVehicleIds = new Set(
+      activeAssignments.map((assignment) => assignment.vehicle_id),
+    );
     let expiringDocuments = 0;
     let expiredDocuments = 0;
     let dueSoon = 0;
@@ -241,13 +251,38 @@ function FleetDashboardPage() {
         <Metric icon={Gauge} label="Available" value={dashboard.available} />
         <Metric icon={UserRoundCheck} label="Assigned now" value={dashboard.assigned} />
         <Metric icon={Wrench} label="Maintenance" value={dashboard.maintenance} tone="warning" />
-        <Metric icon={ShieldAlert} label="Out of service" value={dashboard.outOfService} tone="danger" />
+        <Metric
+          icon={ShieldAlert}
+          label="Out of service"
+          value={dashboard.outOfService}
+          tone="danger"
+        />
         <Metric icon={History} label="Retired" value={dashboard.retired} />
-        <Metric icon={FileWarning} label="Docs expiring" value={dashboard.expiringDocuments} tone="warning" />
-        <Metric icon={FileWarning} label="Docs expired" value={dashboard.expiredDocuments} tone="danger" />
+        <Metric
+          icon={FileWarning}
+          label="Docs expiring"
+          value={dashboard.expiringDocuments}
+          tone="warning"
+        />
+        <Metric
+          icon={FileWarning}
+          label="Docs expired"
+          value={dashboard.expiredDocuments}
+          tone="danger"
+        />
         <Metric icon={CalendarClock} label="Service due" value={dashboard.dueSoon} tone="warning" />
-        <Metric icon={AlertTriangle} label="Service overdue" value={dashboard.overdue} tone="danger" />
-        <Metric icon={ClipboardList} label="Reconciliation issues" value={dashboard.openIssues} tone="danger" />
+        <Metric
+          icon={AlertTriangle}
+          label="Service overdue"
+          value={dashboard.overdue}
+          tone="danger"
+        />
+        <Metric
+          icon={ClipboardList}
+          label="Reconciliation issues"
+          value={dashboard.openIssues}
+          tone="danger"
+        />
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
@@ -275,10 +310,18 @@ function FleetDashboardPage() {
                   <p className="text-sm font-medium">
                     {order.work_order_reference} · {vehicleName(order.vehicle_id)}
                   </p>
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{order.description}</p>
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                    {order.description}
+                  </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <Badge variant={order.severity === "urgent" || order.severity === "unsafe" ? "destructive" : "outline"}>
+                  <Badge
+                    variant={
+                      order.severity === "urgent" || order.severity === "unsafe"
+                        ? "destructive"
+                        : "outline"
+                    }
+                  >
                     {order.severity.replaceAll("_", " ")}
                   </Badge>
                   <span className="text-[10px] text-muted-foreground">
@@ -310,7 +353,9 @@ function FleetDashboardPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="font-semibold">Current assignments</h2>
-              <p className="text-xs text-muted-foreground">Effective driver and vehicle pairings.</p>
+              <p className="text-xs text-muted-foreground">
+                Effective driver and vehicle pairings.
+              </p>
             </div>
             <Button asChild variant="ghost" size="sm">
               <Link to="/app/admin/driver-assignments">View all</Link>
@@ -318,11 +363,15 @@ function FleetDashboardPage() {
           </div>
           <div className="mt-3 space-y-2">
             {dashboard.activeAssignments.slice(0, 6).map((assignment) => (
-              <div key={assignment.id} className="flex items-center justify-between gap-3 rounded-xl border p-3">
+              <div
+                key={assignment.id}
+                className="flex items-center justify-between gap-3 rounded-xl border p-3"
+              >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{driverName(assignment.driver_id)}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {vehicleName(assignment.vehicle_id)} · {assignment.assignment_type.replaceAll("_", " ")}
+                    {vehicleName(assignment.vehicle_id)} ·{" "}
+                    {assignment.assignment_type.replaceAll("_", " ")}
                   </p>
                 </div>
                 <Badge>Active</Badge>
@@ -400,7 +449,9 @@ function Metric({
       }
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
         <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
       <p className="mt-2 text-2xl font-semibold">{value}</p>
