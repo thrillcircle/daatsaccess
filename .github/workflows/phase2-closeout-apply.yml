@@ -30,12 +30,31 @@ jobs:
           bun-version: latest
 
       - name: Apply closeout patch
-        run: python3 scripts/phase2_closeout_apply.py
+        run: |
+          set +e
+          python3 scripts/phase2_closeout_apply.py > phase2-closeout-apply.log 2>&1
+          code=$?
+          cat phase2-closeout-apply.log
+          echo "APPLY_EXIT=$code" >> "$GITHUB_ENV"
+          exit 0
+
+      - name: Persist patch diagnostics
+        if: env.APPLY_EXIT != '0'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add phase2-closeout-apply.log
+          git commit -m "chore(closeout): record patch diagnostic"
+          git pull --rebase origin phase-2-closeout-corrections
+          git push origin HEAD:phase-2-closeout-corrections
+          exit 1
 
       - name: Install dependencies
+        if: env.APPLY_EXIT == '0'
         run: bun install --frozen-lockfile
 
       - name: Format changed source
+        if: env.APPLY_EXIT == '0'
         run: |
           bunx prettier --write \
             'src/components/AddressAutocomplete.tsx' \
@@ -56,6 +75,7 @@ jobs:
             'src/routes/app.trip.$rideId.tsx'
 
       - name: Lint changed source
+        if: env.APPLY_EXIT == '0'
         run: |
           bunx eslint \
             'src/components/AddressAutocomplete.tsx' \
@@ -76,17 +96,20 @@ jobs:
             'src/routes/app.trip.$rideId.tsx'
 
       - name: Run full test suite
+        if: env.APPLY_EXIT == '0'
         run: bun run test
 
       - name: Run production build
+        if: env.APPLY_EXIT == '0'
         run: bun run build
 
       - name: Commit verified corrections
+        if: env.APPLY_EXIT == '0'
         run: |
-          rm -f scripts/phase2_closeout_apply.py .github/workflows/phase2-closeout-apply.yml
+          rm -f scripts/phase2_closeout_apply.py .github/workflows/phase2-closeout-apply.yml phase2-closeout-apply.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src supabase scripts .github
+          git add src supabase scripts .github phase2-closeout-apply.log
           git commit -m "fix(operations): close Phase 2 support and fleet gaps"
           git pull --rebase origin phase-2-closeout-corrections
           git push origin HEAD:phase-2-closeout-corrections
