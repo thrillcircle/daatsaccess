@@ -27,9 +27,28 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Apply guarded audit closeout
-        run: python3 scripts/phase3_audit_closeout.py
+        id: audit
+        shell: bash
+        run: |
+          set +e
+          python3 scripts/phase3_audit_closeout.py > phase3-audit-output.txt 2>&1
+          exit_code=$?
+          cat phase3-audit-output.txt
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Record exact guard failure
+        if: steps.audit.outputs.exit_code != '0'
+        run: |
+          git config user.name "thrillcircle"
+          git config user.email "155582963+thrillcircle@users.noreply.github.com"
+          git add phase3-audit-output.txt
+          git commit -m "Record Phase 3 audit guard failure"
+          git push origin HEAD:phase-3-fleet-consolidation
+          exit 1
 
       - name: Format changed application files
+        if: steps.audit.outputs.exit_code == '0'
         run: |
           bunx prettier --write \
             src/lib/fleet.ts \
@@ -42,6 +61,7 @@ jobs:
             'src/routes/app.admin.vehicle-profiles.$vehicleId.tsx'
 
       - name: Lint changed application files
+        if: steps.audit.outputs.exit_code == '0'
         run: |
           bunx eslint \
             src/lib/fleet.ts \
@@ -54,15 +74,19 @@ jobs:
             'src/routes/app.admin.vehicle-profiles.$vehicleId.tsx'
 
       - name: Run full tests
+        if: steps.audit.outputs.exit_code == '0'
         run: bun run test
 
       - name: Build production application
+        if: steps.audit.outputs.exit_code == '0'
         run: bun run build
 
       - name: Commit verified closeout
+        if: steps.audit.outputs.exit_code == '0'
         run: |
           rm scripts/phase3_audit_closeout.py
           rm .github/workflows/phase3-audit-closeout.yml
+          rm phase3-audit-output.txt
           git config user.name "thrillcircle"
           git config user.email "155582963+thrillcircle@users.noreply.github.com"
           git add -A
