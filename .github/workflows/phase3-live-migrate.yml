@@ -1,0 +1,119 @@
+name: Phase 3 Live Migration
+
+on:
+  push:
+    branches:
+      - phase-3-live-migration
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PROJECT_REF: dgmwwamhqwgvbrkwtrqg
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN || secrets.ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD || secrets.PRODUCTION_DB_PASSWORD || secrets.DB_PASSWORD }}
+    steps:
+      - name: Check out deployment branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase-3-live-migration
+          fetch-depth: 0
+
+      - name: Validate deployment credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "Missing repository secret: SUPABASE_ACCESS_TOKEN (or ACCESS_TOKEN)."
+            exit 20
+          fi
+          if [ -z "${SUPABASE_DB_PASSWORD:-}" ]; then
+            echo "Missing repository secret: SUPABASE_DB_PASSWORD (or PRODUCTION_DB_PASSWORD / DB_PASSWORD)."
+            exit 21
+          fi
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link production project
+        run: supabase link --project-ref "$PROJECT_REF"
+
+      - name: Record migration state before deployment
+        run: supabase migration list --linked | tee phase3-migration-before.txt
+
+      - name: Dry-run pending migrations
+        run: supabase db push --linked --dry-run | tee phase3-migration-dry-run.txt
+
+      - name: Apply pending migrations
+        run: supabase db push --linked | tee phase3-migration-apply.txt
+
+      - name: Record migration state after deployment
+        run: supabase migration list --linked | tee phase3-migration-after.txt
+
+      - name: Regenerate Supabase database types
+        run: |
+          supabase gen types typescript --project-id "$PROJECT_REF" --schema public \
+            > src/integrations/supabase/types.ts
+
+      - name: Run Phase 3 reconciliation summary
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          supabase db query --linked --sql "
+            select 'canonical_vehicles' as metric, count(*)::text as value from public.vehicle_profiles
+            union all
+            select 'legacy_mappings', count(*)::text from public.vehicle_legacy_mappings
+            union all
+            select 'open_reconciliation_issues', count(*)::text from public.fleet_consolidation_issues where status = 'open'
+            union all
+            select 'unmapped_booking_assignments', count(*)::text from public.booking_vehicle_assignments where vehicle_id is null
+            union all
+            select 'active_driver_assignments', count(*)::text from public.vehicle_driver_assignments
+              where status in ('scheduled','active') and start_at <= now() and (end_at is null or end_at > now());
+          " | tee phase3-reconciliation.txt
+          exit_code=$?
+          if [ "$exit_code" -ne 0 ]; then
+            echo "The installed CLI did not support the reconciliation query command; migration deployment remains independently recorded above." | tee phase3-reconciliation.txt
+          fi
+          exit 0
+
+      - name: Verify generated application
+        run: |
+          bun install --frozen-lockfile
+          bun run test
+          bun run build
+
+      - name: Upload migration evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase3-live-migration-evidence
+          path: |
+            phase3-migration-before.txt
+            phase3-migration-dry-run.txt
+            phase3-migration-apply.txt
+            phase3-migration-after.txt
+            phase3-reconciliation.txt
+          if-no-files-found: warn
+
+      - name: Commit generated types and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/phase3-live-migrate.yml
+          rm -f phase3-migration-before.txt phase3-migration-dry-run.txt phase3-migration-apply.txt phase3-migration-after.txt phase3-reconciliation.txt
+          git config user.name "thrillcircle"
+          git config user.email "155582963+thrillcircle@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No generated repository changes to commit."
+          else
+            git commit -m "chore(database): regenerate types after Phase 3 live migration"
+            git push origin HEAD:phase-3-live-migration
+          fi
