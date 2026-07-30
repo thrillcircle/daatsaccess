@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accessibility, HeartHandshake, CalendarClock, Plane } from "lucide-react";
 
 export const Route = createFileRoute("/app/passenger/book/")({
-  head: () => ({ meta: [{ title: "Book a service — Access" }] }),
+  head: () => ({ meta: [{ title: "Services — Access" }] }),
   component: BookServicePage,
 });
 
@@ -42,7 +42,8 @@ const SERVICES = [
     href: "/app/passenger/book/extended" as const,
     title: "Access Extended Journey",
     icon: Plane,
-    description: "Premium accessible multi-day travel with a dedicated vehicle, driver and companion team.",
+    description:
+      "Premium accessible multi-day travel with a dedicated vehicle, driver and companion team.",
     available: true,
   },
 ];
@@ -56,14 +57,16 @@ function BookServicePage() {
       { to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger },
       { to: "/app/passenger/bookings", label: "Bookings", icon: NAV_ICONS.Profile },
     ];
-    if (roles?.includes("driver")) items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
-    if (roles?.includes("admin")) items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
+    if (roles?.includes("driver"))
+      items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
+    if (roles?.includes("admin"))
+      items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
     items.push({ to: "/app/profile", label: "Profile", icon: NAV_ICONS.Profile });
     return items;
   }, [roles]);
 
   return (
-    <AppShell title="Book" nav={nav}>
+    <AppShell title="Services" nav={nav}>
       <section>
         <h1 className="text-xl font-semibold">Which service do you need?</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -77,7 +80,9 @@ function BookServicePage() {
             <div
               className={
                 "flex gap-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)] " +
-                (s.available ? "transition hover:border-primary/40 hover:bg-accent/40" : "opacity-60")
+                (s.available
+                  ? "transition hover:border-primary/40 hover:bg-accent/40"
+                  : "opacity-60")
               }
             >
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -87,7 +92,9 @@ function BookServicePage() {
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold">{s.title}</h2>
                   {!s.available ? (
-                    <Badge variant="outline" className="text-[10px] uppercase">Coming soon</Badge>
+                    <Badge variant="outline" className="text-[10px] uppercase">
+                      Coming soon
+                    </Badge>
                   ) : null}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{s.description}</p>

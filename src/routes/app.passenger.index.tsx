@@ -47,9 +47,8 @@ function localInputNow(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-
 export const Route = createFileRoute("/app/passenger/")({
-  head: () => ({ meta: [{ title: "Passenger — Access" }] }),
+  head: () => ({ meta: [{ title: "Ride — Access" }] }),
   component: PassengerPage,
 });
 
@@ -63,14 +62,16 @@ function PassengerPage() {
       { to: "/app/passenger/book", label: "Book", icon: NAV_ICONS.Profile },
       { to: "/app/passenger/bookings", label: "Bookings", icon: NAV_ICONS.Profile },
     ];
-    if (roles?.includes("driver")) items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
-    if (roles?.includes("admin")) items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
+    if (roles?.includes("driver"))
+      items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
+    if (roles?.includes("admin"))
+      items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
     items.push({ to: "/app/profile", label: "Profile", icon: NAV_ICONS.Profile });
     return items;
   }, [roles]);
 
   return (
-    <AppShell title="Passenger" nav={nav}>
+    <AppShell title="Ride" nav={nav}>
       <RideRequest userId={user?.id} />
       <RatePrompt userId={user?.id} />
       <ScheduledTrips userId={user?.id} />
@@ -90,7 +91,6 @@ function PassengerPage() {
     </AppShell>
   );
 }
-
 
 function RatePrompt({ userId }: { userId?: string }) {
   const [ride, setRide] = useState<Ride | null>(null);
@@ -112,7 +112,10 @@ function RatePrompt({ userId }: { userId?: string }) {
         .from("ride_reviews")
         .select("ride_id")
         .eq("passenger_id", userId)
-        .in("ride_id", list.map((r) => r.id));
+        .in(
+          "ride_id",
+          list.map((r) => r.id),
+        );
       const rated = new Set((reviews ?? []).map((r) => r.ride_id));
       const next = list.find((r) => !rated.has(r.id));
       if (!cancelled) setRide(next ?? null);
@@ -135,7 +138,6 @@ function RatePrompt({ userId }: { userId?: string }) {
     </section>
   );
 }
-
 
 function RideRequest({ userId }: { userId?: string }) {
   const route = useServerFn(computeRoute);
@@ -164,7 +166,6 @@ function RideRequest({ userId }: { userId?: string }) {
 
   const price = distanceKm != null ? estimatePrice(distanceKm) : null;
   const canRequest = !!(pickupPt && destPt && distanceKm != null) && scheduleValid;
-
 
   // Soft-bias autocomplete around the passenger's current location (no prompt — only if cached).
   useEffect(() => {
@@ -290,7 +291,6 @@ function RideRequest({ userId }: { userId?: string }) {
         setActiveRide(inserted);
         toast.success("Ride requested — finding a driver");
       }
-
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to request ride");
     } finally {
@@ -357,7 +357,11 @@ function RideRequest({ userId }: { userId?: string }) {
         </AlertDialog>
         {sharePickup && (
           <div className="mt-3 flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground">
-            <Radio className={"h-3.5 w-3.5 " + (passengerLive.status === "watching" ? "text-primary" : "")} />
+            <Radio
+              className={
+                "h-3.5 w-3.5 " + (passengerLive.status === "watching" ? "text-primary" : "")
+              }
+            />
             {passengerLive.status === "watching"
               ? "Sharing your pickup location with the driver"
               : passengerLive.status === "denied" || passengerLive.status === "unavailable"
@@ -369,9 +373,7 @@ function RideRequest({ userId }: { userId?: string }) {
           <span className="text-muted-foreground">
             {Number(activeRide.distance_km).toFixed(2)} km
           </span>
-          <span className="font-semibold">
-            {formatZAR(Number(activeRide.estimated_price))}
-          </span>
+          <span className="font-semibold">{formatZAR(Number(activeRide.estimated_price))}</span>
         </div>
       </>
     );
@@ -458,9 +460,7 @@ function RideRequest({ userId }: { userId?: string }) {
                   ? `${distanceKm.toFixed(2)} km${durationMin != null ? ` · ~${durationMin} min` : ""}`
                   : "—"}
             </span>
-            <span className="font-semibold">
-              {price != null ? formatZAR(price) : "—"}
-            </span>
+            <span className="font-semibold">{price != null ? formatZAR(price) : "—"}</span>
           </div>
           <Button
             className="w-full"
@@ -469,12 +469,15 @@ function RideRequest({ userId }: { userId?: string }) {
             disabled={!canRequest || submitting || estimating}
           >
             {submitting
-              ? mode === "scheduled" ? "Scheduling…" : "Requesting…"
-              : mode === "scheduled" ? "Schedule ride" : "Request ride"}
+              ? mode === "scheduled"
+                ? "Scheduling…"
+                : "Requesting…"
+              : mode === "scheduled"
+                ? "Schedule ride"
+                : "Request ride"}
           </Button>
         </div>
       )}
-
     </section>
   );
 }
@@ -511,7 +514,12 @@ function ScheduledTrips({ userId }: { userId?: string }) {
     );
     let driverMap = new Map<
       string,
-      { full_name: string | null; vehicle_model: string | null; vehicle_type: string | null; license_plate: string | null }
+      {
+        full_name: string | null;
+        vehicle_model: string | null;
+        vehicle_type: string | null;
+        license_plate: string | null;
+      }
     >();
     if (driverIds.length) {
       const [{ data: profs }, { data: vehs }] = await Promise.all([
@@ -538,7 +546,7 @@ function ScheduledTrips({ userId }: { userId?: string }) {
     setRides(
       list.map((r) => ({
         ...r,
-        driver: r.driver_id ? driverMap.get(r.driver_id) ?? null : null,
+        driver: r.driver_id ? (driverMap.get(r.driver_id) ?? null) : null,
       })),
     );
     setLoading(false);
@@ -620,12 +628,8 @@ function ScheduledTrips({ userId }: { userId?: string }) {
                     <p className="mt-1 rounded-md bg-secondary px-2 py-1 text-xs">
                       <span className="font-medium">Driver assigned:</span>{" "}
                       {r.driver.full_name ?? "Driver"}
-                      {r.driver.vehicle_model
-                        ? ` · ${r.driver.vehicle_model}`
-                        : ""}
-                      {r.driver.license_plate
-                        ? ` · ${r.driver.license_plate}`
-                        : ""}
+                      {r.driver.vehicle_model ? ` · ${r.driver.vehicle_model}` : ""}
+                      {r.driver.license_plate ? ` · ${r.driver.license_plate}` : ""}
                     </p>
                   )}
                 </div>
@@ -682,12 +686,12 @@ function ScheduledTrips({ userId }: { userId?: string }) {
   );
 }
 
-
-
 function BecomeDriver({ userId, hasDriverRole }: { userId?: string; hasDriverRole: boolean }) {
   if (!userId || hasDriverRole) return null;
   async function onBecome() {
-    const { error } = await supabase.from("user_roles").insert({ user_id: userId!, role: "driver" });
+    const { error } = await supabase
+      .from("user_roles")
+      .insert({ user_id: userId!, role: "driver" });
     if (error) toast.error(error.message);
     else {
       toast.success("Driver role added — refresh to access driver mode");
@@ -807,7 +811,6 @@ function RideHistory({
       ) : !rides.length ? (
         <p className="py-6 text-center text-sm text-muted-foreground">{emptyText}</p>
       ) : (
-
         <ul className="divide-y">
           {rides.map((r) => {
             const travelSec =
@@ -823,10 +826,7 @@ function RideHistory({
                 ? `${Number(distKm).toFixed(1)} km`
                 : `${Number(distKm).toFixed(1)} km (est)`;
             const tripDate = new Date(r.completed_at ?? r.created_at);
-            const vehicle = [
-              r.driver_vehicle?.vehicle_model,
-              r.driver_vehicle?.license_plate,
-            ]
+            const vehicle = [r.driver_vehicle?.vehicle_model, r.driver_vehicle?.license_plate]
               .filter(Boolean)
               .join(" · ");
             return (
@@ -855,9 +855,7 @@ function RideHistory({
                           <span className="text-[10px] text-muted-foreground">Not rated</span>
                         ) : null}
                       </div>
-                      <p className="mt-1 truncate text-sm font-medium">
-                        {r.destination_address}
-                      </p>
+                      <p className="mt-1 truncate text-sm font-medium">{r.destination_address}</p>
                       <p className="truncate text-xs text-muted-foreground">
                         From {r.pickup_address}
                       </p>
@@ -886,7 +884,6 @@ function RideHistory({
     </section>
   );
 }
-
 
 function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (

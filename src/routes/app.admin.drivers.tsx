@@ -8,9 +8,34 @@ import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Phone, Car, Search, MessageSquare, History, UserPlus, UserMinus, Power, ExternalLink, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Phone,
+  Car,
+  Search,
+  MessageSquare,
+  History,
+  UserPlus,
+  UserMinus,
+  Power,
+  ExternalLink,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -60,9 +85,10 @@ type DriversSearch = { status: DriverFilter; q: string };
 export const Route = createFileRoute("/app/admin/drivers")({
   head: () => ({ meta: [{ title: "Drivers — Admin" }] }),
   validateSearch: (raw: Record<string, unknown>): DriversSearch => ({
-    status: typeof raw.status === "string" && VALID_DRIVER_FILTERS.has(raw.status as DriverFilter)
-      ? (raw.status as DriverFilter)
-      : "all",
+    status:
+      typeof raw.status === "string" && VALID_DRIVER_FILTERS.has(raw.status as DriverFilter)
+        ? (raw.status as DriverFilter)
+        : "all",
     q: typeof raw.q === "string" ? raw.q : "",
   }),
   component: DriversPage,
@@ -86,8 +112,10 @@ function DriversPage() {
 
   const nav = useMemo(() => {
     const items = [];
-    if (roles?.includes("passenger")) items.push({ to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger });
-    if (roles?.includes("driver")) items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
+    if (roles?.includes("passenger"))
+      items.push({ to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger });
+    if (roles?.includes("driver"))
+      items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
     items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
     return items;
   }, [roles]);
@@ -98,7 +126,6 @@ function DriversPage() {
   const [activeRides, setActiveRides] = useState<Record<string, Ride>>({});
   const [stats, setStats] = useState<Record<string, DriverStats>>({});
   const [unassignedRides, setUnassignedRides] = useState<Ride[]>([]);
-  const [passengers, setPassengers] = useState<Profile[]>([]);
   const [queryInput, setQueryInput] = useState(search.q);
 
   useEffect(() => setQueryInput(search.q), [search.q]);
@@ -129,7 +156,6 @@ function DriversPage() {
         setActiveRides({});
         setStats({});
         setUnassignedRides([]);
-        setPassengers([]);
         return;
       }
       const { data: drv } = await supabase
@@ -147,18 +173,26 @@ function DriversPage() {
           ? supabase.from("profiles").select("*").in("user_id", userIds)
           : Promise.resolve({ data: [] as Profile[] }),
         userIds.length
-          ? supabase
-              .from("rides")
-              .select("*")
-              .in("driver_id", userIds)
-              .in("status", ACTIVE)
+          ? supabase.from("rides").select("*").in("driver_id", userIds).in("status", ACTIVE)
           : Promise.resolve({ data: [] as Ride[] }),
         userIds.length
           ? supabase
               .from("rides")
-              .select("driver_id, status, distance_km, actual_distance_km, scheduled_at, request_type")
+              .select(
+                "driver_id, status, distance_km, actual_distance_km, scheduled_at, request_type",
+              )
               .in("driver_id", userIds)
-          : Promise.resolve({ data: [] as Pick<Ride, "driver_id" | "status" | "distance_km" | "actual_distance_km" | "scheduled_at" | "request_type">[] }),
+          : Promise.resolve({
+              data: [] as Pick<
+                Ride,
+                | "driver_id"
+                | "status"
+                | "distance_km"
+                | "actual_distance_km"
+                | "scheduled_at"
+                | "request_type"
+              >[],
+            }),
         supabase
           .from("rides")
           .select("*")
@@ -180,9 +214,20 @@ function DriversPage() {
       setActiveRides(rMap);
 
       const sMap: Record<string, DriverStats> = {};
-      for (const uid of userIds) sMap[uid] = { completed: 0, cancelled: 0, upcoming: 0, totalKm: 0 };
+      for (const uid of userIds)
+        sMap[uid] = { completed: 0, cancelled: 0, upcoming: 0, totalKm: 0 };
       const nowTs = Date.now();
-      for (const row of (allRidesRes.data ?? []) as Array<Pick<Ride, "driver_id" | "status" | "distance_km" | "actual_distance_km" | "scheduled_at" | "request_type">>) {
+      for (const row of (allRidesRes.data ?? []) as Array<
+        Pick<
+          Ride,
+          | "driver_id"
+          | "status"
+          | "distance_km"
+          | "actual_distance_km"
+          | "scheduled_at"
+          | "request_type"
+        >
+      >) {
         if (!row.driver_id) continue;
         const s = sMap[row.driver_id];
         if (!s) continue;
@@ -203,23 +248,7 @@ function DriversPage() {
       }
       setStats(sMap);
 
-      setUnassignedRides(((unassignedRes.data ?? []) as Ride[]));
-
-
-      const { data: passengerRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "passenger");
-      const passengerIds = (passengerRoles ?? []).map((r) => r.user_id);
-      if (passengerIds.length) {
-        const { data: pProfiles } = await supabase
-          .from("profiles")
-          .select("*")
-          .in("user_id", passengerIds);
-        if (!cancelled) setPassengers((pProfiles ?? []) as Profile[]);
-      } else if (!cancelled) {
-        setPassengers([]);
-      }
+      setUnassignedRides((unassignedRes.data ?? []) as Ride[]);
     };
 
     load();
@@ -246,11 +275,7 @@ function DriversPage() {
           });
         },
       )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "rides" },
-        () => load(),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, () => load())
       .subscribe();
 
     const tick = setInterval(() => setDrivers((prev) => prev.slice()), 15000);
@@ -298,28 +323,30 @@ function DriversPage() {
     const isLiveLoc = updatedTs && now - updatedTs < LIVE_THRESHOLD_MS;
     const onTrip = !!activeRides[d.user_id];
     const profileComplete =
-      !!d.vehicle_type && !!d.vehicle_model && !!d.license_plate &&
-      !!profiles[d.user_id]?.full_name && !!profiles[d.user_id]?.phone;
+      !!d.vehicle_type &&
+      !!d.vehicle_model &&
+      !!d.license_plate &&
+      !!profiles[d.user_id]?.full_name &&
+      !!profiles[d.user_id]?.phone;
     switch (activeFilter) {
-      case "online": return !!d.is_available;
-      case "offline": return !d.is_available;
-      case "assigned": return onTrip;
-      case "available": return !!d.is_available && !onTrip;
-      case "stale": return !!d.is_available && !isLiveLoc;
-      case "incomplete": return !profileComplete;
-      default: return true;
+      case "online":
+        return !!d.is_available;
+      case "offline":
+        return !d.is_available;
+      case "assigned":
+        return onTrip;
+      case "available":
+        return !!d.is_available && !onTrip;
+      case "stale":
+        return !!d.is_available && !isLiveLoc;
+      case "incomplete":
+        return !profileComplete;
+      default:
+        return true;
     }
   };
 
   const filteredDrivers = drivers.filter((d) => matchSearch(d) && matchFilter(d));
-  const filteredPassengers = passengers.filter((p) => {
-    if (!q) return true;
-    return (
-      (p.full_name?.toLowerCase().includes(q) ?? false) ||
-      (p.phone?.toLowerCase().includes(q) ?? false) ||
-      p.user_id.toLowerCase().includes(q)
-    );
-  });
 
   const filtersApplied = activeFilter !== "all" || !!q;
 
@@ -354,7 +381,12 @@ function DriversPage() {
           <span className="text-muted-foreground">
             {filteredDrivers.length} of {drivers.length} drivers ·{" "}
             {DRIVER_FILTERS.find((f) => f.key === activeFilter)?.label}
-            {q && <> matching "<span className="text-foreground">{q}</span>"</>}
+            {q && (
+              <>
+                {" "}
+                matching "<span className="text-foreground">{q}</span>"
+              </>
+            )}
           </span>
           <Button
             size="sm"
@@ -374,15 +406,17 @@ function DriversPage() {
         Drivers ({filteredDrivers.length}/{drivers.length})
       </h3>
 
-
       <ul className="space-y-3">
         {filteredDrivers.map((d) => {
           const prof = profiles[d.user_id];
           const ride = activeRides[d.user_id];
-          const driverStats = stats[d.user_id] ?? { completed: 0, cancelled: 0, upcoming: 0, totalKm: 0 };
-          const updatedTs = d.location_updated_at
-            ? new Date(d.location_updated_at).getTime()
-            : 0;
+          const driverStats = stats[d.user_id] ?? {
+            completed: 0,
+            cancelled: 0,
+            upcoming: 0,
+            totalKm: 0,
+          };
+          const updatedTs = d.location_updated_at ? new Date(d.location_updated_at).getTime() : 0;
           const isLive = d.is_available && updatedTs && now - updatedTs < LIVE_THRESHOLD_MS;
           const hasLoc = d.current_lat != null && d.current_lng != null;
           return (
@@ -421,9 +455,7 @@ function DriversPage() {
                     {isLive ? "Live location" : "Last-known location"}
                   </p>
                   <p className="font-mono">
-                    {hasLoc
-                      ? `${d.current_lat!.toFixed(4)}, ${d.current_lng!.toFixed(4)}`
-                      : "—"}
+                    {hasLoc ? `${d.current_lat!.toFixed(4)}, ${d.current_lng!.toFixed(4)}` : "—"}
                   </p>
                   <p className="text-muted-foreground">updated {fmtAgo(d.location_updated_at)}</p>
                 </div>
@@ -489,35 +521,6 @@ function DriversPage() {
           </li>
         )}
       </ul>
-
-      <h3 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Passengers ({filteredPassengers.length}/{passengers.length})
-      </h3>
-      <ul className="space-y-2">
-        {filteredPassengers.map((p) => (
-          <li key={p.user_id} className="rounded-2xl border bg-card p-3 text-sm shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{p.full_name ?? "Unnamed"}</p>
-                {p.phone ? (
-                  <a href={`tel:${p.phone}`} className="inline-flex items-center gap-1 text-xs text-primary">
-                    <Phone className="h-3 w-3" /> {p.phone}
-                  </a>
-                ) : (
-                  <p className="text-xs text-muted-foreground">No phone</p>
-                )}
-              </div>
-              <p className="font-mono text-[10px] text-muted-foreground">{p.user_id.slice(0, 8)}…</p>
-            </div>
-          </li>
-        ))}
-        {!filteredPassengers.length && (
-          <li className="rounded-2xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-            {passengers.length ? "No passengers match your search." : "No passengers registered yet."}
-          </li>
-        )}
-      </ul>
-
     </AdminShell>
   );
 }
@@ -551,7 +554,11 @@ function ToggleAvailableButton({ driver }: { driver: DriverProfile }) {
         else toast.success(`Marked ${next ? "available" : "unavailable"}`);
       }}
     >
-      {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Power className="mr-1 h-3 w-3" />}
+      {busy ? (
+        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+      ) : (
+        <Power className="mr-1 h-3 w-3" />
+      )}
       {driver.is_available ? "Set unavailable" : "Set available"}
     </Button>
   );
@@ -649,7 +656,11 @@ function UnassignButton({ ride }: { ride: Ride }) {
         else toast.success("Driver unassigned");
       }}
     >
-      {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <UserMinus className="mr-1 h-3 w-3" />}
+      {busy ? (
+        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+      ) : (
+        <UserMinus className="mr-1 h-3 w-3" />
+      )}
       Unassign current
     </Button>
   );
@@ -724,4 +735,3 @@ function TripHistoryDialog({
     </Dialog>
   );
 }
-
