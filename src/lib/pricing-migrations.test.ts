@@ -100,9 +100,7 @@ describe("Phase 4 database contracts", () => {
       "Only database-owned or service-role execution may change the",
     );
     expect(clientBoundary).not.toContain("private.has_role(auth.uid(), 'admin'::app_role)");
-    expect(clientBoundary).toContain(
-      "Booking pricing and deposit fields are server-authoritative",
-    );
+    expect(clientBoundary).toContain("Booking pricing and deposit fields are server-authoritative");
     expect(extendedJourneyAdmin).not.toContain("deposit_amount:");
     expect(extendedJourneyAdmin).not.toContain("Save deposit");
     expect(extendedJourneyAdmin).toContain("Open quote workspace");
