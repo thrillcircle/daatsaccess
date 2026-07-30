@@ -1,13 +1,14 @@
 name: Phase 1 implementation
 
 on:
-  push:
-    branches:
-      - phase-1-interface-pricing-cleanup
   pull_request:
     branches:
       - main
     types: [opened, synchronize, reopened]
+
+concurrency:
+  group: phase-1-final-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -29,8 +30,8 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Apply Phase 1 patch
-        run: python3 scripts/phase1_cleanup_v3.py
+      - name: Apply final Phase 1 labels
+        run: python3 scripts/phase1_final_labels.py
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -38,15 +39,11 @@ jobs:
       - name: Format changed source files
         run: |
           bunx prettier --write \
-            src/components/AppShell.tsx \
-            src/components/AdminShell.tsx \
-            src/routes/app.driver.tsx \
-            src/routes/app.admin.index.tsx \
-            src/routes/app.admin.drivers.tsx \
-            src/routes/app.admin.passengers.tsx \
-            src/routes/app.admin.pricing-services.tsx
+            src/routes/app.passenger.index.tsx \
+            src/routes/app.passenger.book.index.tsx \
+            src/routes/app.passenger.bookings.tsx
 
-      - name: Lint changed source files
+      - name: Lint Phase 1 source files
         run: |
           bunx eslint \
             src/components/AppShell.tsx \
@@ -55,7 +52,10 @@ jobs:
             src/routes/app.admin.index.tsx \
             src/routes/app.admin.drivers.tsx \
             src/routes/app.admin.passengers.tsx \
-            src/routes/app.admin.pricing-services.tsx
+            src/routes/app.admin.pricing-services.tsx \
+            src/routes/app.passenger.index.tsx \
+            src/routes/app.passenger.book.index.tsx \
+            src/routes/app.passenger.bookings.tsx
 
       - name: Test
         run: bun run test
@@ -63,14 +63,15 @@ jobs:
       - name: Production build
         run: bun run build
 
-      - name: Commit verified implementation
+      - name: Commit verified label cleanup
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src supabase scripts .github
+          git add src/routes/app.passenger.index.tsx src/routes/app.passenger.book.index.tsx src/routes/app.passenger.bookings.tsx src/routeTree.gen.ts
           if git diff --cached --quiet; then
-            echo "No implementation changes to commit."
+            echo "No label changes to commit."
             exit 0
           fi
-          git commit -m "feat(ui): complete phase one cleanup and pricing foundation"
+          git commit -m "fix(ui): align passenger page labels with phase one navigation"
+          git pull --rebase origin phase-1-interface-pricing-cleanup
           git push origin HEAD:phase-1-interface-pricing-cleanup
