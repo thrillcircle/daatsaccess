@@ -1,5 +1,3 @@
--- Phase 3 support integration: vehicle issues resolve to the canonical vehicle.
-
 CREATE OR REPLACE FUNCTION public.support_create_ticket(
   p_requester_role text,
   p_category text,
@@ -194,7 +192,6 @@ BEGIN
 END;
 $$;
 
--- Backfill deterministic links from existing ride-linked tickets.
 UPDATE public.support_tickets ticket
 SET vehicle_id = ride.vehicle_id
 FROM public.rides ride
@@ -202,7 +199,6 @@ WHERE ticket.vehicle_id IS NULL
   AND ticket.ride_id = ride.id
   AND ride.vehicle_id IS NOT NULL;
 
--- Backfill driver vehicle issues only where one effective assignment exists.
 WITH effective_assignments AS (
   SELECT
     assignment.driver_id,

@@ -1,7 +1,3 @@
--- Phase 3: canonical fleet consolidation, assignments and maintenance.
--- This migration is deliberately non-destructive. Legacy vehicle sources remain
--- available until reconciliation and live validation are complete.
-
 CREATE OR REPLACE FUNCTION public.normalize_vehicle_registration(value text)
 RETURNS text
 LANGUAGE sql
@@ -30,7 +26,6 @@ $$;
 REVOKE ALL ON FUNCTION public.fleet_require_admin() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.fleet_require_admin() TO authenticated;
 
--- Canonical vehicle normalisation and status alignment.
 ALTER TABLE public.vehicle_profiles
   ADD COLUMN IF NOT EXISTS license_plate_normalized text,
   ADD COLUMN IF NOT EXISTS accessibility_features jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -89,7 +84,6 @@ CREATE TRIGGER vehicle_profiles_normalize_registration_trigger
   BEFORE INSERT OR UPDATE OF license_plate ON public.vehicle_profiles
   FOR EACH ROW EXECUTE FUNCTION public.vehicle_profiles_normalize_registration();
 
--- Migration reconciliation.
 CREATE TABLE IF NOT EXISTS public.vehicle_legacy_mappings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   canonical_vehicle_id uuid NOT NULL REFERENCES public.vehicle_profiles(id) ON DELETE CASCADE,
@@ -173,7 +167,6 @@ SELECT
 FROM public.vehicle_profiles
 ON CONFLICT (legacy_source, legacy_record_id) DO NOTHING;
 
--- Create canonical vehicles from unambiguous fleet_vehicles records.
 WITH fleet_source AS (
   SELECT
     fv.*,
@@ -253,7 +246,6 @@ JOIN canonical_counts cc
   ON cc.license_plate_normalized = public.normalize_vehicle_registration(fv.registration_number)
 ON CONFLICT (legacy_source, legacy_record_id) DO NOTHING;
 
--- Enrich missing canonical values from the unambiguous legacy fleet source.
 UPDATE public.vehicle_profiles vp
 SET make = COALESCE(vp.make, fv.make),
     model = COALESCE(vp.model, fv.model),
@@ -277,8 +269,6 @@ JOIN public.fleet_vehicles fv
 WHERE mapping.canonical_vehicle_id = vp.id
   AND mapping.migration_status = 'mapped';
 
--- Create canonical vehicles from unambiguous driver profile registrations that
--- did not exist in either canonical source.
 WITH driver_source AS (
   SELECT
     dp.*,
@@ -366,7 +356,6 @@ WHERE NULLIF(trim(COALESCE(dp.license_plate, '')), '') IS NULL
   AND (dp.vehicle_type IS NOT NULL OR dp.vehicle_model IS NOT NULL)
 ON CONFLICT DO NOTHING;
 
--- Canonical booking and support links.
 ALTER TABLE public.booking_vehicle_assignments
   ADD COLUMN IF NOT EXISTS vehicle_id uuid REFERENCES public.vehicle_profiles(id) ON DELETE SET NULL;
 ALTER TABLE public.booking_vehicle_assignments
@@ -411,7 +400,6 @@ ALTER TABLE public.support_tickets
 CREATE INDEX IF NOT EXISTS support_tickets_vehicle_id_idx
   ON public.support_tickets(vehicle_id);
 
--- Fleet operation idempotency.
 CREATE TABLE IF NOT EXISTS public.fleet_operation_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   idempotency_key text NOT NULL UNIQUE,
@@ -421,7 +409,6 @@ CREATE TABLE IF NOT EXISTS public.fleet_operation_requests (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Effective driver-to-vehicle assignment history.
 CREATE TABLE IF NOT EXISTS public.vehicle_driver_assignments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   vehicle_id uuid NOT NULL REFERENCES public.vehicle_profiles(id) ON DELETE RESTRICT,
@@ -604,8 +591,6 @@ CREATE TRIGGER vehicle_assignment_compatibility_after_change
   AFTER INSERT OR UPDATE OR DELETE ON public.vehicle_driver_assignments
   FOR EACH ROW EXECUTE FUNCTION public.vehicle_assignment_compatibility_trigger();
 
--- Backfill only unambiguous legacy assignments. Historical accuracy is limited
--- to the migration timestamp and is recorded as such.
 INSERT INTO public.vehicle_driver_assignments (
   vehicle_id,
   driver_id,
@@ -694,7 +679,20 @@ WHERE candidate.driver_match_count = 1
   )
 ON CONFLICT DO NOTHING;
 
--- Documents and compliance.
+INSERT INTO public.fleet_consolidation_issues (
+  issue_type, source_table, source_record_id, registration_number, details
+)
+SELECT
+  'assigned_user_is_not_a_driver',
+  'vehicle_profiles',
+  vehicle.id::text,
+  vehicle.license_plate,
+  jsonb_build_object('assigned_driver_id', vehicle.assigned_driver_id)
+FROM public.vehicle_profiles vehicle
+WHERE vehicle.assigned_driver_id IS NOT NULL
+  AND NOT private.has_role(vehicle.assigned_driver_id, 'driver'::app_role)
+ON CONFLICT DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS public.vehicle_documents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   vehicle_id uuid NOT NULL REFERENCES public.vehicle_profiles(id) ON DELETE CASCADE,
@@ -720,7 +718,6 @@ CREATE TRIGGER set_vehicle_documents_updated_at
   BEFORE UPDATE ON public.vehicle_documents
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
--- Maintenance work orders.
 CREATE TABLE IF NOT EXISTS public.vehicle_maintenance_work_orders (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   vehicle_id uuid NOT NULL REFERENCES public.vehicle_profiles(id) ON DELETE RESTRICT,
@@ -772,7 +769,6 @@ CREATE TRIGGER set_vehicle_maintenance_work_orders_updated_at
   BEFORE UPDATE ON public.vehicle_maintenance_work_orders
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
--- Odometer and status history.
 CREATE TABLE IF NOT EXISTS public.vehicle_odometer_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   vehicle_id uuid NOT NULL REFERENCES public.vehicle_profiles(id) ON DELETE CASCADE,
@@ -827,7 +823,6 @@ WHERE NOT EXISTS (
   SELECT 1 FROM public.vehicle_status_events event WHERE event.vehicle_id = vehicle.id
 );
 
--- Protected operations.
 CREATE OR REPLACE FUNCTION public.admin_create_vehicle(
   p_vehicle_name text,
   p_license_plate text,
@@ -979,71 +974,6 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.admin_change_vehicle_status(
-  p_vehicle_id uuid,
-  p_new_status text,
-  p_reason text,
-  p_expected_status text DEFAULT NULL,
-  p_work_order_id uuid DEFAULT NULL
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, private
-AS $$
-DECLARE
-  v_actor uuid := public.fleet_require_admin();
-  v_vehicle public.vehicle_profiles%ROWTYPE;
-BEGIN
-  IF p_new_status NOT IN ('active', 'maintenance', 'out_of_service', 'retired') THEN
-    RAISE EXCEPTION 'Invalid vehicle status';
-  END IF;
-  IF NULLIF(trim(p_reason), '') IS NULL THEN
-    RAISE EXCEPTION 'A status-change reason is required';
-  END IF;
-
-  SELECT * INTO v_vehicle
-  FROM public.vehicle_profiles
-  WHERE id = p_vehicle_id
-  FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Vehicle not found'; END IF;
-  IF p_expected_status IS NOT NULL AND v_vehicle.status IS DISTINCT FROM p_expected_status THEN
-    RAISE EXCEPTION 'Vehicle status changed since it was loaded';
-  END IF;
-
-  IF p_new_status <> 'active' AND EXISTS (
-    SELECT 1
-    FROM public.vehicle_driver_assignments assignment
-    WHERE assignment.vehicle_id = p_vehicle_id
-      AND assignment.status IN ('scheduled', 'active')
-      AND (assignment.end_at IS NULL OR assignment.end_at > now())
-  ) THEN
-    UPDATE public.vehicle_driver_assignments
-    SET status = CASE WHEN start_at > now() THEN 'cancelled' ELSE 'completed' END,
-        end_at = COALESCE(end_at, now()),
-        ended_by = v_actor,
-        notes = concat_ws(E'\n', notes, 'Ended automatically because vehicle status changed to ' || p_new_status)
-    WHERE vehicle_id = p_vehicle_id
-      AND status IN ('scheduled', 'active')
-      AND (end_at IS NULL OR end_at > now());
-  END IF;
-
-  UPDATE public.vehicle_profiles
-  SET status = p_new_status
-  WHERE id = p_vehicle_id
-  RETURNING * INTO v_vehicle;
-
-  INSERT INTO public.vehicle_status_events (
-    vehicle_id, previous_status, new_status, reason, work_order_id, performed_by
-  ) VALUES (
-    p_vehicle_id, v_vehicle.status, p_new_status, trim(p_reason), p_work_order_id, v_actor
-  );
-
-  RETURN to_jsonb(v_vehicle);
-END;
-$$;
-
--- Correct the previous-status event value after the row update above.
 CREATE OR REPLACE FUNCTION public.admin_change_vehicle_status(
   p_vehicle_id uuid,
   p_new_status text,
@@ -1759,7 +1689,6 @@ BEGIN
 END;
 $$;
 
--- One-way legacy compatibility for booking assignments.
 CREATE OR REPLACE FUNCTION public.booking_vehicle_assignment_fill_canonical()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -1787,7 +1716,6 @@ CREATE TRIGGER booking_vehicle_assignment_fill_canonical_trigger
   ON public.booking_vehicle_assignments
   FOR EACH ROW EXECUTE FUNCTION public.booking_vehicle_assignment_fill_canonical();
 
--- Access control. Direct fleet writes are replaced by protected operations.
 REVOKE INSERT, UPDATE, DELETE ON public.vehicle_profiles FROM authenticated;
 GRANT SELECT ON public.vehicle_profiles TO authenticated;
 
@@ -1816,18 +1744,25 @@ GRANT ALL ON public.vehicle_legacy_mappings, public.fleet_consolidation_issues,
   public.vehicle_maintenance_events, public.vehicle_odometer_events,
   public.vehicle_status_events TO service_role;
 
+DROP POLICY IF EXISTS "Admins read fleet mappings" ON public.vehicle_legacy_mappings;
 CREATE POLICY "Admins read fleet mappings" ON public.vehicle_legacy_mappings
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins read fleet issues" ON public.fleet_consolidation_issues;
 CREATE POLICY "Admins read fleet issues" ON public.fleet_consolidation_issues
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins read fleet operation requests" ON public.fleet_operation_requests;
 CREATE POLICY "Admins read fleet operation requests" ON public.fleet_operation_requests
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins read all vehicle assignments" ON public.vehicle_driver_assignments;
 CREATE POLICY "Admins read all vehicle assignments" ON public.vehicle_driver_assignments
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Drivers read own vehicle assignments" ON public.vehicle_driver_assignments;
 CREATE POLICY "Drivers read own vehicle assignments" ON public.vehicle_driver_assignments
   FOR SELECT TO authenticated USING (driver_id = auth.uid());
+DROP POLICY IF EXISTS "Admins read vehicle documents" ON public.vehicle_documents;
 CREATE POLICY "Admins read vehicle documents" ON public.vehicle_documents
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Drivers read assigned vehicle document status" ON public.vehicle_documents;
 CREATE POLICY "Drivers read assigned vehicle document status" ON public.vehicle_documents
   FOR SELECT TO authenticated USING (
     EXISTS (
@@ -1840,12 +1775,16 @@ CREATE POLICY "Drivers read assigned vehicle document status" ON public.vehicle_
         AND (assignment.end_at IS NULL OR assignment.end_at > now())
     )
   );
+DROP POLICY IF EXISTS "Admins read maintenance work orders" ON public.vehicle_maintenance_work_orders;
 CREATE POLICY "Admins read maintenance work orders" ON public.vehicle_maintenance_work_orders
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins read maintenance events" ON public.vehicle_maintenance_events;
 CREATE POLICY "Admins read maintenance events" ON public.vehicle_maintenance_events
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins read odometer events" ON public.vehicle_odometer_events;
 CREATE POLICY "Admins read odometer events" ON public.vehicle_odometer_events
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins read vehicle status events" ON public.vehicle_status_events;
 CREATE POLICY "Admins read vehicle status events" ON public.vehicle_status_events
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::app_role));
 

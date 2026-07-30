@@ -89,8 +89,8 @@ function AdminSupportTicketPage() {
               nextTicket.passenger_id,
               nextTicket.driver_id,
               nextTicket.assigned_admin_id,
-              ...(messageResult.data ?? []).map((message: SupportMessage) => message.sender_id),
-              ...(eventResult.data ?? []).map((event: SupportEvent) => event.performed_by),
+              ...((messageResult.data ?? []) as SupportMessage[]).map((message) => message.sender_id),
+              ...((eventResult.data ?? []) as SupportEvent[]).map((event) => event.performed_by),
             ].filter((value): value is string => !!value),
           ),
         );
@@ -155,8 +155,8 @@ function AdminSupportTicketPage() {
       p_ticket_id: ticket.id,
       p_status: status,
       p_priority: priority,
-      p_assigned_admin_id: assignToSelf ? user.id : ticket.assigned_admin_id,
-      p_resolution_summary: resolution || null,
+      p_assigned_admin_id: (assignToSelf ? user.id : ticket.assigned_admin_id) ?? undefined,
+      p_resolution_summary: resolution || undefined,
     });
     setSaving(false);
     if (error) {

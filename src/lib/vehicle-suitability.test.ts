@@ -8,6 +8,9 @@ import {
 // Protect the assignment rules Phase 3 reuses during canonical fleet consolidation.
 function vehicle(overrides: Partial<VehicleProfile> = {}): VehicleProfile {
   return {
+    accessibility_features: [],
+    legacy_consolidation_status: "canonical",
+    license_plate_normalized: "TEST001GP",
     admin_notes: null,
     assigned_driver_id: null,
     created_at: "2026-07-30T00:00:00.000Z",

@@ -58,10 +58,10 @@ export function AdminCreateSupportTicketDialog({
       p_subject: subject.trim(),
       p_description: description.trim(),
       p_priority: priority,
-      p_ride_id: null,
-      p_service_booking_id: null,
+      p_ride_id: undefined,
+      p_service_booking_id: undefined,
       p_passenger_id: passengerId,
-      p_driver_id: null,
+      p_driver_id: undefined,
     });
     setCreating(false);
 
