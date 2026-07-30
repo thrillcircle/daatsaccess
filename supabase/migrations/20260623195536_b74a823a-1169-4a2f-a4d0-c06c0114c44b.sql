@@ -21,6 +21,7 @@ CREATE POLICY "users read own profile" ON public.profiles FOR SELECT TO authenti
 
 -- Fix driver_profiles location exposure: restrict to self, admin, or passenger with active ride
 DROP POLICY IF EXISTS "authenticated can view available drivers" ON public.driver_profiles;
+DROP POLICY IF EXISTS "driver profile visibility" ON public.driver_profiles;
 CREATE POLICY "driver profile visibility" ON public.driver_profiles FOR SELECT TO authenticated
   USING (
     auth.uid() = user_id
@@ -54,10 +55,13 @@ CREATE POLICY "involved sees payment" ON public.payments FOR SELECT TO authentic
 DROP FUNCTION IF EXISTS public.has_role(uuid, public.app_role);
 
 -- Add explicit write policies on user_roles restricting writes to admins only
+DROP POLICY IF EXISTS "admins insert roles" ON public.user_roles;
 CREATE POLICY "admins insert roles" ON public.user_roles FOR INSERT TO authenticated
   WITH CHECK (private.has_role(auth.uid(), 'admin'::public.app_role));
+DROP POLICY IF EXISTS "admins update roles" ON public.user_roles;
 CREATE POLICY "admins update roles" ON public.user_roles FOR UPDATE TO authenticated
   USING (private.has_role(auth.uid(), 'admin'::public.app_role))
   WITH CHECK (private.has_role(auth.uid(), 'admin'::public.app_role));
+DROP POLICY IF EXISTS "admins delete roles" ON public.user_roles;
 CREATE POLICY "admins delete roles" ON public.user_roles FOR DELETE TO authenticated
   USING (private.has_role(auth.uid(), 'admin'::public.app_role));
