@@ -21,9 +21,6 @@ export type EJBooking = {
   start_at: string | null;
   end_at: string | null;
   status: string;
-  quoted_total: number | null;
-  deposit_amount: number | null;
-  deposit_status: "none" | "pending" | "paid" | "refunded" | "waived";
   metadata: unknown;
 };
 
