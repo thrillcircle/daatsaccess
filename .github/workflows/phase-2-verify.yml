@@ -34,37 +34,7 @@ jobs:
           bun-version: latest
 
       - name: Apply source cleanup
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          driver = Path('src/components/profile/DriverProfileSections.tsx')
-          text = driver.read_text()
-          text = text.replace(
-              'import { useEffect, useMemo, useState } from "react";',
-              'import { useEffect, useMemo, useState, type ReactNode } from "react";',
-          )
-          text = text.replace('icon?: React.ReactNode', 'icon?: ReactNode')
-          driver.write_text(text)
-
-          bell = Path('src/components/NotificationBell.tsx')
-          text = bell.read_text()
-          text = text.replace(
-              'import { useEffect, useState } from "react";',
-              'import { useEffect, useState, type ReactNode } from "react";',
-          )
-          text = text.replace('let destination: React.ReactNode', 'let destination: ReactNode')
-          bell.write_text(text)
-
-          passengers = Path('src/routes/app.admin.passengers.tsx')
-          text = passengers.read_text()
-          text = text.replace(
-              'import { Activity, CalendarRange, Loader2, Phone, Search, UserCircle2 } from "lucide-react";',
-              'import { Activity, Loader2, Phone, Search, UserCircle2 } from "lucide-react";',
-          )
-          text = text.replace('import { Button } from "@/components/ui/button";\n', '')
-          passengers.write_text(text)
-          PY
+        run: python3 scripts/phase2_cleanup.py
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
