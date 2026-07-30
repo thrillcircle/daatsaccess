@@ -27,6 +27,16 @@ jobs:
           ref: phase-3-fleet-consolidation
           fetch-depth: 0
 
+      - name: Align sequential canonical booking guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/phase3_integrations_apply.py')
+          text = path.read_text()
+          text = text.replace('{v.registration_number}', '{v.license_plate}')
+          path.write_text(text)
+          PY
+
       - name: Apply patch and report exact result
         run: |
           set +e
