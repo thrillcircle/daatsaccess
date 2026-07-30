@@ -34,12 +34,13 @@ export function usePassengerPricingEstimate({
     const timer = window.setTimeout(() => {
       setLoading(true);
       setError(null);
+      const payload = JSON.parse(additionalKey) as JsonValue;
       pricingDb
         .rpc("passenger_pricing_estimate", {
           p_service_code: serviceCode,
           p_distance_km: distanceKm,
           p_effective_at: effectiveAt ?? undefined,
-          p_additional_inputs: additionalInputs as unknown as JsonValue,
+          p_additional_inputs: payload,
         })
         .then(({ data, error: estimateError }) => {
           if (cancelled) return;
@@ -65,7 +66,7 @@ export function usePassengerPricingEstimate({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [additionalKey, additionalInputs, distanceKm, effectiveAt, serviceCode]);
+  }, [additionalKey, distanceKm, effectiveAt, serviceCode]);
 
   return { estimate, loading, error };
 }
