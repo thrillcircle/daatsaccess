@@ -97,6 +97,26 @@ export type PricingCalculationSnapshot = {
   total: number;
 };
 
+export type PassengerEstimate = {
+  engine_version: string;
+  calculated_at: string;
+  pricing_version_id: string;
+  pricing_version_number: number;
+  service_code: "ride" | "transport";
+  currency: "ZAR";
+  distance_km: number;
+  warnings: string[];
+  lines: Array<{
+    component_code: string;
+    label: string;
+    quantity: number;
+    unit: string;
+    unit_price: number;
+    line_total: number;
+  }>;
+  total: number;
+};
+
 export type QuoteSummary = {
   id: string;
   booking_id: string;
@@ -146,6 +166,68 @@ type PricingDatabase = {
           p_inputs?: JsonValue;
           p_effective_at?: string;
           p_pricing_version_id?: string;
+        };
+        Returns: JsonValue;
+      };
+      passenger_pricing_estimate: {
+        Args: {
+          p_service_code: string;
+          p_distance_km: number;
+          p_effective_at?: string;
+          p_additional_inputs?: JsonValue;
+        };
+        Returns: JsonValue;
+      };
+      passenger_create_priced_ride: {
+        Args: {
+          p_pickup_address: string;
+          p_pickup_lat: number;
+          p_pickup_lng: number;
+          p_pickup_place_id: string;
+          p_destination_address: string;
+          p_destination_lat: number;
+          p_destination_lng: number;
+          p_destination_place_id: string;
+          p_distance_km: number;
+          p_duration_seconds: number;
+          p_request_type: string;
+          p_scheduled_at: string;
+          p_idempotency_key?: string;
+        };
+        Returns: JsonValue;
+      };
+      passenger_create_transport_booking: {
+        Args: {
+          p_pickup_address: string;
+          p_pickup_lat: number;
+          p_pickup_lng: number;
+          p_pickup_place_id: string;
+          p_destination_address: string;
+          p_destination_lat: number;
+          p_destination_lng: number;
+          p_destination_place_id: string;
+          p_distance_km: number;
+          p_duration_seconds: number;
+          p_request_type: string;
+          p_scheduled_at: string;
+          p_traveller_is_self: boolean;
+          p_traveller_name: string;
+          p_traveller_phone: string;
+          p_relationship: string;
+          p_assistance_codes?: string[];
+          p_passenger_notes?: string;
+          p_idempotency_key?: string;
+        };
+        Returns: JsonValue;
+      };
+      passenger_update_priced_ride_route: {
+        Args: {
+          p_ride_id: string;
+          p_pickup: JsonValue;
+          p_destination: JsonValue;
+          p_distance_km: number;
+          p_duration_seconds: number;
+          p_expected_route_version: number;
         };
         Returns: JsonValue;
       };
@@ -237,6 +319,12 @@ export function asCalculationSnapshot(value: JsonValue | null): PricingCalculati
   if (!value || Array.isArray(value) || typeof value !== "object") return null;
   const candidate = value as unknown as PricingCalculationSnapshot;
   return Array.isArray(candidate.lines) && Array.isArray(candidate.warnings) ? candidate : null;
+}
+
+export function asPassengerEstimate(value: JsonValue | null): PassengerEstimate | null {
+  if (!value || Array.isArray(value) || typeof value !== "object") return null;
+  const candidate = value as unknown as PassengerEstimate;
+  return typeof candidate.total === "number" && Array.isArray(candidate.lines) ? candidate : null;
 }
 
 export function asQuoteSummaries(value: JsonValue | null): QuoteSummary[] {
