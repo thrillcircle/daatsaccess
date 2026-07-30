@@ -11,7 +11,9 @@ import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutoc
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { computeRoute } from "@/lib/maps.functions";
-import { estimatePrice, formatZAR } from "@/lib/pricing";
+import { formatZAR } from "@/lib/pricing";
+import { pricingDb } from "@/lib/pricing-api";
+import { usePassengerPricingEstimate } from "@/hooks/use-passenger-pricing-estimate";
 import type { Database } from "@/integrations/supabase/types";
 import { Car, Radio } from "lucide-react";
 import { useLiveLocation } from "@/hooks/use-live-location";
@@ -164,8 +166,17 @@ function RideRequest({ userId }: { userId?: string }) {
         !Number.isNaN(scheduleDate.getTime()) &&
         scheduleDate.getTime() > Date.now() + 60_000; // at least 1 minute in future
 
-  const price = distanceKm != null ? estimatePrice(distanceKm) : null;
-  const canRequest = !!(pickupPt && destPt && distanceKm != null) && scheduleValid;
+  const {
+    estimate: serverEstimate,
+    loading: pricingLoading,
+    error: pricingError,
+  } = usePassengerPricingEstimate({
+    serviceCode: "ride",
+    distanceKm,
+    effectiveAt: scheduleDate?.toISOString() ?? null,
+  });
+  const price = serverEstimate?.total ?? null;
+  const canRequest = !!(pickupPt && destPt && distanceKm != null && price != null) && scheduleValid;
 
   // Soft-bias autocomplete around the passenger's current location (no prompt — only if cached).
   useEffect(() => {
@@ -258,29 +269,25 @@ function RideRequest({ userId }: { userId?: string }) {
     }
     setSubmitting(true);
     try {
-      const { data, error } = await supabase
-        .from("rides")
-        .insert({
-          passenger_id: userId,
-          pickup_address: pickupPt.address,
-          pickup_lat: pickupPt.lat,
-          pickup_lng: pickupPt.lng,
-          pickup_place_id: pickupPt.placeId,
-          destination_address: destPt.address,
-          destination_lat: destPt.lat,
-          destination_lng: destPt.lng,
-          destination_place_id: destPt.placeId,
-          distance_km: distanceKm,
-          estimated_price: price,
-          estimated_duration_seconds: durationMin != null ? durationMin * 60 : null,
-          request_type: mode,
-          scheduled_at: mode === "scheduled" && scheduleDate ? scheduleDate.toISOString() : null,
-        })
-
-        .select()
-        .single();
+      const { data, error } = await pricingDb.rpc("passenger_create_priced_ride", {
+        p_pickup_address: pickupPt.address,
+        p_pickup_lat: pickupPt.lat,
+        p_pickup_lng: pickupPt.lng,
+        p_pickup_place_id: pickupPt.placeId ?? null,
+        p_destination_address: destPt.address,
+        p_destination_lat: destPt.lat,
+        p_destination_lng: destPt.lng,
+        p_destination_place_id: destPt.placeId ?? null,
+        p_distance_km: distanceKm,
+        p_duration_seconds: durationMin != null ? Math.round(durationMin * 60) : null,
+        p_request_type: mode,
+        p_scheduled_at: mode === "scheduled" && scheduleDate ? scheduleDate.toISOString() : null,
+        p_idempotency_key: crypto.randomUUID(),
+      });
       if (error) throw error;
-      const inserted = data as Ride;
+      const result = data as unknown as { ride?: Ride };
+      if (!result.ride) throw new Error("The pricing service did not create the ride");
+      const inserted = result.ride;
       if (inserted.request_type === "scheduled") {
         toast.success(
           `Trip scheduled for ${new Date(inserted.scheduled_at!).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`,
@@ -454,7 +461,7 @@ function RideRequest({ userId }: { userId?: string }) {
           <RouteMap origin={pickupPt} destination={destPt} className="h-48" />
           <div className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm">
             <span className="text-muted-foreground">
-              {estimating
+              {estimating || pricingLoading
                 ? "Estimating…"
                 : distanceKm != null
                   ? `${distanceKm.toFixed(2)} km${durationMin != null ? ` · ~${durationMin} min` : ""}`
@@ -462,11 +469,12 @@ function RideRequest({ userId }: { userId?: string }) {
             </span>
             <span className="font-semibold">{price != null ? formatZAR(price) : "—"}</span>
           </div>
+          {pricingError ? <p className="text-xs text-destructive">{pricingError}</p> : null}
           <Button
             className="w-full"
             size="lg"
             onClick={onRequest}
-            disabled={!canRequest || submitting || estimating}
+            disabled={!canRequest || submitting || estimating || pricingLoading}
           >
             {submitting
               ? mode === "scheduled"

@@ -136,7 +136,7 @@ export type QuoteSummary = {
   row_version: number;
 };
 
-type PricingDatabase = {
+export type PricingDatabase = {
   public: {
     Tables: {
       pricing_versions: {
@@ -183,15 +183,15 @@ type PricingDatabase = {
           p_pickup_address: string;
           p_pickup_lat: number;
           p_pickup_lng: number;
-          p_pickup_place_id: string;
+          p_pickup_place_id: string | null;
           p_destination_address: string;
           p_destination_lat: number;
           p_destination_lng: number;
-          p_destination_place_id: string;
+          p_destination_place_id: string | null;
           p_distance_km: number;
-          p_duration_seconds: number;
+          p_duration_seconds: number | null;
           p_request_type: string;
-          p_scheduled_at: string;
+          p_scheduled_at: string | null;
           p_idempotency_key?: string;
         };
         Returns: JsonValue;
@@ -201,15 +201,15 @@ type PricingDatabase = {
           p_pickup_address: string;
           p_pickup_lat: number;
           p_pickup_lng: number;
-          p_pickup_place_id: string;
+          p_pickup_place_id: string | null;
           p_destination_address: string;
           p_destination_lat: number;
           p_destination_lng: number;
-          p_destination_place_id: string;
+          p_destination_place_id: string | null;
           p_distance_km: number;
-          p_duration_seconds: number;
+          p_duration_seconds: number | null;
           p_request_type: string;
-          p_scheduled_at: string;
+          p_scheduled_at: string | null;
           p_traveller_is_self: boolean;
           p_traveller_name: string;
           p_traveller_phone: string;
@@ -223,10 +223,10 @@ type PricingDatabase = {
       passenger_update_priced_ride_route: {
         Args: {
           p_ride_id: string;
-          p_pickup: JsonValue;
-          p_destination: JsonValue;
+          p_pickup: JsonValue | null;
+          p_destination: JsonValue | null;
           p_distance_km: number;
-          p_duration_seconds: number;
+          p_duration_seconds: number | null;
           p_expected_route_version: number;
         };
         Returns: JsonValue;

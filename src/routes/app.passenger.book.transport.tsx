@@ -13,7 +13,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { RouteMap } from "@/components/RouteMap";
 import { computeRoute } from "@/lib/maps.functions";
-import { estimatePrice, formatZAR } from "@/lib/pricing";
+import { formatZAR } from "@/lib/pricing";
+import { pricingDb } from "@/lib/pricing-api";
+import { usePassengerPricingEstimate } from "@/hooks/use-passenger-pricing-estimate";
 import { ASSISTANCE_OPTIONS, type AssistanceCode } from "@/lib/booking-types";
 import { toast } from "sonner";
 import { ChevronLeft } from "lucide-react";
@@ -40,8 +42,10 @@ function BookTransportPage() {
       { to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger },
       { to: "/app/passenger/bookings", label: "Bookings", icon: NAV_ICONS.Profile },
     ];
-    if (roles?.includes("driver")) items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
-    if (roles?.includes("admin")) items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
+    if (roles?.includes("driver"))
+      items.push({ to: "/app/driver", label: "Drive", icon: NAV_ICONS.Driver });
+    if (roles?.includes("admin"))
+      items.push({ to: "/app/admin", label: "Admin", icon: NAV_ICONS.Admin });
     items.push({ to: "/app/profile", label: "Profile", icon: NAV_ICONS.Profile });
     return items;
   }, [roles]);
@@ -65,7 +69,11 @@ function BookTransportPage() {
   useEffect(() => {
     if (!user || bookFor !== "self") return;
     (async () => {
-      const { data } = await supabase.from("profiles").select("full_name, phone").eq("user_id", user.id).maybeSingle();
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("user_id", user.id)
+        .maybeSingle();
       if (data) {
         setTravellerName((n) => n || data.full_name || "");
         setTravellerPhone((p) => p || data.phone || "");
@@ -83,7 +91,12 @@ function BookTransportPage() {
     let cancelled = false;
     setEstimating(true);
     route({
-      data: { originLat: pickupPt.lat, originLng: pickupPt.lng, destLat: destPt.lat, destLng: destPt.lng },
+      data: {
+        originLat: pickupPt.lat,
+        originLng: pickupPt.lng,
+        destLat: destPt.lat,
+        destLng: destPt.lng,
+      },
     })
       .then((r) => {
         if (cancelled) return;
@@ -102,9 +115,20 @@ function BookTransportPage() {
   const scheduleDate = mode === "scheduled" && scheduleLocal ? new Date(scheduleLocal) : null;
   const scheduleValid =
     mode === "now" ||
-    (!!scheduleDate && !Number.isNaN(scheduleDate.getTime()) && scheduleDate.getTime() > Date.now() + 60_000);
+    (!!scheduleDate &&
+      !Number.isNaN(scheduleDate.getTime()) &&
+      scheduleDate.getTime() > Date.now() + 60_000);
 
-  const price = distanceKm != null ? estimatePrice(distanceKm) : null;
+  const {
+    estimate: serverEstimate,
+    loading: pricingLoading,
+    error: pricingError,
+  } = usePassengerPricingEstimate({
+    serviceCode: "transport",
+    distanceKm,
+    effectiveAt: scheduleDate?.toISOString() ?? null,
+  });
+  const price = serverEstimate?.total ?? null;
   const canSubmit =
     !!user &&
     pickupPt &&
@@ -113,82 +137,42 @@ function BookTransportPage() {
     price != null &&
     travellerName.trim().length > 0 &&
     scheduleValid &&
+    !pricingLoading &&
+    !pricingError &&
     !submitting;
 
   function toggleAssistance(code: AssistanceCode, on: boolean) {
-    setAssistance((prev) => (on ? Array.from(new Set([...prev, code])) : prev.filter((c) => c !== code)));
+    setAssistance((prev) =>
+      on ? Array.from(new Set([...prev, code])) : prev.filter((c) => c !== code),
+    );
   }
 
   async function onSubmit() {
     if (!canSubmit || !user || !pickupPt || !destPt || distanceKm == null || price == null) return;
     setSubmitting(true);
     try {
-      const startAt = mode === "scheduled" && scheduleDate ? scheduleDate.toISOString() : new Date().toISOString();
-      const { data: booking, error: bookingErr } = await supabase
-        .from("service_bookings")
-        .insert({
-          booked_by_user_id: user.id,
-          service_type: "transport",
-          journey_pattern: "one_way",
-          status: "submitted",
-          start_at: startAt,
-          requested_companion_count: 0,
-          passenger_notes: notes.trim() || null,
-          estimated_total: price,
-        })
-        .select()
-        .single();
-      if (bookingErr) throw bookingErr;
-
-      const { error: travErr } = await supabase.from("booking_travellers").insert({
-        booking_id: booking.id,
-        linked_user_id: bookFor === "self" ? user.id : null,
-        full_name: travellerName.trim(),
-        phone: travellerPhone.trim() || null,
-        relationship_to_booker: bookFor === "self" ? "self" : relationship.trim() || null,
-        is_primary: true,
+      const { error } = await pricingDb.rpc("passenger_create_transport_booking", {
+        p_pickup_address: pickupPt.address,
+        p_pickup_lat: pickupPt.lat,
+        p_pickup_lng: pickupPt.lng,
+        p_pickup_place_id: pickupPt.placeId ?? null,
+        p_destination_address: destPt.address,
+        p_destination_lat: destPt.lat,
+        p_destination_lng: destPt.lng,
+        p_destination_place_id: destPt.placeId ?? null,
+        p_distance_km: distanceKm,
+        p_duration_seconds: durationMin != null ? Math.round(durationMin * 60) : null,
+        p_request_type: mode,
+        p_scheduled_at: mode === "scheduled" && scheduleDate ? scheduleDate.toISOString() : null,
+        p_traveller_is_self: bookFor === "self",
+        p_traveller_name: travellerName.trim(),
+        p_traveller_phone: travellerPhone.trim(),
+        p_relationship: relationship.trim(),
+        p_assistance_codes: assistance,
+        p_passenger_notes: notes.trim(),
+        p_idempotency_key: crypto.randomUUID(),
       });
-      if (travErr) throw travErr;
-
-      if (assistance.length) {
-        const { error: asErr } = await supabase.from("booking_assistance_requirements").insert(
-          assistance.map((code) => ({ booking_id: booking.id, requirement_code: code, quantity: 1 })),
-        );
-        if (asErr) throw asErr;
-      }
-
-      const { data: ride, error: rideErr } = await supabase
-        .from("rides")
-        .insert({
-          passenger_id: user.id,
-          pickup_address: pickupPt.address,
-          pickup_lat: pickupPt.lat,
-          pickup_lng: pickupPt.lng,
-          pickup_place_id: pickupPt.placeId,
-          destination_address: destPt.address,
-          destination_lat: destPt.lat,
-          destination_lng: destPt.lng,
-          destination_place_id: destPt.placeId,
-          distance_km: distanceKm,
-          estimated_price: price,
-          estimated_duration_seconds: durationMin != null ? durationMin * 60 : null,
-          request_type: mode,
-          scheduled_at: mode === "scheduled" && scheduleDate ? scheduleDate.toISOString() : null,
-          service_booking_id: booking.id,
-          leg_sequence: 1,
-          day_number: 1,
-        })
-        .select()
-        .single();
-      if (rideErr) throw rideErr;
-
-      await supabase.from("service_booking_events").insert({
-        booking_id: booking.id,
-        actor_user_id: user.id,
-        event_type: "booking_created",
-        payload: { ride_id: ride.id, service_type: "transport" },
-      });
-
+      if (error) throw error;
       toast.success("Access Transport booked");
       navigate({ to: "/app/passenger/bookings" });
     } catch (err) {
@@ -201,18 +185,31 @@ function BookTransportPage() {
   return (
     <AppShell title="Access Transport" nav={nav}>
       <div className="mb-3">
-        <Link to="/app/passenger/book" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+        <Link
+          to="/app/passenger/book"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+        >
           <ChevronLeft className="mr-1 h-4 w-4" /> Back
         </Link>
       </div>
 
       <section className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
         <h2 className="text-base font-semibold">Who is travelling?</h2>
-        <RadioGroup value={bookFor} onValueChange={(v) => setBookFor(v as "self" | "other")} className="mt-3 grid grid-cols-2 gap-2">
-          <Label htmlFor="bf-self" className="flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm">
+        <RadioGroup
+          value={bookFor}
+          onValueChange={(v) => setBookFor(v as "self" | "other")}
+          className="mt-3 grid grid-cols-2 gap-2"
+        >
+          <Label
+            htmlFor="bf-self"
+            className="flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm"
+          >
             <RadioGroupItem id="bf-self" value="self" /> Myself
           </Label>
-          <Label htmlFor="bf-other" className="flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm">
+          <Label
+            htmlFor="bf-other"
+            className="flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm"
+          >
             <RadioGroupItem id="bf-other" value="other" /> Someone else
           </Label>
         </RadioGroup>
@@ -220,16 +217,31 @@ function BookTransportPage() {
         <div className="mt-3 grid gap-3">
           <div>
             <Label htmlFor="trav-name">Traveller full name</Label>
-            <Input id="trav-name" value={travellerName} onChange={(e) => setTravellerName(e.target.value)} placeholder="Full name" />
+            <Input
+              id="trav-name"
+              value={travellerName}
+              onChange={(e) => setTravellerName(e.target.value)}
+              placeholder="Full name"
+            />
           </div>
           <div>
             <Label htmlFor="trav-phone">Traveller phone</Label>
-            <Input id="trav-phone" value={travellerPhone} onChange={(e) => setTravellerPhone(e.target.value)} placeholder="Optional" />
+            <Input
+              id="trav-phone"
+              value={travellerPhone}
+              onChange={(e) => setTravellerPhone(e.target.value)}
+              placeholder="Optional"
+            />
           </div>
           {bookFor === "other" ? (
             <div>
               <Label htmlFor="trav-rel">Relationship to traveller</Label>
-              <Input id="trav-rel" value={relationship} onChange={(e) => setRelationship(e.target.value)} placeholder="e.g. mother, patient, friend" />
+              <Input
+                id="trav-rel"
+                value={relationship}
+                onChange={(e) => setRelationship(e.target.value)}
+                placeholder="e.g. mother, patient, friend"
+              />
             </div>
           ) : null}
         </div>
@@ -238,19 +250,35 @@ function BookTransportPage() {
       <section className="mt-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
         <h2 className="text-base font-semibold">When?</h2>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button type="button" variant={mode === "now" ? "default" : "outline"} onClick={() => setMode("now")}>
+          <Button
+            type="button"
+            variant={mode === "now" ? "default" : "outline"}
+            onClick={() => setMode("now")}
+          >
             Now
           </Button>
-          <Button type="button" variant={mode === "scheduled" ? "default" : "outline"} onClick={() => setMode("scheduled")}>
+          <Button
+            type="button"
+            variant={mode === "scheduled" ? "default" : "outline"}
+            onClick={() => setMode("scheduled")}
+          >
             Schedule
           </Button>
         </div>
         {mode === "scheduled" ? (
           <div className="mt-3">
             <Label htmlFor="sched">Pickup time (Africa/Johannesburg)</Label>
-            <Input id="sched" type="datetime-local" min={localInputNow()} value={scheduleLocal} onChange={(e) => setScheduleLocal(e.target.value)} />
+            <Input
+              id="sched"
+              type="datetime-local"
+              min={localInputNow()}
+              value={scheduleLocal}
+              onChange={(e) => setScheduleLocal(e.target.value)}
+            />
             {scheduleLocal && !scheduleValid ? (
-              <p className="mt-1 text-xs text-destructive">Pick a time at least one minute in the future.</p>
+              <p className="mt-1 text-xs text-destructive">
+                Pick a time at least one minute in the future.
+              </p>
             ) : null}
           </div>
         ) : null}
@@ -259,28 +287,51 @@ function BookTransportPage() {
       <section className="mt-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
         <h2 className="text-base font-semibold">Pickup &amp; destination</h2>
         <div className="mt-3 space-y-3">
-          <AddressAutocomplete id="pickup" label="Pickup" value={pickupPt} onChange={setPickupPt} enableCurrentLocation />
-          <AddressAutocomplete id="dest" label="Destination" value={destPt} onChange={setDestPt} bias={pickupPt ? { lat: pickupPt.lat, lng: pickupPt.lng } : null} />
+          <AddressAutocomplete
+            id="pickup"
+            label="Pickup"
+            value={pickupPt}
+            onChange={setPickupPt}
+            enableCurrentLocation
+          />
+          <AddressAutocomplete
+            id="dest"
+            label="Destination"
+            value={destPt}
+            onChange={setDestPt}
+            bias={pickupPt ? { lat: pickupPt.lat, lng: pickupPt.lng } : null}
+          />
         </div>
         {pickupPt && destPt ? (
           <div className="mt-3 space-y-2">
             <RouteMap origin={pickupPt} destination={destPt} className="h-40" />
             <div className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm">
               <span className="text-muted-foreground">
-                {estimating ? "Estimating…" : distanceKm != null ? `${distanceKm.toFixed(2)} km${durationMin != null ? ` · ~${durationMin} min` : ""}` : "—"}
+                {estimating || pricingLoading
+                  ? "Estimating…"
+                  : distanceKm != null
+                    ? `${distanceKm.toFixed(2)} km${durationMin != null ? ` · ~${durationMin} min` : ""}`
+                    : "—"}
               </span>
               <span className="font-semibold">{price != null ? formatZAR(price) : "—"}</span>
             </div>
+            {pricingError ? <p className="text-xs text-destructive">{pricingError}</p> : null}
           </div>
         ) : null}
       </section>
 
       <section className="mt-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
         <h2 className="text-base font-semibold">Accessibility requirements</h2>
-        <p className="text-xs text-muted-foreground">Pick everything that applies — we share only what the driver needs.</p>
+        <p className="text-xs text-muted-foreground">
+          Pick everything that applies — we share only what the driver needs.
+        </p>
         <div className="mt-3 grid gap-2">
           {ASSISTANCE_OPTIONS.map((opt) => (
-            <Label key={opt.code} htmlFor={`a-${opt.code}`} className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm">
+            <Label
+              key={opt.code}
+              htmlFor={`a-${opt.code}`}
+              className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm"
+            >
               <Checkbox
                 id={`a-${opt.code}`}
                 checked={assistance.includes(opt.code)}
@@ -297,7 +348,12 @@ function BookTransportPage() {
 
       <section className="mt-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
         <Label htmlFor="notes">Notes for the driver (optional)</Label>
-        <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything else the driver should know." />
+        <Textarea
+          id="notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Anything else the driver should know."
+        />
       </section>
 
       <Button className="mt-4 w-full" size="lg" disabled={!canSubmit} onClick={onSubmit}>

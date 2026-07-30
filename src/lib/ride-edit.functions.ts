@@ -62,9 +62,7 @@ export const updateRideTrip = createServerFn({ method: "POST" })
  */
 export const acknowledgeRideChange = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
-    z.object({ changeId: z.string().uuid() }).parse(data),
-  )
+  .inputValidator((data: unknown) => z.object({ changeId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("ride_change_log")
