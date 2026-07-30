@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   verify:
+    # Temporary self-cleaning verification for the approved Phase 4 branch.
     if: github.head_ref == 'phase-4-pricing-quotations'
     runs-on: ubuntu-latest
     timeout-minutes: 30
