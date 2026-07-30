@@ -12,9 +12,9 @@ import {
   UserCircle2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AdminShell } from "@/components/AdminShell";
+import { AdminCreateSupportTicketDialog } from "@/components/support/AdminCreateSupportTicketDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
@@ -26,7 +26,7 @@ import {
   type SupportTicket,
 } from "@/lib/support";
 
-const db = supabase as unknown as SupabaseClient;
+const db = supabase;
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type Booking = Database["public"]["Tables"]["service_bookings"]["Row"];
@@ -175,13 +175,19 @@ function PassengerDetailPage() {
       title={profile.full_name ?? "Passenger"}
       subtitle="Passenger profile, trips, service bookings and support history."
       actions={
-        profile.phone ? (
-          <Button asChild size="sm" variant="outline">
-            <a href={`tel:${profile.phone}`}>
-              <Phone className="mr-1 h-4 w-4" /> Call passenger
-            </a>
-          </Button>
-        ) : null
+        <div className="flex flex-wrap gap-2">
+          <AdminCreateSupportTicketDialog
+            passengerId={profile.user_id}
+            passengerName={profile.full_name ?? "Passenger"}
+          />
+          {profile.phone ? (
+            <Button asChild size="sm" variant="outline">
+              <a href={`tel:${profile.phone}`}>
+                <Phone className="mr-1 h-4 w-4" /> Call passenger
+              </a>
+            </Button>
+          ) : null}
+        </div>
       }
     >
       <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">

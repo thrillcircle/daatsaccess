@@ -101,7 +101,10 @@ export function AdminCreateSupportTicketDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Category</Label>
-              <Select value={category} onValueChange={(value) => setCategory(value as SupportCategory)}>
+              <Select
+                value={category}
+                onValueChange={(value) => setCategory(value as SupportCategory)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -116,7 +119,10 @@ export function AdminCreateSupportTicketDialog({
             </div>
             <div className="space-y-1.5">
               <Label>Priority</Label>
-              <Select value={priority} onValueChange={(value) => setPriority(value as SupportPriority)}>
+              <Select
+                value={priority}
+                onValueChange={(value) => setPriority(value as SupportPriority)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

@@ -16,7 +16,7 @@ import {
 } from "@/lib/booking-types";
 import { formatZAR } from "@/lib/pricing";
 import { toast } from "sonner";
-import { Plus, ChevronRight } from "lucide-react";
+import { ChevronRight, LifeBuoy, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/app/passenger/bookings")({
   head: () => ({ meta: [{ title: "My Trips — Access" }] }),
@@ -496,6 +496,22 @@ function PassengerBookingsPage() {
                     </Link>
                   ) : null}
                 </div>
+                <div className="mt-2 flex justify-end">
+                  <Button asChild size="sm" variant="ghost">
+                    <Link
+                      to="/app/support"
+                      search={{
+                        rideId: ride?.id ?? "",
+                        bookingId: b.id,
+                        category: "service_booking",
+                        subject: `Service booking · ${b.booking_reference}`,
+                      }}
+                    >
+                      <LifeBuoy className="mr-1 h-4 w-4" /> Support
+                    </Link>
+                  </Button>
+                </div>
+
                 {b.status === "quoted" && q ? (
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Button

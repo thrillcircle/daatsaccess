@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { LifeBuoy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AppShell, NAV_ICONS } from "@/components/AppShell";
@@ -58,11 +59,7 @@ function TripDetailsPage() {
         .select("*")
         .eq("ride_id", rideId)
         .order("created_at", { ascending: true }),
-      supabase
-        .from("ride_reviews")
-        .select("*")
-        .eq("ride_id", rideId)
-        .maybeSingle(),
+      supabase.from("ride_reviews").select("*").eq("ride_id", rideId).maybeSingle(),
       r.driver_id
         ? supabase
             .from("profiles")
@@ -190,6 +187,32 @@ function TripDetailsPage() {
               Timeline
             </h3>
             <Timeline ride={ride} events={events} />
+          </section>
+
+          <section className="rounded-2xl border bg-card p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Support
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Open a case already linked to this trip.
+                </p>
+              </div>
+              <Button asChild size="sm" variant="outline">
+                <Link
+                  to="/app/support"
+                  search={{
+                    rideId: ride.id,
+                    bookingId: "",
+                    category: "trip_issue",
+                    subject: `Trip support · ${ride.id.slice(0, 8)}`,
+                  }}
+                >
+                  <LifeBuoy className="mr-1 h-4 w-4" /> Get help
+                </Link>
+              </Button>
+            </div>
           </section>
 
           <section className="rounded-2xl border bg-card p-4">

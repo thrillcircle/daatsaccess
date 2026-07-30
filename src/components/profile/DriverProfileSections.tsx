@@ -1,14 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  CalendarRange,
-  Car,
-  LifeBuoy,
-  Loader2,
-  MapPinned,
-  ShieldCheck,
-  Star,
-} from "lucide-react";
+import { CalendarRange, Car, LifeBuoy, Loader2, MapPinned, ShieldCheck, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

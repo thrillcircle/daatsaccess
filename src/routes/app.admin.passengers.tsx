@@ -2,14 +2,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Activity, Loader2, Phone, Search, UserCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import type { Database } from "@/integrations/supabase/types";
 
-const db = supabase as unknown as SupabaseClient;
+const db = supabase;
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Ride = Pick<
   Database["public"]["Tables"]["rides"]["Row"],
