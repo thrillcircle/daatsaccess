@@ -1,0 +1,92 @@
+name: Phase 2 closeout corrections
+
+on:
+  push:
+    branches:
+      - phase-2-closeout-corrections
+
+concurrency:
+  group: phase-2-closeout-corrections
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out closeout branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase-2-closeout-corrections
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Apply closeout patch
+        run: python3 scripts/phase2_closeout_apply.py
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Format changed source
+        run: |
+          bunx prettier --write \
+            'src/components/AddressAutocomplete.tsx' \
+            'src/components/profile/DriverProfileSections.tsx' \
+            'src/components/profile/PassengerProfileSections.tsx' \
+            'src/components/support/AdminCreateSupportTicketDialog.tsx' \
+            'src/integrations/supabase/types.ts' \
+            'src/lib/vehicle-suitability.ts' \
+            'src/lib/vehicle-suitability.test.ts' \
+            'src/routes/app.admin.passengers.tsx' \
+            'src/routes/app.admin.passengers.$passengerId.tsx' \
+            'src/routes/app.admin.pricing-services.tsx' \
+            'src/routes/app.admin.support.tsx' \
+            'src/routes/app.admin.support.$ticketId.tsx' \
+            'src/routes/app.passenger.bookings.tsx' \
+            'src/routes/app.support.tsx' \
+            'src/routes/app.support.$ticketId.tsx' \
+            'src/routes/app.trip.$rideId.tsx'
+
+      - name: Lint changed source
+        run: |
+          bunx eslint \
+            'src/components/AddressAutocomplete.tsx' \
+            'src/components/profile/DriverProfileSections.tsx' \
+            'src/components/profile/PassengerProfileSections.tsx' \
+            'src/components/support/AdminCreateSupportTicketDialog.tsx' \
+            'src/integrations/supabase/types.ts' \
+            'src/lib/vehicle-suitability.ts' \
+            'src/lib/vehicle-suitability.test.ts' \
+            'src/routes/app.admin.passengers.tsx' \
+            'src/routes/app.admin.passengers.$passengerId.tsx' \
+            'src/routes/app.admin.pricing-services.tsx' \
+            'src/routes/app.admin.support.tsx' \
+            'src/routes/app.admin.support.$ticketId.tsx' \
+            'src/routes/app.passenger.bookings.tsx' \
+            'src/routes/app.support.tsx' \
+            'src/routes/app.support.$ticketId.tsx' \
+            'src/routes/app.trip.$rideId.tsx'
+
+      - name: Run full test suite
+        run: bun run test
+
+      - name: Run production build
+        run: bun run build
+
+      - name: Commit verified corrections
+        run: |
+          rm -f scripts/phase2_closeout_apply.py .github/workflows/phase2-closeout-apply.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src supabase scripts .github
+          git commit -m "fix(operations): close Phase 2 support and fleet gaps"
+          git pull --rebase origin phase-2-closeout-corrections
+          git push origin HEAD:phase-2-closeout-corrections
