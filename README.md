@@ -68,21 +68,23 @@ Update ride status
 
 Complete trip
 
-
-
 Admin features:
 
-View basic earnings/trip history
+View completed trip value and trip history
 
 Simple admin dashboard
 
-View users
+View passengers
 
 View drivers
 
 View trips
 
 View ride statuses
+
+Manage service pricing rules
+
+Manage passenger and driver support tickets
 
 Basic metrics: total users, total drivers, total trips, completed trips
 
@@ -96,6 +98,18 @@ rides: id, passenger_id, driver_id, pickup_address, pickup_lat, pickup_lng, dest
 
 payments: id, ride_id, passenger_id, driver_id, amount, status, payment_method, created_at
 
+Phase 2 profile and support foundation:
+
+passenger_saved_addresses: passenger-owned pickup shortcuts with one default address
+
+passenger_preferences: accessibility, communication and emergency-contact preferences
+
+support_tickets: passenger, driver and admin support cases
+
+support_messages: public replies and administrator-only internal notes
+
+support_ticket_events: auditable assignment, priority and status changes
+
 Pricing logic:
 
 Base fare: R20
@@ -103,6 +117,8 @@ Base fare: R20
 Per km: R13.5
 
 Estimated price = base fare + distance_km * per_km_rate
+
+Specialised service pricing is controlled through Admin → Pricing & Services. Mock values remain editable until final business rates are approved.
 
 Design:
 
