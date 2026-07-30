@@ -32,14 +32,14 @@ export function scoreVehicleForTrip(
   const blocking: SuitabilityReason[] = [];
   const warnings: SuitabilityReason[] = [];
 
-  if (vehicle.status === "out_of_service" || vehicle.status === "retired") {
+  if (["maintenance", "in_maintenance", "out_of_service", "retired"].includes(vehicle.status)) {
     blocking.push({
-      label: `Vehicle ${vehicle.status.replace(/_/g, " ")}`,
+      label:
+        vehicle.status === "maintenance" || vehicle.status === "in_maintenance"
+          ? "Vehicle in maintenance"
+          : `Vehicle ${vehicle.status.replace(/_/g, " ")}`,
       severity: "block",
     });
-  }
-  if (vehicle.status === "in_maintenance") {
-    warnings.push({ label: "Vehicle in maintenance", severity: "warning" });
   }
 
   const passengerCount = Number(needs.passengerCount ?? 0);

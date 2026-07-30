@@ -16,6 +16,7 @@ import {
   Settings,
   ShieldCheck,
   UserCircle2,
+  UserRoundCheck,
   UserRoundCog,
   Users,
   Wrench,
@@ -60,8 +61,13 @@ const SECTIONS: NavSection[] = [
     heading: "Fleet Management",
     items: [
       { to: "/app/admin/fleet", label: "Fleet Dashboard", icon: Gauge },
-      { to: "/app/admin/vehicle-profiles", label: "Vehicle Profiles", icon: Car, soon: true },
-      { to: "/app/admin/maintenance", label: "Maintenance", icon: Wrench, soon: true },
+      { to: "/app/admin/vehicle-profiles", label: "Vehicle Profiles", icon: Car },
+      { to: "/app/admin/maintenance", label: "Maintenance", icon: Wrench },
+      {
+        to: "/app/admin/driver-assignments",
+        label: "Driver Assignments",
+        icon: UserRoundCheck,
+      },
     ],
   },
   {

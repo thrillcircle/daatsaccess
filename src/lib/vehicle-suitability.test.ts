@@ -5,7 +5,7 @@ import {
   type VehicleProfile,
 } from "@/lib/vehicle-suitability";
 
-// Protect the assignment rules Phase 3 will reuse during canonical fleet consolidation.
+// Protect the assignment rules Phase 3 reuses during canonical fleet consolidation.
 function vehicle(overrides: Partial<VehicleProfile> = {}): VehicleProfile {
   return {
     admin_notes: null,
@@ -55,6 +55,13 @@ describe("vehicle suitability", () => {
     expect(result.warnings.map((warning) => warning.label)).not.toContain(
       "Already assigned to another active trip",
     );
+  });
+
+  it("blocks maintenance vehicles", () => {
+    const result = scoreVehicleForTrip(vehicle({ status: "maintenance" }), { passengerCount: 1 });
+
+    expect(result.suitable).toBe(false);
+    expect(result.blocking.map((reason) => reason.label)).toContain("Vehicle in maintenance");
   });
 
   it("blocks out-of-service vehicles and insufficient capacity", () => {

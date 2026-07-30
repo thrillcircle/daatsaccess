@@ -15,6 +15,7 @@ import {
   type ServiceType,
 } from "@/lib/booking-types";
 import { formatZAR } from "@/lib/pricing";
+import { fleetDb } from "@/lib/fleet";
 import { toast } from "sonner";
 import { ChevronRight, LifeBuoy, Plus } from "lucide-react";
 
@@ -92,11 +93,18 @@ type DriverAssign = {
   status: string;
   assignment_role: string;
 };
-type VehicleAssign = { id: string; booking_id: string; fleet_vehicle_id: string; status: string };
+type VehicleAssign = {
+  id: string;
+  booking_id: string;
+  vehicle_id: string | null;
+  fleet_vehicle_id: string | null;
+  status: string;
+};
 type CompanionAssign = { id: string; booking_id: string; companion_id: string; status: string };
 type FleetVehicle = {
   id: string;
-  registration_number: string;
+  vehicle_name: string;
+  license_plate: string;
   make: string | null;
   model: string | null;
 };
@@ -106,6 +114,7 @@ type Ride = {
   service_booking_id: string | null;
   status: string;
   driver_id: string | null;
+  vehicle_id: string | null;
 };
 type Profile = { user_id: string; full_name: string | null };
 
@@ -167,11 +176,11 @@ function PassengerBookingsPage() {
             .select("id,booking_id,status,total,currency,valid_until,notes")
             .in("booking_id", ids),
           supabase.from("booking_driver_assignments").select("*").in("booking_id", ids),
-          supabase.from("booking_vehicle_assignments").select("*").in("booking_id", ids),
+          fleetDb.from("booking_vehicle_assignments").select("*").in("booking_id", ids),
           supabase.from("booking_companion_assignments").select("*").in("booking_id", ids),
           supabase
             .from("rides")
-            .select("id,service_booking_id,status,driver_id")
+            .select("id,service_booking_id,status,driver_id,vehicle_id")
             .in("service_booking_id", ids),
           supabase
             .from("booking_itinerary_items")
@@ -203,7 +212,16 @@ function PassengerBookingsPage() {
         } else {
           setQuoteItems([]);
         }
-        const vIds = Array.from(new Set((vr.data ?? []).map((v) => v.fleet_vehicle_id)));
+        const vIds = Array.from(
+          new Set([
+            ...((vr.data ?? []) as VehicleAssign[])
+              .map((assignment) => assignment.vehicle_id)
+              .filter((value): value is string => !!value),
+            ...((rr.data ?? []) as Ride[])
+              .map((ride) => ride.vehicle_id)
+              .filter((value): value is string => !!value),
+          ]),
+        );
         const cIds = Array.from(new Set((cr.data ?? []).map((c) => c.companion_id)));
         const drIds = Array.from(
           new Set([
@@ -213,9 +231,9 @@ function PassengerBookingsPage() {
         );
         const [fv, comp, prof] = await Promise.all([
           vIds.length
-            ? supabase
-                .from("fleet_vehicles")
-                .select("id,registration_number,make,model")
+            ? fleetDb
+                .from("vehicle_profiles")
+                .select("id,vehicle_name,license_plate,make,model")
                 .in("id", vIds)
             : Promise.resolve({ data: [] as FleetVehicle[] }),
           cIds.length
@@ -288,8 +306,9 @@ function PassengerBookingsPage() {
             const driverName = (id: string | null | undefined) =>
               id ? (driverProfiles.find((p) => p.user_id === id)?.full_name ?? "Driver") : null;
             const driver = driverName(dAssign?.driver_user_id ?? ride?.driver_id ?? null);
-            const veh = vAssign
-              ? fleetVehicles.find((v) => v.id === vAssign.fleet_vehicle_id)
+            const assignedVehicleId = ride?.vehicle_id ?? vAssign?.vehicle_id ?? null;
+            const veh = assignedVehicleId
+              ? fleetVehicles.find((vehicle) => vehicle.id === assignedVehicleId)
               : null;
             const comps = cAssigns
               .map((ca) => companions.find((c) => c.id === ca.companion_id))
@@ -356,9 +375,7 @@ function PassengerBookingsPage() {
                   <div>
                     <dt className="text-muted-foreground">Vehicle</dt>
                     <dd>
-                      {veh
-                        ? `${veh.make ?? ""} ${veh.model ?? ""} · ${veh.registration_number}`
-                        : "—"}
+                      {veh ? `${veh.make ?? ""} ${veh.model ?? ""} · ${veh.license_plate}` : "—"}
                     </dd>
                   </div>
                   {b.service_type === "assisted" ? (

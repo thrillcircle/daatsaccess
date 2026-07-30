@@ -4,6 +4,7 @@ import { ArrowLeft, Clock3, FileText, Loader2, MessageSquare, Send, UserCheck } 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AdminShell } from "@/components/AdminShell";
+import { AdminSupportVehicleActions } from "@/components/support/AdminSupportVehicleActions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -199,6 +200,11 @@ function AdminSupportTicketPage() {
             <Link to="/app/admin/bookings">Service bookings</Link>
           </Button>
         ) : null}
+        <AdminSupportVehicleActions
+          ticketId={ticket.id}
+          vehicleId={ticket.vehicle_id}
+          description={ticket.description}
+        />
       </div>
     );
   }, [ticket]);
@@ -260,9 +266,10 @@ function AdminSupportTicketPage() {
             <div className="mt-4 whitespace-pre-wrap rounded-xl bg-secondary p-3 text-sm">
               {ticket.description}
             </div>
-            <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+            <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
               <p>Trip: {ticket.ride_id ?? "Not linked"}</p>
               <p>Service booking: {ticket.service_booking_id ?? "Not linked"}</p>
+              <p>Vehicle: {ticket.vehicle_id ?? "Not linked"}</p>
             </div>
           </section>
 
