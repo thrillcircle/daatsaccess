@@ -1,0 +1,69 @@
+name: Phase 4 Estimates
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.head_ref == 'phase-4-pricing-quotations'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out Phase 4 branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase-4-pricing-quotations
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Apply guarded estimate integration
+        run: python scripts/phase4_integrate_server_estimates.py
+
+      - name: Remove temporary tooling
+        run: rm scripts/phase4_integrate_server_estimates.py .github/workflows/phase4-estimates.yml
+
+      - name: Format changed TypeScript
+        run: |
+          bunx prettier --write \
+            src/lib/pricing-api.ts \
+            src/lib/ride-edit.functions.ts \
+            src/hooks/use-passenger-pricing-estimate.ts \
+            src/routes/app.passenger.index.tsx \
+            src/routes/app.passenger.book.transport.tsx
+
+      - name: Lint changed TypeScript
+        run: |
+          bunx eslint \
+            src/lib/pricing-api.ts \
+            src/lib/ride-edit.functions.ts \
+            src/hooks/use-passenger-pricing-estimate.ts \
+            src/routes/app.passenger.index.tsx \
+            src/routes/app.passenger.book.transport.tsx
+
+      - name: Run full test suite
+        run: bun test
+
+      - name: Run production build
+        run: bun run build
+
+      - name: Commit verified estimate integration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No integration changes to commit'
+          else
+            git commit -m 'feat(pricing): enforce authoritative passenger estimates'
+            git push origin HEAD:phase-4-pricing-quotations
+          fi
