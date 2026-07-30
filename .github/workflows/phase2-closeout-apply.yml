@@ -11,12 +11,15 @@ concurrency:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   apply-and-verify:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Check out closeout branch
         uses: actions/checkout@v4
@@ -38,9 +41,17 @@ jobs:
           echo "APPLY_EXIT=$code" >> "$GITHUB_ENV"
           exit 0
 
-      - name: Persist patch diagnostics
+      - name: Report and persist patch diagnostics
         if: env.APPLY_EXIT != '0'
         run: |
+          {
+            echo '### Phase 2 closeout patch stopped safely'
+            echo
+            echo '```text'
+            cat phase2-closeout-apply.log
+            echo '```'
+          } > /tmp/pr-comment.md
+          gh pr comment 4 --body-file /tmp/pr-comment.md
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add phase2-closeout-apply.log
@@ -113,3 +124,4 @@ jobs:
           git commit -m "fix(operations): close Phase 2 support and fleet gaps"
           git pull --rebase origin phase-2-closeout-corrections
           git push origin HEAD:phase-2-closeout-corrections
+          gh pr comment 4 --body 'Phase 2 closeout patch applied. Scoped lint, full tests, and production build passed before the verified correction commit was pushed.'
