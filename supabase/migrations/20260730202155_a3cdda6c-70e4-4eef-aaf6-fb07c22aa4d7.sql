@@ -1,7 +1,3 @@
--- Phase 3 completed-diff audit closeout.
--- This migration keeps effective assignments time-based and hardens maintenance,
--- document, reconciliation and reactivation behavior before Phase 4.
-
 ALTER TABLE public.fleet_consolidation_issues
   ADD COLUMN IF NOT EXISTS canonical_vehicle_id uuid
   REFERENCES public.vehicle_profiles(id) ON DELETE SET NULL;

@@ -167,10 +167,10 @@ function SupportPage() {
       p_subject: subject.trim(),
       p_description: description.trim(),
       p_priority: priority,
-      p_ride_id: rideId || null,
-      p_service_booking_id: bookingId || null,
-      p_passenger_id: null,
-      p_driver_id: null,
+      p_ride_id: rideId || undefined,
+      p_service_booking_id: bookingId || undefined,
+      p_passenger_id: undefined,
+      p_driver_id: undefined,
     });
     setCreating(false);
     if (error) {

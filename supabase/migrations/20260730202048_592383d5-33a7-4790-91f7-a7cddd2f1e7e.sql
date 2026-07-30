@@ -1,8 +1,3 @@
--- Phase 3 document administration and privacy hardening.
-
--- Bucket 'vehicle-documents' (private, 10MB, pdf/jpeg/png/webp) is provisioned
--- through the platform storage tooling; buckets cannot be created in migrations.
-
 DROP POLICY IF EXISTS "Admins read vehicle document files" ON storage.objects;
 CREATE POLICY "Admins read vehicle document files"
 ON storage.objects
@@ -47,9 +42,6 @@ USING (
   AND private.has_role(auth.uid(), 'admin'::app_role)
 );
 
--- Drivers receive compliance status through a restricted RPC instead of direct
--- vehicle_documents access, so storage paths and private document numbers are
--- not exposed to driver clients.
 DROP POLICY IF EXISTS "Drivers read assigned vehicle document status"
   ON public.vehicle_documents;
 
@@ -166,8 +158,6 @@ BEGIN
   )
   RETURNING * INTO v_document;
 
-  -- Maintain the temporary canonical expiry columns while old reads are being
-  -- removed. This is a one-way compatibility update only.
   UPDATE public.vehicle_profiles
   SET roadworthy_expiry_date = CASE
         WHEN p_document_type = 'roadworthy' THEN p_expires_at
