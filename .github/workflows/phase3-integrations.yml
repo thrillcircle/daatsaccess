@@ -1,4 +1,4 @@
-name: Phase 3 integration verification
+name: Phase 3 verification diagnostics
 
 on:
   push:
@@ -10,11 +10,10 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
   pull-requests: write
 
 jobs:
-  integrate-and-verify:
+  diagnose:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -32,24 +31,36 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Align sequential canonical booking guard
+      - name: Run and report each verification stage
         run: |
+          set +e
+          report_failure() {
+            stage="$1"
+            log="$2"
+            {
+              echo "### Phase 3 verification failed: $stage"
+              echo
+              echo '```text'
+              tail -n 120 "$log"
+              echo '```'
+            } > /tmp/phase3-comment.md
+            gh pr comment 5 --body-file /tmp/phase3-comment.md
+            exit 1
+          }
+
           python3 - <<'PY'
           from pathlib import Path
           path = Path('scripts/phase3_integrations_apply.py')
-          text = path.read_text()
-          text = text.replace('{v.registration_number}', '{v.license_plate}')
+          text = path.read_text().replace('{v.registration_number}', '{v.license_plate}')
           path.write_text(text)
           PY
 
-      - name: Apply guarded integrations
-        run: python3 scripts/phase3_integrations_apply.py
+          python3 scripts/phase3_integrations_apply.py > /tmp/apply.log 2>&1
+          [ "$?" -eq 0 ] || report_failure "guarded source patch" /tmp/apply.log
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+          bun install --frozen-lockfile > /tmp/install.log 2>&1
+          [ "$?" -eq 0 ] || report_failure "dependency installation" /tmp/install.log
 
-      - name: Format Phase 3 source
-        run: |
           bunx prettier --write \
             'src/components/AdminShell.tsx' \
             'src/components/profile/DriverProfileSections.tsx' \
@@ -67,10 +78,9 @@ jobs:
             'src/routes/app.admin.support.$ticketId.tsx' \
             'src/routes/app.admin.bookings.tsx' \
             'src/routes/app.admin.trips.tsx' \
-            'src/routes/app.passenger.bookings.tsx'
+            'src/routes/app.passenger.bookings.tsx' > /tmp/prettier.log 2>&1
+          [ "$?" -eq 0 ] || report_failure "formatting" /tmp/prettier.log
 
-      - name: Lint Phase 3 source
-        run: |
           bunx eslint \
             'src/components/AdminShell.tsx' \
             'src/components/profile/DriverProfileSections.tsx' \
@@ -88,26 +98,13 @@ jobs:
             'src/routes/app.admin.support.$ticketId.tsx' \
             'src/routes/app.admin.bookings.tsx' \
             'src/routes/app.admin.trips.tsx' \
-            'src/routes/app.passenger.bookings.tsx'
+            'src/routes/app.passenger.bookings.tsx' > /tmp/lint.log 2>&1
+          [ "$?" -eq 0 ] || report_failure "scoped lint" /tmp/lint.log
 
-      - name: Run full test suite
-        run: bun run test
+          bun run test > /tmp/test.log 2>&1
+          [ "$?" -eq 0 ] || report_failure "full test suite" /tmp/test.log
 
-      - name: Run production build
-        run: bun run build
+          bun run build > /tmp/build.log 2>&1
+          [ "$?" -eq 0 ] || report_failure "production build" /tmp/build.log
 
-      - name: Commit verified integrations
-        run: |
-          rm -f scripts/phase3_integrations_apply.py .github/workflows/phase3-integrations.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "feat(fleet): integrate canonical fleet operations"
-          git pull --rebase origin phase-3-fleet-consolidation
-          git push origin HEAD:phase-3-fleet-consolidation
-          gh pr comment 5 --body 'Phase 3 guarded integrations applied. Scoped lint, the full test suite, and the production build passed before the verified integration commit was pushed.'
-
-      - name: Report failure
-        if: failure()
-        run: |
-          gh pr comment 5 --body 'Phase 3 verification stopped before commit. The failed step identifies whether formatting, lint, tests, or production build needs correction; no partial integration commit was pushed.'
+          gh pr comment 5 --body 'Phase 3 diagnostic verification passed every stage. The branch is ready for the verified integration commit run.'
