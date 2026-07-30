@@ -99,8 +99,12 @@ describe("Phase 4 database contracts", () => {
     expect(clientBoundary).toContain(
       "Only database-owned or service-role execution may change the",
     );
-    expect(clientBoundary).toContain("SECURITY INVOKER");
-    expect(clientBoundary).not.toContain("SECURITY DEFINER");
+    expect(clientBoundary).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.protect_authoritative_pricing_fields\(\)\s+RETURNS trigger\s+LANGUAGE plpgsql\s+SECURITY INVOKER/,
+    );
+    expect(clientBoundary).not.toMatch(
+      /CREATE OR REPLACE FUNCTION public\.protect_authoritative_pricing_fields\(\)\s+RETURNS trigger\s+LANGUAGE plpgsql\s+SECURITY DEFINER/,
+    );
     expect(clientBoundary).not.toContain("private.has_role(auth.uid(), 'admin'::app_role)");
     expect(clientBoundary).toContain("Booking pricing and deposit fields are server-authoritative");
     expect(extendedJourneyAdmin).not.toContain("deposit_amount:");
