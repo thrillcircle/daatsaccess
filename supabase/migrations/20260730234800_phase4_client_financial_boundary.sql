@@ -2,11 +2,14 @@
 -- Authenticated administrators must use protected pricing/quote RPCs just like
 -- passengers. Only database-owned or service-role execution may change the
 -- authoritative estimate, quote and deposit fields guarded by this trigger.
+-- SECURITY INVOKER is essential: direct client writes run as `authenticated`,
+-- while writes performed inside protected SECURITY DEFINER RPCs run as the
+-- database function owner.
 
 CREATE OR REPLACE FUNCTION public.protect_authoritative_pricing_fields()
 RETURNS trigger
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = public, private
 AS $$
 DECLARE
