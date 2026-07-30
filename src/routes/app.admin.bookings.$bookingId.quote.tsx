@@ -91,9 +91,20 @@ function defaultInputs(service: ServiceType): PricingInputs {
     case "assisted":
       return { distance_km: 10, companion_hours: 2, specialist_vehicle_required: true };
     case "appointment":
-      return { distance_km: 20, companion_hours: 3, waiting_hours: 1, specialist_vehicle_required: true };
+      return {
+        distance_km: 20,
+        companion_hours: 3,
+        waiting_hours: 1,
+        specialist_vehicle_required: true,
+      };
     case "extended_journey":
-      return { distance_km: 100, journey_days: 2, driver_overnights: 1, companion_days: 2, specialist_vehicle_required: true };
+      return {
+        distance_km: 100,
+        journey_days: 2,
+        driver_overnights: 1,
+        companion_days: 2,
+        specialist_vehicle_required: true,
+      };
   }
 }
 
@@ -133,14 +144,19 @@ function AdminQuoteWorkspacePage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { data, error: loadError } = await pricingDb.rpc("admin_quote_workspace", { p_booking_id: bookingId });
+    const { data, error: loadError } = await pricingDb.rpc("admin_quote_workspace", {
+      p_booking_id: bookingId,
+    });
     if (loadError) {
       setError(loadError.message);
       setWorkspace(null);
     } else {
       const next = asWorkspace(data);
       setWorkspace(next);
-      if (next) setInputs((current) => Object.keys(current).length > 1 ? current : defaultInputs(next.booking.service_type));
+      if (next)
+        setInputs((current) =>
+          Object.keys(current).length > 1 ? current : defaultInputs(next.booking.service_type),
+        );
     }
     setLoading(false);
   }, [bookingId]);
@@ -150,7 +166,10 @@ function AdminQuoteWorkspacePage() {
   }, [isAdmin, load]);
 
   const selectedQuote = useMemo(
-    () => workspace?.quotes.find((quote) => quote.status === "draft" && !quote.sent_at) ?? workspace?.quotes[0] ?? null,
+    () =>
+      workspace?.quotes.find((quote) => quote.status === "draft" && !quote.sent_at) ??
+      workspace?.quotes[0] ??
+      null,
     [workspace],
   );
 
@@ -203,31 +222,96 @@ function AdminQuoteWorkspacePage() {
   };
 
   if (authLoading || rolesLoading || (user && roles === null)) {
-    return <AdminShell title="Quote Workspace"><p className="text-sm text-muted-foreground">Loading…</p></AdminShell>;
+    return (
+      <AdminShell title="Quote Workspace">
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </AdminShell>
+    );
   }
   if (!isAdmin) return null;
 
   return (
-    <AdminShell title="Quote Workspace" subtitle="Generate, revise and send a deterministic service quote.">
-      <Button asChild variant="ghost" size="sm" className="mb-3"><Link to="/app/admin/bookings"><ArrowLeft className="mr-1 h-4 w-4" />Back to bookings</Link></Button>
-      {error ? <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">{error}</div> : null}
-      {loading ? <div className="rounded-2xl border p-8 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Loading quote workspace…</div> : null}
+    <AdminShell
+      title="Quote Workspace"
+      subtitle="Generate, revise and send a deterministic service quote."
+    >
+      <Button asChild variant="ghost" size="sm" className="mb-3">
+        <Link to="/app/admin/bookings">
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back to bookings
+        </Link>
+      </Button>
+      {error ? (
+        <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
+      {loading ? (
+        <div className="rounded-2xl border p-8 text-center text-sm text-muted-foreground">
+          <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
+          Loading quote workspace…
+        </div>
+      ) : null}
 
       {workspace ? (
         <div className="space-y-5">
           <section className="rounded-2xl border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div><p className="text-xs uppercase tracking-wide text-muted-foreground">{workspace.booking.booking_reference}</p><h2 className="text-lg font-semibold">{SERVICE_TYPE_LABEL[workspace.booking.service_type]}</h2></div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {workspace.booking.booking_reference}
+                </p>
+                <h2 className="text-lg font-semibold">
+                  {SERVICE_TYPE_LABEL[workspace.booking.service_type]}
+                </h2>
+              </div>
               <Badge variant="outline">{workspace.booking.status.replaceAll("_", " ")}</Badge>
             </div>
-            <div className="mt-3 flex items-start gap-2 rounded-xl bg-primary/5 p-3 text-sm"><ShieldCheck className="mt-0.5 h-4 w-4 text-primary" /><p>The server resolves the effective published version from the service start date and stores an immutable component/rate snapshot.</p></div>
+            <div className="mt-3 flex items-start gap-2 rounded-xl bg-primary/5 p-3 text-sm">
+              <ShieldCheck className="mt-0.5 h-4 w-4 text-primary" />
+              <p>
+                The server resolves the effective published version from the service start date and
+                stores an immutable component/rate snapshot.
+              </p>
+            </div>
           </section>
 
           <section className="rounded-2xl border bg-card p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-semibold"><Calculator className="h-4 w-4" />Calculation inputs</h3><Button onClick={() => void generate()} disabled={busy === "generate"}>{busy === "generate" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Generate revision</Button></div>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="flex items-center gap-2 font-semibold">
+                <Calculator className="h-4 w-4" />
+                Calculation inputs
+              </h3>
+              <Button onClick={() => void generate()} disabled={busy === "generate"}>
+                {busy === "generate" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Generate revision
+              </Button>
+            </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {Object.entries(inputs).filter(([, value]) => typeof value === "number").map(([key, value]) => <div key={key}><Label>{key.replaceAll("_", " ")}</Label><Input type="number" min="0" step="0.25" value={Number(value)} onChange={(event) => setInputs({ ...inputs, [key]: Number(event.target.value) })} /></div>)}
-              <div><Label>Quote valid until</Label><Input type="datetime-local" value={validUntil} onChange={(event) => setValidUntil(event.target.value)} /></div>
+              {Object.entries(inputs)
+                .filter(([, value]) => typeof value === "number")
+                .map(([key, value]) => (
+                  <div key={key}>
+                    <Label>{key.replaceAll("_", " ")}</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      value={Number(value)}
+                      onChange={(event) =>
+                        setInputs({ ...inputs, [key]: Number(event.target.value) })
+                      }
+                    />
+                  </div>
+                ))}
+              <div>
+                <Label>Quote valid until</Label>
+                <Input
+                  type="datetime-local"
+                  value={validUntil}
+                  onChange={(event) => setValidUntil(event.target.value)}
+                />
+              </div>
             </div>
           </section>
 
@@ -235,27 +319,138 @@ function AdminQuoteWorkspacePage() {
             <section className="rounded-2xl border bg-card p-4 shadow-sm">
               <h3 className="font-semibold">Draft revision {selectedQuote.revision_number}</h3>
               <div className="mt-3 space-y-1 text-sm">
-                {workspace.items.filter((item) => item.quote_id === selectedQuote.id).map((item) => <div key={item.id} className="flex justify-between gap-3"><span>{item.label} × {Number(item.quantity)} {item.unit ?? ""}{item.customer_visible ? "" : " · internal"}</span><span>{formatZAR(Number(item.line_total))}</span></div>)}
-                <div className="mt-2 flex justify-between border-t pt-2"><span>Calculated subtotal</span><span>{formatZAR(Number(selectedQuote.subtotal))}</span></div>
-                <div className="flex justify-between text-muted-foreground"><span>Internal margin</span><span>{formatZAR(Number(selectedQuote.margin_amount))}</span></div>
-                <div className="flex justify-between text-muted-foreground"><span>Audited adjustment</span><span>{formatZAR(Number(selectedQuote.adjustments_total))}</span></div>
-                <div className="flex justify-between text-base font-semibold"><span>Customer total</span><span>{formatZAR(Number(selectedQuote.final_total))}</span></div>
+                {workspace.items
+                  .filter((item) => item.quote_id === selectedQuote.id)
+                  .map((item) => (
+                    <div key={item.id} className="flex justify-between gap-3">
+                      <span>
+                        {item.label} × {Number(item.quantity)} {item.unit ?? ""}
+                        {item.customer_visible ? "" : " · internal"}
+                      </span>
+                      <span>{formatZAR(Number(item.line_total))}</span>
+                    </div>
+                  ))}
+                <div className="mt-2 flex justify-between border-t pt-2">
+                  <span>Calculated subtotal</span>
+                  <span>{formatZAR(Number(selectedQuote.subtotal))}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Internal margin</span>
+                  <span>{formatZAR(Number(selectedQuote.margin_amount))}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Audited adjustment</span>
+                  <span>{formatZAR(Number(selectedQuote.adjustments_total))}</span>
+                </div>
+                <div className="flex justify-between text-base font-semibold">
+                  <span>Customer total</span>
+                  <span>{formatZAR(Number(selectedQuote.final_total))}</span>
+                </div>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-[160px_1fr_auto]"><div><Label>Adjustment (+/- ZAR)</Label><Input type="number" step="0.01" value={adjustment} onChange={(event) => setAdjustment(Number(event.target.value))} /></div><div><Label>Mandatory reason</Label><Textarea value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} /></div><div className="flex items-end"><Button variant="outline" disabled={!overrideReason.trim() || busy === "override"} onClick={() => void applyOverride()}>Apply override</Button></div></div>
-              <div className="mt-4 flex justify-end"><Button onClick={() => void sendQuote()} disabled={busy === "send"}>{busy === "send" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Send quote</Button></div>
+              <div className="mt-4 grid gap-3 md:grid-cols-[160px_1fr_auto]">
+                <div>
+                  <Label>Adjustment (+/- ZAR)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={adjustment}
+                    onChange={(event) => setAdjustment(Number(event.target.value))}
+                  />
+                </div>
+                <div>
+                  <Label>Mandatory reason</Label>
+                  <Textarea
+                    value={overrideReason}
+                    onChange={(event) => setOverrideReason(event.target.value)}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    variant="outline"
+                    disabled={!overrideReason.trim() || busy === "override"}
+                    onClick={() => void applyOverride()}
+                  >
+                    Apply override
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Button onClick={() => void sendQuote()} disabled={busy === "send"}>
+                  {busy === "send" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  Send quote
+                </Button>
+              </div>
             </section>
           ) : null}
 
           <section className="rounded-2xl border bg-card p-4 shadow-sm">
-            <h3 className="flex items-center gap-2 font-semibold"><History className="h-4 w-4" />Revision history</h3>
+            <h3 className="flex items-center gap-2 font-semibold">
+              <History className="h-4 w-4" />
+              Revision history
+            </h3>
             <div className="mt-3 space-y-3">
-              {workspace.quotes.length === 0 ? <p className="text-sm text-muted-foreground">No quote revisions yet.</p> : workspace.quotes.map((quote) => <article key={quote.id} className="rounded-xl border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-medium">{quote.quote_reference} · revision {quote.revision_number}</p><p className="text-xs text-muted-foreground">Created {new Date(quote.created_at).toLocaleString("en-ZA")}</p></div><div className="flex items-center gap-2"><Badge variant="outline">{quote.status}</Badge><span className="font-semibold">{formatZAR(Number(quote.final_total))}</span></div></div>{quote.admin_override_reason ? <p className="mt-2 text-xs text-muted-foreground">Override: {quote.admin_override_reason}</p> : null}{quote.superseded_at ? <p className="mt-1 text-xs text-muted-foreground">Superseded {new Date(quote.superseded_at).toLocaleString("en-ZA")}</p> : null}</article>)}
+              {workspace.quotes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No quote revisions yet.</p>
+              ) : (
+                workspace.quotes.map((quote) => (
+                  <article key={quote.id} className="rounded-xl border p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium">
+                          {quote.quote_reference} · revision {quote.revision_number}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Created {new Date(quote.created_at).toLocaleString("en-ZA")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{quote.status}</Badge>
+                        <span className="font-semibold">
+                          {formatZAR(Number(quote.final_total))}
+                        </span>
+                      </div>
+                    </div>
+                    {quote.admin_override_reason ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Override: {quote.admin_override_reason}
+                      </p>
+                    ) : null}
+                    {quote.superseded_at ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Superseded {new Date(quote.superseded_at).toLocaleString("en-ZA")}
+                      </p>
+                    ) : null}
+                  </article>
+                ))
+              )}
             </div>
           </section>
 
           <section className="rounded-2xl border bg-card p-4">
             <h3 className="font-semibold">Audit events</h3>
-            <div className="mt-3 space-y-2 text-sm">{workspace.audit_events.length === 0 ? <p className="text-muted-foreground">No audit events.</p> : workspace.audit_events.map((event) => <div key={event.id} className="rounded-lg bg-secondary/60 p-2"><div className="flex justify-between gap-2"><span>{event.event_type.replaceAll("_", " ")}</span><span className="text-xs text-muted-foreground">{new Date(event.created_at).toLocaleString("en-ZA")}</span></div>{event.reason ? <p className="text-xs text-muted-foreground">{event.reason}</p> : null}</div>)}</div>
+            <div className="mt-3 space-y-2 text-sm">
+              {workspace.audit_events.length === 0 ? (
+                <p className="text-muted-foreground">No audit events.</p>
+              ) : (
+                workspace.audit_events.map((event) => (
+                  <div key={event.id} className="rounded-lg bg-secondary/60 p-2">
+                    <div className="flex justify-between gap-2">
+                      <span>{event.event_type.replaceAll("_", " ")}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(event.created_at).toLocaleString("en-ZA")}
+                      </span>
+                    </div>
+                    {event.reason ? (
+                      <p className="text-xs text-muted-foreground">{event.reason}</p>
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
           </section>
         </div>
       ) : null}

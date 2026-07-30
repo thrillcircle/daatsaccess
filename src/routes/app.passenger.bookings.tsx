@@ -15,8 +15,8 @@ import {
   type ServiceType,
 } from "@/lib/booking-types";
 import { formatZAR } from "@/lib/pricing";
+import { asQuoteSummaries, pricingDb } from "@/lib/pricing-api";
 import { fleetDb } from "@/lib/fleet";
-import { toast } from "sonner";
 import { ChevronRight, LifeBuoy, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/app/passenger/bookings")({
@@ -58,21 +58,18 @@ type Assistance = {
 type Quote = {
   id: string;
   booking_id: string;
+  quote_reference: string;
   status: string;
-  total: number;
+  revision_number: number;
+  final_total: number;
   currency: string;
   valid_until: string | null;
-  notes: string | null;
-};
-type QuoteItem = {
-  id: string;
-  quote_id: string;
-  label: string;
-  description: string | null;
-  quantity: number;
-  unit_price: number;
-  line_total: number;
-  sort_order: number;
+  sent_at: string | null;
+  accepted_at: string | null;
+  declined_at: string | null;
+  expired_at: string | null;
+  superseded_at: string | null;
+  row_version: number;
 };
 type Itinerary = {
   id: string;
@@ -140,7 +137,6 @@ function PassengerBookingsPage() {
   const [travellers, setTravellers] = useState<Traveller[]>([]);
   const [assistance, setAssistance] = useState<Assistance[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [itinerary, setItinerary] = useState<Itinerary[]>([]);
   const [driverAssigns, setDriverAssigns] = useState<DriverAssign[]>([]);
   const [vehicleAssigns, setVehicleAssigns] = useState<VehicleAssign[]>([]);
@@ -171,10 +167,7 @@ function PassengerBookingsPage() {
         const [tr, ar, qr, dr, vr, cr, rr, ir] = await Promise.all([
           supabase.from("booking_travellers").select("*").in("booking_id", ids),
           supabase.from("booking_assistance_requirements").select("*").in("booking_id", ids),
-          supabase
-            .from("service_quotes")
-            .select("id,booking_id,status,total,currency,valid_until,notes")
-            .in("booking_id", ids),
+          pricingDb.rpc("passenger_quote_summaries", {}),
           supabase.from("booking_driver_assignments").select("*").in("booking_id", ids),
           fleetDb.from("booking_vehicle_assignments").select("*").in("booking_id", ids),
           supabase.from("booking_companion_assignments").select("*").in("booking_id", ids),
@@ -192,26 +185,13 @@ function PassengerBookingsPage() {
         if (cancelled) return;
         setTravellers((tr.data ?? []) as Traveller[]);
         setAssistance((ar.data ?? []) as Assistance[]);
-        const qs = (qr.data ?? []) as Quote[];
+        const qs = asQuoteSummaries(qr.data) as Quote[];
         setQuotes(qs);
         setDriverAssigns((dr.data ?? []) as DriverAssign[]);
         setVehicleAssigns((vr.data ?? []) as VehicleAssign[]);
         setCompanionAssigns((cr.data ?? []) as CompanionAssign[]);
         setRides((rr.data ?? []) as Ride[]);
         setItinerary((ir.data ?? []) as Itinerary[]);
-        if (qs.length) {
-          const { data: qi } = await supabase
-            .from("service_quote_items")
-            .select("*")
-            .in(
-              "quote_id",
-              qs.map((q) => q.id),
-            )
-            .order("sort_order");
-          if (!cancelled) setQuoteItems((qi ?? []) as QuoteItem[]);
-        } else {
-          setQuoteItems([]);
-        }
         const vIds = Array.from(
           new Set([
             ...((vr.data ?? []) as VehicleAssign[])
@@ -319,7 +299,7 @@ function PassengerBookingsPage() {
               if (b.status === "completed") return "Trip complete";
               if (b.status === "awaiting_quote") return "Waiting for our team to send a quote.";
               if (b.status === "quoted" && q)
-                return `Review and accept the quote (${formatZAR(Number(q.total))}).`;
+                return `Review and accept the quote (${formatZAR(Number(q.final_total))}).`;
               if (b.status === "accepted") return "Awaiting driver and vehicle assignment.";
               if (b.status === "resources_assigned")
                 return "Resources ready — trip will start at the scheduled time.";
@@ -402,7 +382,7 @@ function PassengerBookingsPage() {
                   ) : null}
                   <div>
                     <dt className="text-muted-foreground">Quote</dt>
-                    <dd>{q ? `${q.status} · ${formatZAR(Number(q.total))}` : "—"}</dd>
+                    <dd>{q ? `${q.status} · ${formatZAR(Number(q.final_total))}` : "—"}</dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">Estimated</dt>
@@ -448,33 +428,17 @@ function PassengerBookingsPage() {
                   ) : null}
                 </dl>
 
-                {b.service_type === "extended_journey" && q ? (
-                  <details className="mt-2 rounded-lg border bg-background/40 p-2 text-xs">
-                    <summary className="cursor-pointer font-medium">
-                      Quote breakdown ({quoteItems.filter((qi) => qi.quote_id === q.id).length} line
-                      items)
-                    </summary>
-                    <ul className="mt-2 space-y-1">
-                      {quoteItems
-                        .filter((qi) => qi.quote_id === q.id)
-                        .map((qi) => (
-                          <li key={qi.id} className="flex justify-between gap-2">
-                            <span className="truncate">
-                              {qi.label} × {Number(qi.quantity)}
-                            </span>
-                            <span className="font-mono">{formatZAR(Number(qi.line_total))}</span>
-                          </li>
-                        ))}
-                    </ul>
-                    {q.valid_until ? (
-                      <p className="mt-2 text-[11px] text-muted-foreground">
-                        Valid until {new Date(q.valid_until).toLocaleDateString("en-ZA")}
-                      </p>
-                    ) : null}
-                    {q.notes ? (
-                      <p className="mt-1 text-[11px] text-muted-foreground">{q.notes}</p>
-                    ) : null}
-                  </details>
+                {q ? (
+                  <div className="mt-2 flex justify-end">
+                    <Button asChild size="sm" variant="outline">
+                      <Link
+                        to="/app/passenger/bookings/$bookingId/quote"
+                        params={{ bookingId: b.id }}
+                      >
+                        Review quote revision {q.revision_number}
+                      </Link>
+                    </Button>
+                  </div>
                 ) : null}
 
                 {b.service_type === "extended_journey" &&
@@ -531,58 +495,13 @@ function PassengerBookingsPage() {
 
                 {b.status === "quoted" && q ? (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      onClick={async () => {
-                        const { error: qErr } = await supabase
-                          .from("service_quotes")
-                          .update({ status: "accepted" })
-                          .eq("id", q.id);
-                        if (qErr) {
-                          toast.error(qErr.message);
-                          return;
-                        }
-                        const { error: bErr } = await supabase
-                          .from("service_bookings")
-                          .update({ status: "accepted", quoted_total: q.total })
-                          .eq("id", b.id);
-                        if (bErr) {
-                          toast.error(bErr.message);
-                          return;
-                        }
-                        await supabase.from("service_booking_events").insert({
-                          booking_id: b.id,
-                          actor_user_id: user!.id,
-                          event_type: "quote_accepted",
-                          payload: { quote_id: q.id } as never,
-                        });
-                        toast.success("Quote accepted");
-                      }}
-                    >
-                      Accept quote
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={async () => {
-                        const { error: qErr } = await supabase
-                          .from("service_quotes")
-                          .update({ status: "rejected" })
-                          .eq("id", q.id);
-                        if (qErr) {
-                          toast.error(qErr.message);
-                          return;
-                        }
-                        await supabase.from("service_booking_events").insert({
-                          booking_id: b.id,
-                          actor_user_id: user!.id,
-                          event_type: "quote_declined",
-                          payload: { quote_id: q.id } as never,
-                        });
-                        toast.success("Quote declined");
-                      }}
-                    >
-                      Decline
+                    <Button asChild size="sm">
+                      <Link
+                        to="/app/passenger/bookings/$bookingId/quote"
+                        params={{ bookingId: b.id }}
+                      >
+                        Review and respond
+                      </Link>
                     </Button>
                   </div>
                 ) : null}

@@ -139,7 +139,10 @@ export function requiredPricingWarnings(
 ): string[] {
   const warnings: string[] = [];
   if (inputs.distance_km == null) warnings.push("Route distance is required");
-  if ((serviceCode === "assisted" || serviceCode === "appointment") && inputs.companion_hours == null) {
+  if (
+    (serviceCode === "assisted" || serviceCode === "appointment") &&
+    inputs.companion_hours == null
+  ) {
     warnings.push("Companion hours are required");
   }
   if (serviceCode === "appointment" && inputs.waiting_hours == null) {
@@ -162,14 +165,19 @@ export function calculatePricing(
 
   for (const component of [...components]
     .filter((item) => item.is_active)
-    .sort((a, b) => a.calculation_order - b.calculation_order || a.component_code.localeCompare(b.component_code))) {
+    .sort(
+      (a, b) =>
+        a.calculation_order - b.calculation_order ||
+        a.component_code.localeCompare(b.component_code),
+    )) {
     const quantity = quantityFor(component, inputs);
     const lineSubtotal =
       component.calculation_type === "percentage"
         ? roundZAR((runningTotal * component.amount) / 100)
         : roundZAR(component.amount * quantity);
 
-    if (component.calculation_type === "percentage") marginAmount = roundZAR(marginAmount + lineSubtotal);
+    if (component.calculation_type === "percentage")
+      marginAmount = roundZAR(marginAmount + lineSubtotal);
     runningTotal = roundZAR(runningTotal + lineSubtotal);
 
     lines.push({

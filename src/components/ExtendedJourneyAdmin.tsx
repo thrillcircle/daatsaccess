@@ -4,7 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { type ExtendedJourneyMetadata } from "@/lib/booking-types";
 import { Calculator, UserPlus, Wallet } from "lucide-react";
@@ -106,7 +112,8 @@ export function ExtendedJourneyAdminPanel({
 
   const saveRelief = async () => {
     if (!reliefId) return toast.error("Pick a relief driver");
-    if (reliefId === primaryDriverId) return toast.error("Relief must differ from the primary driver");
+    if (reliefId === primaryDriverId)
+      return toast.error("Relief must differ from the primary driver");
     setBusy(true);
     try {
       await supabase
@@ -166,30 +173,88 @@ export function ExtendedJourneyAdminPanel({
                 : "—"}
             </dd>
           </div>
-          <div><dt className="text-muted-foreground">Group size</dt><dd>{meta.group_size ?? "—"}</dd></div>
-          <div><dt className="text-muted-foreground">Wheelchairs</dt><dd>{meta.wheelchair_count ?? 0}</dd></div>
-          <div><dt className="text-muted-foreground">Other equipment</dt><dd>{meta.mobility_equipment_count ?? 0}</dd></div>
-          <div className="col-span-2"><dt className="text-muted-foreground">Starting location</dt><dd>{meta.starting_location || "—"}</dd></div>
-          <div className="col-span-2"><dt className="text-muted-foreground">Main destination</dt><dd>{meta.main_destination || "—"}</dd></div>
-          {meta.planned_destinations?.length ? <div className="col-span-2"><dt className="text-muted-foreground">Planned stops</dt><dd>{meta.planned_destinations.join(", ")}</dd></div> : null}
-          {meta.luggage_requirements ? <div className="col-span-2"><dt className="text-muted-foreground">Luggage</dt><dd>{meta.luggage_requirements}</dd></div> : null}
-          {meta.accommodation_requirements ? <div className="col-span-2"><dt className="text-muted-foreground">Accommodation</dt><dd>{meta.accommodation_requirements}</dd></div> : null}
-          {meta.overnight_support_requirements ? <div className="col-span-2"><dt className="text-muted-foreground">Overnight support</dt><dd>{meta.overnight_support_requirements}</dd></div> : null}
-          {meta.general_support_instructions ? <div className="col-span-2"><dt className="text-muted-foreground">General support</dt><dd>{meta.general_support_instructions}</dd></div> : null}
+          <div>
+            <dt className="text-muted-foreground">Group size</dt>
+            <dd>{meta.group_size ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Wheelchairs</dt>
+            <dd>{meta.wheelchair_count ?? 0}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Other equipment</dt>
+            <dd>{meta.mobility_equipment_count ?? 0}</dd>
+          </div>
+          <div className="col-span-2">
+            <dt className="text-muted-foreground">Starting location</dt>
+            <dd>{meta.starting_location || "—"}</dd>
+          </div>
+          <div className="col-span-2">
+            <dt className="text-muted-foreground">Main destination</dt>
+            <dd>{meta.main_destination || "—"}</dd>
+          </div>
+          {meta.planned_destinations?.length ? (
+            <div className="col-span-2">
+              <dt className="text-muted-foreground">Planned stops</dt>
+              <dd>{meta.planned_destinations.join(", ")}</dd>
+            </div>
+          ) : null}
+          {meta.luggage_requirements ? (
+            <div className="col-span-2">
+              <dt className="text-muted-foreground">Luggage</dt>
+              <dd>{meta.luggage_requirements}</dd>
+            </div>
+          ) : null}
+          {meta.accommodation_requirements ? (
+            <div className="col-span-2">
+              <dt className="text-muted-foreground">Accommodation</dt>
+              <dd>{meta.accommodation_requirements}</dd>
+            </div>
+          ) : null}
+          {meta.overnight_support_requirements ? (
+            <div className="col-span-2">
+              <dt className="text-muted-foreground">Overnight support</dt>
+              <dd>{meta.overnight_support_requirements}</dd>
+            </div>
+          ) : null}
+          {meta.general_support_instructions ? (
+            <div className="col-span-2">
+              <dt className="text-muted-foreground">General support</dt>
+              <dd>{meta.general_support_instructions}</dd>
+            </div>
+          ) : null}
           {meta.emergency_contact?.name ? (
             <div className="col-span-2">
               <dt className="text-muted-foreground">Emergency contact</dt>
-              <dd>{meta.emergency_contact.name}{meta.emergency_contact.relationship ? ` (${meta.emergency_contact.relationship})` : ""}{" · "}{meta.emergency_contact.phone}</dd>
+              <dd>
+                {meta.emergency_contact.name}
+                {meta.emergency_contact.relationship
+                  ? ` (${meta.emergency_contact.relationship})`
+                  : ""}
+                {" · "}
+                {meta.emergency_contact.phone}
+              </dd>
             </div>
           ) : null}
-          {meta.additional_travellers?.length ? <div className="col-span-2"><dt className="text-muted-foreground">Additional travellers</dt><dd>{meta.additional_travellers.map((traveller) => traveller.full_name).join(", ")}</dd></div> : null}
+          {meta.additional_travellers?.length ? (
+            <div className="col-span-2">
+              <dt className="text-muted-foreground">Additional travellers</dt>
+              <dd>
+                {meta.additional_travellers.map((traveller) => traveller.full_name).join(", ")}
+              </dd>
+            </div>
+          ) : null}
         </dl>
       </section>
 
       <section className="rounded-lg border border-primary/25 bg-primary/5 p-3">
-        <h4 className="flex items-center gap-1 text-sm font-semibold"><Calculator className="h-3.5 w-3.5" />Calculated quote workspace</h4>
+        <h4 className="flex items-center gap-1 text-sm font-semibold">
+          <Calculator className="h-3.5 w-3.5" />
+          Calculated quote workspace
+        </h4>
         <p className="mt-1 text-xs text-muted-foreground">
-          Manual line-item totals have been retired. Generate the quote from the published pricing version, then apply any approved adjustment with a mandatory audit reason.
+          Manual line-item totals have been retired. Generate the quote from the published pricing
+          version, then apply any approved adjustment with a mandatory audit reason.
         </p>
         <Button asChild size="sm" className="mt-3">
           <Link to="/app/admin/bookings/$bookingId/quote" params={{ bookingId: booking.id }}>
@@ -199,32 +264,86 @@ export function ExtendedJourneyAdminPanel({
       </section>
 
       <section className="rounded-lg border p-3">
-        <h4 className="flex items-center gap-1 text-sm font-semibold"><Wallet className="h-3.5 w-3.5" />Deposit record</h4>
+        <h4 className="flex items-center gap-1 text-sm font-semibold">
+          <Wallet className="h-3.5 w-3.5" />
+          Deposit record
+        </h4>
         <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-          <div><Label>Amount (ZAR)</Label><Input type="number" min={0} step="0.01" value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)} /></div>
+          <div>
+            <Label>Amount (ZAR)</Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={depositAmount}
+              onChange={(event) => setDepositAmount(event.target.value)}
+            />
+          </div>
           <div>
             <Label>Status</Label>
-            <Select value={depositStatus} onValueChange={(value) => setDepositStatus(value as DepositStatus)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{(["none", "pending", "paid", "waived", "refunded"] as DepositStatus[]).map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
+            <Select
+              value={depositStatus}
+              onValueChange={(value) => setDepositStatus(value as DepositStatus)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(["none", "pending", "paid", "waived", "refunded"] as DepositStatus[]).map(
+                  (status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ),
+                )}
+              </SelectContent>
             </Select>
           </div>
-          <div className="grid items-end"><Button size="sm" disabled={busy} onClick={() => void saveDeposit()}>Save deposit</Button></div>
+          <div className="grid items-end">
+            <Button size="sm" disabled={busy} onClick={() => void saveDeposit()}>
+              Save deposit
+            </Button>
+          </div>
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">Payment collection and settlement remain outside Phase 4.</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Payment collection and settlement remain outside Phase 4.
+        </p>
       </section>
 
       <section className="rounded-lg border p-3">
-        <h4 className="flex items-center gap-1 text-sm font-semibold"><UserPlus className="h-3.5 w-3.5" />Relief driver (optional)</h4>
+        <h4 className="flex items-center gap-1 text-sm font-semibold">
+          <UserPlus className="h-3.5 w-3.5" />
+          Relief driver (optional)
+        </h4>
         <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
           <Select value={reliefId} onValueChange={setReliefId}>
-            <SelectTrigger><SelectValue placeholder="Assign relief driver" /></SelectTrigger>
-            <SelectContent>{drivers.filter((driver) => driver.user_id !== primaryDriverId).map((driver) => <SelectItem key={driver.user_id} value={driver.user_id}>{driver.full_name ?? driver.user_id.slice(0, 8)}</SelectItem>)}</SelectContent>
+            <SelectTrigger>
+              <SelectValue placeholder="Assign relief driver" />
+            </SelectTrigger>
+            <SelectContent>
+              {drivers
+                .filter((driver) => driver.user_id !== primaryDriverId)
+                .map((driver) => (
+                  <SelectItem key={driver.user_id} value={driver.user_id}>
+                    {driver.full_name ?? driver.user_id.slice(0, 8)}
+                  </SelectItem>
+                ))}
+            </SelectContent>
           </Select>
-          <Button size="sm" disabled={busy || !reliefId} onClick={() => void saveRelief()}>Save relief</Button>
-          {reliefExisting ? <Button size="sm" variant="ghost" disabled={busy} onClick={() => void clearRelief()}>Clear</Button> : null}
+          <Button size="sm" disabled={busy || !reliefId} onClick={() => void saveRelief()}>
+            Save relief
+          </Button>
+          {reliefExisting ? (
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => void clearRelief()}>
+              Clear
+            </Button>
+          ) : null}
         </div>
-        {reliefExisting ? <Badge variant="secondary" className="mt-1 text-[10px]">Relief assigned</Badge> : null}
+        {reliefExisting ? (
+          <Badge variant="secondary" className="mt-1 text-[10px]">
+            Relief assigned
+          </Badge>
+        ) : null}
       </section>
     </div>
   );

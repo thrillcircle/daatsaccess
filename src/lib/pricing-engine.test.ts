@@ -30,11 +30,15 @@ describe("Phase 4 deterministic pricing", () => {
   });
 
   it("keeps the confirmed 10 km Ride fare at R155", () => {
-    expect(calculatePricing("ride", CONFIRMED_RIDE_COMPONENTS, { distance_km: 10 }).total).toBe(155);
+    expect(calculatePricing("ride", CONFIRMED_RIDE_COMPONENTS, { distance_km: 10 }).total).toBe(
+      155,
+    );
   });
 
   it("rounds decimal distance deterministically to cents", () => {
-    expect(calculatePricing("transport", CONFIRMED_RIDE_COMPONENTS, { distance_km: 1.234 }).total).toBe(36.66);
+    expect(
+      calculatePricing("transport", CONFIRMED_RIDE_COMPONENTS, { distance_km: 1.234 }).total,
+    ).toBe(36.66);
   });
 
   it("applies companion minimum hours", () => {
