@@ -1,16 +1,49 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { CalendarRange, Car, LifeBuoy, Loader2, MapPinned, ShieldCheck, Star } from "lucide-react";
+import {
+  Accessibility,
+  CalendarRange,
+  Car,
+  FileCheck2,
+  LifeBuoy,
+  Loader2,
+  MapPinned,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Database } from "@/integrations/supabase/types";
+import {
+  VEHICLE_STATUS_LABEL,
+  accessibilityLabels,
+  documentState,
+  fleetDb,
+  isAssignmentEffective,
+  type CanonicalVehicle,
+  type VehicleAssignment,
+  type VehicleDocument,
+} from "@/lib/fleet";
 
 type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
+type CanonicalAssignmentState = {
+  assignment: VehicleAssignment | null;
+  vehicle: CanonicalVehicle | null;
+  documents: VehicleDocument[];
+};
+
+const EMPTY_ASSIGNMENT: CanonicalAssignmentState = {
+  assignment: null,
+  vehicle: null,
+  documents: [],
+};
+
 export function DriverProfileSections({ userId }: { userId: string }) {
   const [driver, setDriver] = useState<DriverProfile | null>(null);
+  const [canonical, setCanonical] = useState<CanonicalAssignmentState>(EMPTY_ASSIGNMENT);
   const [rides, setRides] = useState<Ride[]>([]);
   const [ratings, setRatings] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,14 +54,45 @@ export function DriverProfileSections({ userId }: { userId: string }) {
     const load = async () => {
       setLoading(true);
       setError(null);
-      const [driverResult, rideResult, ratingResult] = await Promise.all([
+      const [driverResult, assignmentResult, rideResult, ratingResult] = await Promise.all([
         supabase.from("driver_profiles").select("*").eq("user_id", userId).maybeSingle(),
+        fleetDb
+          .from("vehicle_driver_assignments")
+          .select("*")
+          .eq("driver_id", userId)
+          .eq("status", "active")
+          .lte("start_at", new Date().toISOString())
+          .order("start_at", { ascending: false }),
         supabase.from("rides").select("*").eq("driver_id", userId),
         supabase.from("ride_reviews").select("rating").eq("driver_id", userId),
       ]);
       if (cancelled) return;
-      if (driverResult.error) setError(driverResult.error.message);
+      const firstError = driverResult.error || assignmentResult.error || rideResult.error || ratingResult.error;
+      if (firstError) setError(firstError.message);
+
+      const assignment = ((assignmentResult.data ?? []) as VehicleAssignment[]).find((item) =>
+        isAssignmentEffective(item),
+      );
+      let vehicle: CanonicalVehicle | null = null;
+      let documents: VehicleDocument[] = [];
+      if (assignment) {
+        const [vehicleResult, documentResult] = await Promise.all([
+          fleetDb.from("vehicle_profiles").select("*").eq("id", assignment.vehicle_id).maybeSingle(),
+          fleetDb
+            .from("vehicle_documents")
+            .select("*")
+            .eq("vehicle_id", assignment.vehicle_id)
+            .eq("is_current", true),
+        ]);
+        if (cancelled) return;
+        if (vehicleResult.error) setError(vehicleResult.error.message);
+        if (documentResult.error) setError(documentResult.error.message);
+        vehicle = (vehicleResult.data ?? null) as CanonicalVehicle | null;
+        documents = (documentResult.data ?? []) as VehicleDocument[];
+      }
+
       setDriver(driverResult.data);
+      setCanonical({ assignment: assignment ?? null, vehicle, documents });
       setRides((rideResult.data ?? []) as Ride[]);
       setRatings((ratingResult.data ?? []).map((row) => Number(row.rating)));
       setLoading(false);
@@ -79,6 +143,35 @@ export function DriverProfileSections({ userId }: { userId: string }) {
     );
   }
 
+  const vehicle = canonical.vehicle;
+  const assignment = canonical.assignment;
+  const accessibility = vehicle ? accessibilityLabels(vehicle) : [];
+  const documentStates = vehicle
+    ? [
+        documentState(
+          canonical.documents.find((document) => document.document_type === "roadworthy")?.expires_at ??
+            vehicle.roadworthy_expiry_date,
+        ),
+        documentState(
+          canonical.documents.find((document) => document.document_type === "license_disc")?.expires_at ??
+            vehicle.license_disc_expiry_date,
+        ),
+        documentState(
+          canonical.documents.find((document) => document.document_type === "insurance")?.expires_at ??
+            vehicle.insurance_expiry_date,
+        ),
+      ]
+    : [];
+  const complianceSummary = !vehicle
+    ? "Not assigned"
+    : documentStates.includes("expired")
+      ? "Document expired"
+      : documentStates.includes("missing")
+        ? "Document information incomplete"
+        : documentStates.includes("expiring")
+          ? "Document expiring soon"
+          : "Documents current";
+
   return (
     <>
       <section className="mt-4 rounded-2xl border bg-card p-4 shadow-sm">
@@ -86,42 +179,83 @@ export function DriverProfileSections({ userId }: { userId: string }) {
           <div>
             <div className="flex items-center gap-2">
               <Car className="h-4 w-4 text-primary" />
-              <h2 className="font-semibold">Current vehicle record</h2>
+              <h2 className="font-semibold">Current vehicle assignment</h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Temporary Phase 2 source: current driver profile. Phase 3 will replace this with daily
-              fleet assignment.
+              Canonical effective assignment managed by Access administration.
             </p>
           </div>
-          <Badge variant={driver?.is_available ? "default" : "secondary"}>
-            {driver?.is_available ? "Online" : "Offline"}
-          </Badge>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <Badge variant={driver?.is_available ? "default" : "secondary"}>
+              {driver?.is_available ? "Online" : "Offline"}
+            </Badge>
+            {vehicle ? (
+              <Badge variant={vehicle.status === "out_of_service" ? "destructive" : "outline"}>
+                {VEHICLE_STATUS_LABEL[vehicle.status]}
+              </Badge>
+            ) : null}
+          </div>
         </div>
 
-        {!driver ? (
+        {!vehicle || !assignment ? (
           <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-            No driver operational profile has been assigned yet. Contact Access administration.
+            No vehicle is currently assigned. Contact Access administration.
           </p>
         ) : (
-          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-            <ReadOnlyField label="Vehicle type" value={driver.vehicle_type || "Not assigned"} />
-            <ReadOnlyField label="Vehicle model" value={driver.vehicle_model || "Not assigned"} />
-            <ReadOnlyField label="Registration" value={driver.license_plate || "Not assigned"} />
-            <ReadOnlyField
-              label="Location status"
-              value={
-                driver.location_updated_at
-                  ? `Updated ${new Date(driver.location_updated_at).toLocaleString("en-ZA")}`
-                  : "No recent location"
-              }
-            />
-          </dl>
+          <>
+            <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+              <ReadOnlyField label="Vehicle name" value={vehicle.vehicle_name} />
+              <ReadOnlyField label="Vehicle type" value={vehicle.vehicle_type || "Not recorded"} />
+              <ReadOnlyField
+                label="Make and model"
+                value={[vehicle.make, vehicle.model].filter(Boolean).join(" ") || "Not recorded"}
+              />
+              <ReadOnlyField label="Registration" value={vehicle.license_plate} />
+              <ReadOnlyField
+                label="Passenger capacity"
+                value={vehicle.passenger_capacity == null ? "Not recorded" : String(vehicle.passenger_capacity)}
+              />
+              <ReadOnlyField
+                label="Wheelchair capacity"
+                value={vehicle.wheelchair_capacity == null ? "Not recorded" : String(vehicle.wheelchair_capacity)}
+              />
+              <ReadOnlyField
+                label="Assignment period"
+                value={`${new Date(assignment.start_at).toLocaleString("en-ZA")} — ${
+                  assignment.end_at ? new Date(assignment.end_at).toLocaleString("en-ZA") : "ongoing"
+                }`}
+              />
+              <ReadOnlyField label="Compliance" value={complianceSummary} />
+              <ReadOnlyField
+                label="Current odometer"
+                value={`${Number(vehicle.current_odometer_km).toLocaleString("en-ZA")} km`}
+              />
+              <ReadOnlyField
+                label="Location status"
+                value={
+                  driver?.location_updated_at
+                    ? `Updated ${new Date(driver.location_updated_at).toLocaleString("en-ZA")}`
+                    : "No recent location"
+                }
+              />
+            </dl>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {accessibility.map((label) => (
+                <Badge key={label} variant="secondary">
+                  <Accessibility className="mr-1 h-3 w-3" /> {label}
+                </Badge>
+              ))}
+              <Badge variant="outline">
+                <FileCheck2 className="mr-1 h-3 w-3" /> {complianceSummary}
+              </Badge>
+            </div>
+          </>
         )}
 
         <p className="mt-4 flex items-start gap-2 rounded-xl bg-secondary p-3 text-xs text-muted-foreground">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Vehicle and driver records are managed by Access administration. Drivers can report issues
-          through Support but cannot edit vehicle master data or maintenance status.
+          Vehicle identity, assignment, documents, odometer and maintenance status are controlled by
+          Access administration. Drivers may report issues but cannot edit these records.
         </p>
         <Button asChild variant="outline" className="mt-3 w-full">
           <Link
@@ -130,8 +264,8 @@ export function DriverProfileSections({ userId }: { userId: string }) {
               rideId: "",
               bookingId: "",
               category: "vehicle_issue",
-              subject: driver?.license_plate
-                ? `Vehicle issue · ${driver.license_plate}`
+              subject: vehicle
+                ? `Vehicle issue · ${vehicle.license_plate}`
                 : "Vehicle or driver operations issue",
             }}
           >
@@ -148,9 +282,7 @@ export function DriverProfileSections({ userId }: { userId: string }) {
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat
             label="Average rating"
-            value={
-              stats.averageRating == null ? "No ratings" : `${stats.averageRating.toFixed(2)}★`
-            }
+            value={stats.averageRating == null ? "No ratings" : `${stats.averageRating.toFixed(2)}★`}
           />
           <Stat label="Ratings" value={ratings.length} />
           <Stat label="Completed" value={stats.completed} />
@@ -167,8 +299,8 @@ export function DriverProfileSections({ userId }: { userId: string }) {
           />
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          This operational summary intentionally excludes fares, earnings, commissions, and payment
-          values.
+          This operational summary intentionally excludes fares, earnings, commissions, maintenance
+          costs and payment values.
         </p>
       </section>
     </>
