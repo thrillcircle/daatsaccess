@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { Loader2, LocateFixed, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
 
 export type AddressPick = {
@@ -42,7 +41,7 @@ type SavedAddress = {
   is_default: boolean;
 };
 
-const profileDb = supabase as unknown as SupabaseClient;
+const profileDb = supabase;
 
 export function AddressAutocomplete({
   label,

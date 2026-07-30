@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { HeartHandshake, Home, Loader2, MapPin, Pencil, Plus, Shield, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
-const db = supabase as unknown as SupabaseClient;
+const db = supabase;
 
 type SavedAddress = {
   id: string;

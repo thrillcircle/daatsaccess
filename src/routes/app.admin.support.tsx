@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { LifeBuoy, Loader2, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +20,7 @@ import {
   type SupportTicket,
 } from "@/lib/support";
 
-const db = supabase as unknown as SupabaseClient;
+const db = supabase;
 
 type ProfileSummary = { user_id: string; full_name: string | null; phone: string | null };
 type SupportSearch = {

@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Loader2, MessageSquare, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
 import { AppShell } from "@/components/AppShell";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +16,7 @@ import {
   type SupportTicket,
 } from "@/lib/support";
 
-const db = supabase as unknown as SupabaseClient;
+const db = supabase;
 
 export const Route = createFileRoute("/app/support/$ticketId")({
   head: () => ({ meta: [{ title: "Support ticket — Access" }] }),

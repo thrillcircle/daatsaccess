@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { LifeBuoy, Loader2, MessageCircleQuestion, Plus, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AppShell } from "@/components/AppShell";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +24,7 @@ import {
   type SupportTicket,
 } from "@/lib/support";
 
-const db = supabase as unknown as SupabaseClient;
+const db = supabase;
 
 type RideOption = {
   id: string;
@@ -42,7 +41,26 @@ type BookingOption = {
   status: string;
 };
 
+type SupportSearch = {
+  rideId: string;
+  bookingId: string;
+  category: SupportCategory | "";
+  subject: string;
+};
+
+const SUPPORT_CATEGORY_VALUES = new Set(SUPPORT_CATEGORIES.map((item) => item.value));
+
 export const Route = createFileRoute("/app/support")({
+  validateSearch: (search: Record<string, unknown>): SupportSearch => ({
+    rideId: typeof search.rideId === "string" ? search.rideId : "",
+    bookingId: typeof search.bookingId === "string" ? search.bookingId : "",
+    category:
+      typeof search.category === "string" &&
+      SUPPORT_CATEGORY_VALUES.has(search.category as SupportCategory)
+        ? (search.category as SupportCategory)
+        : "",
+    subject: typeof search.subject === "string" ? search.subject.slice(0, 160) : "",
+  }),
   head: () => ({ meta: [{ title: "Support — Access" }] }),
   component: SupportPage,
 });
@@ -51,20 +69,23 @@ function SupportPage() {
   const { user, loading: authLoading } = useAuth();
   const { roles, loading: rolesLoading } = useUserRoles(user?.id);
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [rides, setRides] = useState<RideOption[]>([]);
   const [bookings, setBookings] = useState<BookingOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(
+    Boolean(search.rideId || search.bookingId || search.category || search.subject),
+  );
   const [assistantAnswer, setAssistantAnswer] = useState<string | null>(null);
   const [requesterRole, setRequesterRole] = useState<SupportRole>("passenger");
-  const [category, setCategory] = useState<SupportCategory>("trip_issue");
+  const [category, setCategory] = useState<SupportCategory>(search.category || "trip_issue");
   const [priority, setPriority] = useState<Extract<SupportPriority, "normal" | "high">>("normal");
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(search.subject);
   const [description, setDescription] = useState("");
-  const [rideId, setRideId] = useState("");
-  const [bookingId, setBookingId] = useState("");
+  const [rideId, setRideId] = useState(search.rideId);
+  const [bookingId, setBookingId] = useState(search.bookingId);
 
   const availableRoles = useMemo<SupportRole[]>(() => {
     const next: SupportRole[] = [];
@@ -77,6 +98,14 @@ function SupportPage() {
   useEffect(() => {
     if (!availableRoles.includes(requesterRole)) setRequesterRole(availableRoles[0]);
   }, [availableRoles, requesterRole]);
+
+  useEffect(() => {
+    if (search.rideId) setRideId(search.rideId);
+    if (search.bookingId) setBookingId(search.bookingId);
+    if (search.category) setCategory(search.category);
+    if (search.subject) setSubject(search.subject);
+    if (search.rideId || search.bookingId || search.category || search.subject) setShowForm(true);
+  }, [search.bookingId, search.category, search.rideId, search.subject]);
 
   useEffect(() => {
     if (authLoading || rolesLoading) return;
