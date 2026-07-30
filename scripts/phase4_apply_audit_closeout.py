@@ -74,6 +74,11 @@ replace_once(
 )
 replace_once(
     manager,
+    "  }, [components, selected?.id]);",
+    "  }, [components, selected]);",
+)
+replace_once(
+    manager,
     "      p_effective_from: toIso(localDateTime(draftVersion.effective_from)),\n      p_is_mock: draftVersion.is_mock,",
     "      p_effective_from: toIso(localDateTime(draftVersion.effective_from)),\n      p_effective_to: toIso(localDateTime(draftVersion.effective_to)),\n      p_is_mock: draftVersion.is_mock,",
 )
@@ -258,6 +263,48 @@ replace_once(
 )
 
 appointment = Path("src/routes/app.passenger.book.appointment.tsx")
+replace_once(appointment, "    let weekAnchor = new Date(start);", "    const weekAnchor = new Date(start);")
+replace_once(
+    appointment,
+    '  const apptDate = apptLocal ? new Date(apptLocal) : null;',
+    '  const apptDate = useMemo(() => (apptLocal ? new Date(apptLocal) : null), [apptLocal]);',
+)
+replace_once(
+    appointment,
+    '''  const recurrenceRule: RecurrenceRule | null =
+    pattern === "recurring"
+      ? {
+          frequency,
+          interval,
+          weekdays: frequency === "monthly" ? undefined : weekdays.length ? weekdays : (apptDate ? [apptDate.getDay()] : []),
+          end_date: endMode === "date" && recurEnd ? recurEnd : null,
+          occurrences: endMode === "count" ? Math.max(1, Math.min(MAX_GENERATED_OCCURRENCES, occurrences)) : null,
+        }
+      : null;''',
+    '''  const recurrenceRule = useMemo<RecurrenceRule | null>(
+    () =>
+      pattern === "recurring"
+        ? {
+            frequency,
+            interval,
+            weekdays:
+              frequency === "monthly"
+                ? undefined
+                : weekdays.length
+                  ? weekdays
+                  : apptDate
+                    ? [apptDate.getDay()]
+                    : [],
+            end_date: endMode === "date" && recurEnd ? recurEnd : null,
+            occurrences:
+              endMode === "count"
+                ? Math.max(1, Math.min(MAX_GENERATED_OCCURRENCES, occurrences))
+                : null,
+          }
+        : null,
+    [apptDate, endMode, frequency, interval, occurrences, pattern, recurEnd, weekdays],
+  );''',
+)
 replace_once(appointment, 'import { estimatePrice, formatZAR } from "@/lib/pricing";\n', '')
 replace_once(appointment, "  const transportEstimate = outboundKm != null ? estimatePrice(outboundKm) : null;\n", '')
 replace_once(appointment, "        estimated_total: transportEstimate,", "        estimated_total: null,")
