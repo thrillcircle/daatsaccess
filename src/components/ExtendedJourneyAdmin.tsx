@@ -209,7 +209,9 @@ export function ExtendedJourneyAdminPanel({
           {meta.additional_travellers?.length ? (
             <div className="col-span-2">
               <dt className="text-muted-foreground">Additional travellers</dt>
-              <dd>{meta.additional_travellers.map((traveller) => traveller.full_name).join(", ")}</dd>
+              <dd>
+                {meta.additional_travellers.map((traveller) => traveller.full_name).join(", ")}
+              </dd>
             </div>
           ) : null}
         </dl>
