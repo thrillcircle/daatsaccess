@@ -191,26 +191,40 @@ export function AddressAutocomplete({
   }, [queryKey, mapsReady]);
 
   async function selectSuggestion(suggestion: Suggestion) {
-    const library = placesLibRef.current;
-    if (!library) return;
     setOpen(false);
     setLoading(true);
     try {
-      const place = suggestion.raw.placePrediction!.toPlace();
-      await place.fetchFields({ fields: ["formattedAddress", "location", "id"] });
-      const location = place.location;
-      if (!location) throw new Error("Place has no coordinates");
-      const pick: AddressPick = {
-        address: place.formattedAddress ?? `${suggestion.primary}, ${suggestion.secondary}`,
-        placeId: place.id ?? suggestion.placeId,
-        lat: location.lat(),
-        lng: location.lng(),
-      };
+      let pick: AddressPick;
+      const library = placesLibRef.current;
+      if (suggestion.raw?.placePrediction && library) {
+        const place = suggestion.raw.placePrediction.toPlace();
+        await place.fetchFields({ fields: ["formattedAddress", "location", "id"] });
+        const location = place.location;
+        if (!location) throw new Error("Place has no coordinates");
+        pick = {
+          address: place.formattedAddress ?? `${suggestion.primary}, ${suggestion.secondary}`,
+          placeId: place.id ?? suggestion.placeId,
+          lat: location.lat(),
+          lng: location.lng(),
+        };
+        const { AutocompleteSessionToken } = library;
+        sessionTokenRef.current = new AutocompleteSessionToken();
+      } else {
+        // Server-side resolution (Places API New via the connector gateway).
+        const detail = await resolvePlace({ data: { placeId: suggestion.placeId } });
+        pick = {
+          address:
+            detail.address ||
+            [suggestion.primary, suggestion.secondary].filter(Boolean).join(", "),
+          placeId: detail.placeId,
+          lat: detail.lat,
+          lng: detail.lng,
+        };
+      }
       setText(pick.address);
       setDirty(false);
+      setError(null);
       onChange(pick);
-      const { AutocompleteSessionToken } = library;
-      sessionTokenRef.current = new AutocompleteSessionToken();
     } catch (selectionError) {
       console.warn(selectionError);
       setError("Could not load that place. Try another.");
@@ -218,6 +232,7 @@ export function AddressAutocomplete({
       setLoading(false);
     }
   }
+
 
   function selectSavedAddress(address: SavedAddress) {
     const pick: AddressPick = {
