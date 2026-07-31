@@ -1,6 +1,7 @@
 import type { Database } from "@/integrations/supabase/types";
 
 export type Ride = Database["public"]["Tables"]["rides"]["Row"];
+export type { DriverSafeRide } from "@/lib/driver-ride-projection";
 export type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
 
 export const PICKUP_WINDOW_MS = 30 * 60 * 1000;
