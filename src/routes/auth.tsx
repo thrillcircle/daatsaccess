@@ -59,14 +59,18 @@ function AuthPage() {
 
   async function signInWithProvider(provider: "google" | "apple") {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/app` },
+    const result = await lovable.auth.signInWithOAuth(provider, {
+      redirect_uri: window.location.origin,
     });
-    if (error) {
-      toast.error(`${provider === "google" ? "Google" : "Apple"} sign-in failed: ${error.message}`);
+    if (result.error) {
+      toast.error(
+        `${provider === "google" ? "Google" : "Apple"} sign-in failed: ${result.error.message}`,
+      );
       setLoading(false);
+      return;
     }
+    if (result.redirected) return;
+    navigate({ to: "/app" });
   }
 
   async function onSubmit(e: React.FormEvent) {
