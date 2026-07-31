@@ -6,6 +6,8 @@ import { Loader2, LocateFixed, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { geocodeAddress, resolvePlace, searchAddresses } from "@/lib/maps.functions";
+
 
 export type AddressPick = {
   address: string;
