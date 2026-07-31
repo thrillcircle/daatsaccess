@@ -1,0 +1,130 @@
+name: Phase 5 Apply Product
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'phase-5-operations-dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out Phase 5 branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase-5-operations-dispatch
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Verify and apply product payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .phase5-payload/part* > /tmp/phase5-product.b64
+          echo "1449effaaac7028fe2001eb43a21732e89243c296298f8c53f89d01124f77f18  /tmp/phase5-product.b64" | sha256sum -c -
+          base64 -d /tmp/phase5-product.b64 > /tmp/phase5-product.tar.gz
+          echo "dbb9265e3d70d72736bc53b1e2cecc0215c3a0162d0add718f7a0be48f5bfa1c  /tmp/phase5-product.tar.gz" | sha256sum -c -
+          tar -tzf /tmp/phase5-product.tar.gz
+          tar -xzf /tmp/phase5-product.tar.gz
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Format Phase 5 source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            src/components/AdminShell.tsx
+            src/components/NotificationBell.tsx
+            src/components/operations/OperationStatusBadge.tsx
+            src/components/operations/DriverOperationsPanel.tsx
+            src/components/operations/PassengerOperationsTimeline.tsx
+            src/hooks/use-live-location.ts
+            src/lib/operations.ts
+            src/lib/operations.test.ts
+            src/lib/phase5-migrations.test.ts
+            src/routes/app.admin.dispatch.tsx
+            src/routes/app.admin.live.tsx
+            'src/routes/app.admin.operations.$runId.tsx'
+            src/routes/app.admin.operations.tsx
+            src/routes/app.admin.reliability.tsx
+            src/routes/app.admin.schedule.tsx
+            src/routes/app.driver.tsx
+            src/routes/app.passenger.index.tsx
+          )
+          bunx prettier --write "${files[@]}"
+
+      - name: Lint Phase 5 source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            src/components/AdminShell.tsx
+            src/components/NotificationBell.tsx
+            src/components/operations/OperationStatusBadge.tsx
+            src/components/operations/DriverOperationsPanel.tsx
+            src/components/operations/PassengerOperationsTimeline.tsx
+            src/hooks/use-live-location.ts
+            src/lib/operations.ts
+            src/lib/operations.test.ts
+            src/lib/phase5-migrations.test.ts
+            src/routes/app.admin.dispatch.tsx
+            src/routes/app.admin.live.tsx
+            'src/routes/app.admin.operations.$runId.tsx'
+            src/routes/app.admin.operations.tsx
+            src/routes/app.admin.reliability.tsx
+            src/routes/app.admin.schedule.tsx
+            src/routes/app.driver.tsx
+            src/routes/app.passenger.index.tsx
+          )
+          bunx eslint "${files[@]}"
+
+      - name: Run complete test suite
+        run: bun run test
+
+      - name: Run production build
+        run: bun run build
+
+      - name: Run TypeScript typecheck
+        run: bunx tsc --noEmit
+
+      - name: Verify clean product boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f supabase/migrations/20260731130000_phase5_operations_foundation.sql
+          test -f supabase/migrations/20260731131000_phase5_planning_dispatch.sql
+          test -f supabase/migrations/20260731132000_phase5_reliability_scheduler.sql
+          grep -q 'driver_update_location' src/hooks/use-live-location.ts
+          grep -q 'DriverOperationsPanel' src/routes/app.driver.tsx
+          grep -q 'PassengerOperationsTimeline' src/routes/app.passenger.index.tsx
+          grep -q 'admin_publish_operation_plan' src/routes/app.admin.schedule.tsx
+          grep -q 'driver_accept_dispatch_offer' src/components/operations/DriverOperationsPanel.tsx
+          git diff --check
+
+      - name: Remove temporary transfer tooling
+        run: |
+          rm -rf .phase5-payload
+          rm -f .github/workflows/phase5-apply-product.yml
+          rm -f .github/workflows/phase5-source-export.yml
+
+      - name: Commit verified Phase 5 product
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git status --short
+          git commit -m "feat(operations): add service planning dispatch and reliability"
+          git push origin HEAD:phase-5-operations-dispatch
