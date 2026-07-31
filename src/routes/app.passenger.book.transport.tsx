@@ -83,6 +83,12 @@ function BookTransportPage() {
 
   // Compute route.
   useEffect(() => {
+    console.log(
+      "ROUTE EFFECT pickup=" +
+        JSON.stringify({ a: pickupPt?.address, lat: pickupPt?.lat, lng: pickupPt?.lng }) +
+        " dest=" +
+        JSON.stringify({ a: destPt?.address, lat: destPt?.lat, lng: destPt?.lng }),
+    );
     if (!pickupPt || !destPt) {
       setDistanceKm(null);
       setDurationMin(null);
@@ -99,11 +105,13 @@ function BookTransportPage() {
       },
     })
       .then((r) => {
+        console.log("ROUTE SUCCESS", r);
         if (cancelled) return;
         setDistanceKm(r.distanceKm);
         setDurationMin(r.durationMin);
       })
       .catch((err: unknown) => {
+        console.error("ROUTE ERROR", err);
         if (!cancelled) toast.error(err instanceof Error ? err.message : "Could not compute route");
       })
       .finally(() => !cancelled && setEstimating(false));
