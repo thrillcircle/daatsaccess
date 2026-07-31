@@ -33,6 +33,7 @@ import {
   type ServiceType,
 } from "@/lib/booking-types";
 import { formatZAR } from "@/lib/pricing";
+import { asQuoteSummaries, pricingDb } from "@/lib/pricing-api";
 import { fleetDb } from "@/lib/fleet";
 import { toast } from "sonner";
 import { Filter, ExternalLink, MapPin, ClipboardList } from "lucide-react";
@@ -97,10 +98,18 @@ type Itinerary = {
 type Quote = {
   id: string;
   booking_id: string;
+  quote_reference: string;
   status: string;
-  total: number;
+  revision_number: number;
+  final_total: number;
   currency: string;
-  notes: string | null;
+  valid_until: string | null;
+  sent_at: string | null;
+  accepted_at: string | null;
+  declined_at: string | null;
+  expired_at: string | null;
+  superseded_at: string | null;
+  row_version: number;
 };
 type DriverAssign = { id: string; booking_id: string; driver_user_id: string; status: string };
 type VehicleAssign = {
@@ -216,10 +225,7 @@ function AdminBookingsPage() {
           supabase.from("booking_travellers").select("*").in("booking_id", ids),
           supabase.from("booking_assistance_requirements").select("*").in("booking_id", ids),
           supabase.from("booking_itinerary_items").select("*").in("booking_id", ids),
-          supabase
-            .from("service_quotes")
-            .select("id,booking_id,status,total,currency,notes")
-            .in("booking_id", ids),
+          pricingDb.rpc("admin_quote_summaries", { p_booking_ids: ids }),
           supabase.from("booking_driver_assignments").select("*").in("booking_id", ids),
           fleetDb.from("booking_vehicle_assignments").select("*").in("booking_id", ids),
           supabase.from("booking_companion_assignments").select("*").in("booking_id", ids),
@@ -239,7 +245,7 @@ function AdminBookingsPage() {
         setTravellers((tr.data ?? []) as Traveller[]);
         setAssistance((ar.data ?? []) as Assistance[]);
         setItinerary((ir.data ?? []) as Itinerary[]);
-        setQuotes((qr.data ?? []) as Quote[]);
+        setQuotes(asQuoteSummaries(qr.data) as Quote[]);
         setDriverAssigns((dr.data ?? []) as DriverAssign[]);
         setVehicleAssigns((vr.data ?? []) as VehicleAssign[]);
         setCompanionAssigns((cr.data ?? []) as CompanionAssign[]);
@@ -537,8 +543,6 @@ function BookingDetailDialog({
   const [vehicleId, setVehicleId] = useState<string>("");
   const [driverId, setDriverId] = useState<string>("");
   const [companionSel, setCompanionSel] = useState<string[]>([]);
-  const [quoteTotal, setQuoteTotal] = useState<string>("");
-  const [quoteNotes, setQuoteNotes] = useState<string>("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -550,9 +554,6 @@ function BookingDetailDialog({
     setCompanionSel(
       companionAssigns.filter((c) => c.booking_id === booking.id).map((c) => c.companion_id),
     );
-    const q = quotes.find((x) => x.booking_id === booking.id);
-    setQuoteTotal(q ? String(q.total) : "");
-    setQuoteNotes(q?.notes ?? "");
   }, [booking, vehicleAssigns, driverAssigns, companionAssigns, quotes]);
 
   if (!booking) return null;
@@ -700,73 +701,6 @@ function BookingDetailDialog({
       if (error) throw error;
       await logEvent("companions_assigned", { companion_ids: companionSel });
       toast.success("Companions assigned");
-      onChanged();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveQuote(sendNow: boolean) {
-    const total = Number(quoteTotal);
-    if (!Number.isFinite(total) || total < 0) {
-      toast.error("Enter a valid total");
-      return;
-    }
-    setBusy(true);
-    try {
-      const existing = quotes.find((x) => x.booking_id === booking!.id);
-      let quoteId = existing?.id ?? null;
-      if (existing) {
-        const { error } = await supabase
-          .from("service_quotes")
-          .update({
-            total,
-            subtotal: total,
-            notes: quoteNotes.trim() || null,
-            status: sendNow ? "sent" : "draft",
-          })
-          .eq("id", existing.id);
-        if (error) throw error;
-      } else {
-        const { data, error } = await supabase
-          .from("service_quotes")
-          .insert({
-            booking_id: booking!.id,
-            total,
-            subtotal: total,
-            notes: quoteNotes.trim() || null,
-            status: sendNow ? "sent" : "draft",
-            created_by_user_id: actorId,
-          })
-          .select()
-          .single();
-        if (error) throw error;
-        quoteId = data.id;
-      }
-      // Single-line item
-      if (quoteId) {
-        await supabase.from("service_quote_items").delete().eq("quote_id", quoteId);
-        await supabase.from("service_quote_items").insert({
-          quote_id: quoteId,
-          label: "Assistance support",
-          quantity: 1,
-          unit_price: total,
-          line_total: total,
-          sort_order: 0,
-        });
-      }
-      if (sendNow) {
-        await supabase
-          .from("service_bookings")
-          .update({ status: "quoted", quoted_total: total })
-          .eq("id", booking!.id);
-        await logEvent("quote_sent", { total });
-      } else {
-        await logEvent("quote_saved", { total });
-      }
-      toast.success(sendNow ? "Quote sent to customer" : "Quote saved");
       onChanged();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
@@ -1228,44 +1162,25 @@ function BookingDetailDialog({
             actorId={actorId}
           />
         ) : (
-          <section className="grid gap-2 rounded-lg border p-3">
-            <h4 className="text-sm font-semibold flex items-center gap-1">
-              <ClipboardList className="h-3.5 w-3.5" /> Quote
+          <section className="grid gap-2 rounded-lg border border-primary/25 bg-primary/5 p-3">
+            <h4 className="flex items-center gap-1 text-sm font-semibold">
+              <ClipboardList className="h-3.5 w-3.5" /> Calculated quote
             </h4>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="qt-total">Total (ZAR)</Label>
-                <Input
-                  id="qt-total"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={quoteTotal}
-                  onChange={(e) => setQuoteTotal(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="qt-notes">Notes</Label>
-                <Input
-                  id="qt-notes"
-                  value={quoteNotes}
-                  onChange={(e) => setQuoteNotes(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => saveQuote(false)}>
-                Save draft
-              </Button>
-              <Button size="sm" disabled={busy} onClick={() => saveQuote(true)}>
-                Send to customer
-              </Button>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Generate quote revisions from the effective published pricing version. Manual totals
+              are disabled.
+            </p>
             {q ? (
-              <p className="text-xs text-muted-foreground">
-                Current: {q.status} · {formatZAR(Number(q.total))}
+              <p className="text-xs">
+                Latest: {q.status} · revision {q.revision_number} ·{" "}
+                {formatZAR(Number(q.final_total))}
               </p>
             ) : null}
+            <Button asChild size="sm" className="w-fit">
+              <Link to="/app/admin/bookings/$bookingId/quote" params={{ bookingId: booking.id }}>
+                Open quote workspace
+              </Link>
+            </Button>
           </section>
         )}
 

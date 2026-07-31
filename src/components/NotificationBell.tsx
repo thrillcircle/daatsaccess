@@ -10,6 +10,7 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Notification = Database["public"]["Tables"]["notifications"]["Row"] & {
   support_ticket_id?: string | null;
+  service_booking_id?: string | null;
 };
 
 export function NotificationBell() {
@@ -149,6 +150,24 @@ export function NotificationBell() {
                     <Link
                       to="/app/support/$ticketId"
                       params={{ ticketId: notification.support_ticket_id }}
+                      onClick={() => setOpen(false)}
+                    >
+                      {inner}
+                    </Link>
+                  );
+                } else if (notification.service_booking_id) {
+                  destination = isAdmin ? (
+                    <Link
+                      to="/app/admin/bookings/$bookingId/quote"
+                      params={{ bookingId: notification.service_booking_id }}
+                      onClick={() => setOpen(false)}
+                    >
+                      {inner}
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/app/passenger/bookings/$bookingId/quote"
+                      params={{ bookingId: notification.service_booking_id }}
                       onClick={() => setOpen(false)}
                     >
                       {inner}
