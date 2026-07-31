@@ -121,13 +121,6 @@ export type Database = {
             foreignKeyName: "booking_companion_assignments_companion_id_fkey"
             columns: ["companion_id"]
             isOneToOne: false
-            referencedRelation: "booking_companion_directory"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "booking_companion_assignments_companion_id_fkey"
-            columns: ["companion_id"]
-            isOneToOne: false
             referencedRelation: "companion_profiles"
             referencedColumns: ["id"]
           },
@@ -2162,27 +2155,7 @@ export type Database = {
       }
     }
     Views: {
-      booking_companion_directory: {
-        Row: {
-          full_name: string | null
-          id: string | null
-          is_available: boolean | null
-          photo_url: string | null
-        }
-        Insert: {
-          full_name?: string | null
-          id?: string | null
-          is_available?: boolean | null
-          photo_url?: string | null
-        }
-        Update: {
-          full_name?: string | null
-          id?: string | null
-          is_available?: boolean | null
-          photo_url?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       admin_acknowledge_pin_alert: { Args: { _ride_id: string }; Returns: Json }
@@ -2372,6 +2345,15 @@ export type Database = {
       }
       fleet_require_admin: { Args: never; Returns: string }
       generate_ride_pin: { Args: never; Returns: string }
+      my_booking_companions: {
+        Args: never
+        Returns: {
+          full_name: string
+          id: string
+          is_available: boolean
+          photo_url: string
+        }[]
+      }
       normalize_vehicle_registration: {
         Args: { value: string }
         Returns: string
