@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-export type LiveLocationRow =
-  Database["public"]["Tables"]["ride_live_locations"]["Row"];
+export type LiveLocationRow = Database["public"]["Tables"]["ride_live_locations"]["Row"];
 
 /**
  * Subscribe to live location rows for a single ride. Returns the latest row

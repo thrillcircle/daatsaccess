@@ -140,7 +140,6 @@ export function OnlineToggle({
         disabled={busy}
         aria-label={profile.is_available ? "Go offline" : "Go online"}
       />
-
     </section>
   );
 }

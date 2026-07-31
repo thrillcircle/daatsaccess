@@ -28,10 +28,7 @@ type Props = {
 
 const PICKUP_EDITABLE = new Set(["requested", "accepted", "driver_arriving"]);
 
-function rideToPick(
-  ride: Ride,
-  kind: "pickup" | "destination",
-): AddressPick {
+function rideToPick(ride: Ride, kind: "pickup" | "destination"): AddressPick {
   return kind === "pickup"
     ? {
         address: ride.pickup_address,
@@ -66,9 +63,7 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
 
   const [pickup, setPickup] = useState<AddressPick | null>(originalPickup);
   const [dest, setDest] = useState<AddressPick | null>(originalDest);
-  const [distanceKm, setDistanceKm] = useState<number | null>(
-    Number(ride.distance_km),
-  );
+  const [distanceKm, setDistanceKm] = useState<number | null>(Number(ride.distance_km));
   const [durationMin, setDurationMin] = useState<number | null>(
     ride.estimated_duration_seconds != null
       ? Math.round(ride.estimated_duration_seconds / 60)
@@ -196,18 +191,10 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
         {dirty && (
           <div className="space-y-2 rounded-xl border bg-secondary/40 p-3 text-sm">
             {pickupChanged && (
-              <DiffRow
-                label="Pickup"
-                from={originalPickup.address}
-                to={pickup!.address}
-              />
+              <DiffRow label="Pickup" from={originalPickup.address} to={pickup!.address} />
             )}
             {destChanged && (
-              <DiffRow
-                label="Destination"
-                from={originalDest.address}
-                to={dest!.address}
-              />
+              <DiffRow label="Destination" from={originalDest.address} to={dest!.address} />
             )}
             <div className="border-t pt-2">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -229,13 +216,11 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
               {priceDelta != null && Math.abs(priceDelta) >= 0.01 && (
                 <p
                   className={
-                    "text-xs " +
-                    (priceDelta > 0 ? "text-destructive" : "text-emerald-600")
+                    "text-xs " + (priceDelta > 0 ? "text-destructive" : "text-emerald-600")
                   }
                 >
                   {priceDelta > 0 ? "+" : "−"}
-                  {formatZAR(Math.abs(priceDelta))} vs original{" "}
-                  {formatZAR(originalPrice)}
+                  {formatZAR(Math.abs(priceDelta))} vs original {formatZAR(originalPrice)}
                 </p>
               )}
             </div>
@@ -267,9 +252,7 @@ function DiffRow({ label, from, to }: { label: string; from: string; to: string 
     <div>
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="flex items-start gap-2 text-sm">
-        <span className="min-w-0 flex-1 truncate text-muted-foreground line-through">
-          {from}
-        </span>
+        <span className="min-w-0 flex-1 truncate text-muted-foreground line-through">{from}</span>
         <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate font-medium">{to}</span>
       </div>

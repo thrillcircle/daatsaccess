@@ -63,12 +63,15 @@ export function AddressAutocomplete({
   const [error, setError] = useState<string | null>(null);
   const [mapsReady, setMapsReady] = useState(false);
   const [serverOnly, setServerOnly] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
   const [dirty, setDirty] = useState(false);
   const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
   const placesLibRef = useRef<google.maps.PlacesLibrary | null>(null);
   const debounceRef = useRef<number | null>(null);
   const showSavedAddresses = /pickup/i.test(id);
+  const listboxId = `${id}-suggestions`;
+  const statusId = `${id}-status`;
 
   useEffect(() => {
     setText(value?.address ?? "");
@@ -128,6 +131,7 @@ export function AddressAutocomplete({
     if (!mapsReady && !serverOnly) return;
     if (text.trim().length < 3) {
       setSuggestions([]);
+      setActiveIndex(-1);
       setLoading(false);
       return;
     }
@@ -146,6 +150,7 @@ export function AddressAutocomplete({
             data: { query: text.trim(), lat: bias?.lat, lng: bias?.lng },
           });
           setSuggestions(serverSuggestions);
+          setActiveIndex(-1);
           setOpen(serverSuggestions.length > 0);
         } catch (fallbackError) {
           console.warn("Server autocomplete failed", fallbackError);
@@ -184,6 +189,7 @@ export function AddressAutocomplete({
           })
           .filter((item): item is Suggestion => item !== null);
         setSuggestions(mapped);
+        setActiveIndex(-1);
         setOpen(true);
       } catch (suggestionError) {
         console.warn("Browser autocomplete failed, falling back to server", suggestionError);
@@ -192,6 +198,7 @@ export function AddressAutocomplete({
             data: { query: text.trim(), lat: bias?.lat, lng: bias?.lng },
           });
           setSuggestions(serverSuggestions);
+          setActiveIndex(-1);
           setOpen(serverSuggestions.length > 0);
           setError(serverSuggestions.length ? null : "No matching addresses found.");
         } catch (fallbackError) {
@@ -247,6 +254,32 @@ export function AddressAutocomplete({
       setError("Could not load that place. Try another.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open || suggestions.length === 0) {
+      if (event.key === "ArrowDown" && suggestions.length > 0) {
+        event.preventDefault();
+        setOpen(true);
+        setActiveIndex(0);
+      }
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => (index + 1) % suggestions.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => (index <= 0 ? suggestions.length - 1 : index - 1));
+    } else if (event.key === "Enter" && activeIndex >= 0) {
+      event.preventDefault();
+      void selectSuggestion(suggestions[activeIndex]);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+      setActiveIndex(-1);
     }
   }
 
@@ -358,20 +391,44 @@ export function AddressAutocomplete({
           }}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+          onKeyDown={handleKeyDown}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open && suggestions.length > 0}
+          aria-controls={listboxId}
+          aria-activedescendant={
+            open && activeIndex >= 0 ? `${id}-suggestion-${activeIndex}` : undefined
+          }
+          aria-describedby={statusId}
+          aria-invalid={!!error}
           className={cn(value && "pr-8")}
         />
         {loading ? (
           <Loader2 className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
         ) : null}
         {open && suggestions.length > 0 ? (
-          <ul className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-lg border bg-popover p-1 text-sm shadow-lg">
-            {suggestions.map((suggestion) => (
-              <li key={suggestion.placeId}>
+          <ul
+            id={listboxId}
+            role="listbox"
+            className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-lg border bg-popover p-1 text-sm shadow-lg"
+          >
+            {suggestions.map((suggestion, index) => (
+              <li
+                id={`${id}-suggestion-${index}`}
+                key={suggestion.placeId}
+                role="option"
+                aria-selected={activeIndex === index}
+              >
                 <button
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => selectSuggestion(suggestion)}
-                  className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left hover:bg-accent"
+                  onMouseEnter={() => setActiveIndex(index)}
+                  tabIndex={-1}
+                  className={cn(
+                    "flex w-full items-start gap-2 rounded-md px-2 py-2 text-left hover:bg-accent",
+                    activeIndex === index && "bg-accent",
+                  )}
                 >
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <span className="min-w-0">
@@ -388,12 +445,25 @@ export function AddressAutocomplete({
           </ul>
         ) : null}
       </div>
+      <p id={statusId} className="sr-only" aria-live="polite">
+        {loading
+          ? "Loading address suggestions"
+          : open && suggestions.length > 0
+            ? `${suggestions.length} address suggestions available. Use the arrow keys to review them.`
+            : value
+              ? `${label} selected: ${value.address}`
+              : ""}
+      </p>
       {dirty && !value && text.trim().length >= 3 && !loading ? (
         <p className="text-xs text-warning-foreground">
           Pick an address from the suggestions to continue.
         </p>
       ) : null}
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

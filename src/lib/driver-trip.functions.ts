@@ -15,14 +15,12 @@ export type PassengerDetails = {
  */
 export const getRidePassengerDetails = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({ rideId: z.string().uuid() }).parse(data))
+  .validator((data) => z.object({ rideId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { rideId } = data;
     const { userId } = context;
 
-    const { supabaseAdmin } = await import(
-      "@/integrations/supabase/client.server"
-    );
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: ride, error: rideErr } = await supabaseAdmin
       .from("rides")
@@ -33,11 +31,7 @@ export const getRidePassengerDetails = createServerFn({ method: "GET" })
     if (!ride || ride.driver_id !== userId) {
       throw new Error("Not authorized for this ride");
     }
-    if (
-      !["accepted", "driver_arriving", "arrived", "in_progress"].includes(
-        ride.status,
-      )
-    ) {
+    if (!["accepted", "driver_arriving", "arrived", "in_progress"].includes(ride.status)) {
       return null;
     }
 

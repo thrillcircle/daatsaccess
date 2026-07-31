@@ -33,12 +33,7 @@ export type DispatchStatus =
   | "manually_assigned";
 
 export type PlanningStatus =
-  | "unplanned"
-  | "planning"
-  | "planned"
-  | "validation_failed"
-  | "ready_for_dispatch"
-  | "cancelled";
+  "unplanned" | "planning" | "planned" | "validation_failed" | "ready_for_dispatch" | "cancelled";
 
 export type OperationRun = {
   id: string;
@@ -97,13 +92,7 @@ export type OperationAssignment = {
   planned_start_at: string;
   planned_end_at: string;
   status:
-    | "proposed"
-    | "reserved"
-    | "assigned"
-    | "acknowledged"
-    | "declined"
-    | "released"
-    | "completed";
+    "proposed" | "reserved" | "assigned" | "acknowledged" | "declined" | "released" | "completed";
   assignment_source: string;
   acknowledgement_deadline: string | null;
   acknowledged_at: string | null;

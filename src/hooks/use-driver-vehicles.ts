@@ -6,8 +6,8 @@ type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 export type DriverVehicle = {
-  id: string;                    // driver_profiles.id
-  user_id: string;               // owner of the record
+  id: string; // driver_profiles.id
+  user_id: string; // owner of the record
   vehicle_type: string | null;
   vehicle_model: string | null;
   license_plate: string | null;
@@ -15,7 +15,7 @@ export type DriverVehicle = {
   current_lat: number | null;
   current_lng: number | null;
   location_updated_at: string | null;
-  isValidDriver: boolean;        // user_roles contains 'driver'
+  isValidDriver: boolean; // user_roles contains 'driver'
   ownerRole: "driver" | "admin" | "passenger" | "other" | "unknown";
   ownerName: string | null;
   ownerPhone: string | null;
@@ -95,7 +95,9 @@ export function useDriverVehicles(enabled: boolean) {
         setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [enabled, tick]);
 
   // Realtime: any change to driver_profiles or user_roles triggers refresh.
@@ -106,7 +108,9 @@ export function useDriverVehicles(enabled: boolean) {
       .on("postgres_changes", { event: "*", schema: "public", table: "driver_profiles" }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, refresh)
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [enabled, refresh]);
 
   return { vehicles: data, loading, refresh };
@@ -133,7 +137,10 @@ export function useValidDrivers(enabled: boolean) {
         .eq("role", "driver");
       const ids = (roles ?? []).map((r) => r.user_id);
       if (!ids.length) {
-        if (!cancelled) { setDrivers([]); setLoading(false); }
+        if (!cancelled) {
+          setDrivers([]);
+          setLoading(false);
+        }
         return;
       }
       const [{ data: profs }, { data: dps }] = await Promise.all([
@@ -148,9 +155,14 @@ export function useValidDrivers(enabled: boolean) {
         hasVehicle: has.has(id),
       }));
       out.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
-      if (!cancelled) { setDrivers(out); setLoading(false); }
+      if (!cancelled) {
+        setDrivers(out);
+        setLoading(false);
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [enabled]);
   return { drivers, loading };
 }

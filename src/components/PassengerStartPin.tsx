@@ -12,20 +12,12 @@ import { supabase } from "@/integrations/supabase/client";
  * The PIN is never persisted to local storage; it lives only in component
  * state for the duration of this mount.
  */
-export function PassengerStartPin({
-  rideId,
-  status,
-}: {
-  rideId: string;
-  status: string;
-}) {
+export function PassengerStartPin({ rideId, status }: { rideId: string; status: string }) {
   const [pin, setPin] = useState<string | null | undefined>(undefined);
   const [copied, setCopied] = useState(false);
 
   // Only relevant before the trip is in progress.
-  const visiblePhase = ["accepted", "driver_arriving", "arrived"].includes(
-    status,
-  );
+  const visiblePhase = ["accepted", "driver_arriving", "arrived"].includes(status);
 
   useEffect(() => {
     if (!visiblePhase) return;
@@ -81,9 +73,7 @@ export function PassengerStartPin({
           ) : pin ? (
             pin
           ) : (
-            <span className="text-base font-normal text-muted-foreground">
-              PIN not available
-            </span>
+            <span className="text-base font-normal text-muted-foreground">PIN not available</span>
           )}
         </div>
         {pin && (
@@ -107,10 +97,9 @@ export function PassengerStartPin({
         )}
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        Give this PIN to your driver only after you have checked their vehicle
-        and number plate. The driver must enter it before the trip can start.
+        Give this PIN to your driver only after you have checked their vehicle and number plate. The
+        driver must enter it before the trip can start.
       </p>
     </div>
   );
 }
-

@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ChevronLeft, Plane, Plus, Trash2 } from "lucide-react";
@@ -26,10 +32,22 @@ export const Route = createFileRoute("/app/passenger/book/extended")({
   component: BookExtendedPage,
 });
 
-const ITEM_TYPES: ExtendedItineraryItemType[] = ["ride", "activity", "waiting", "appointment", "accommodation", "other"];
+const ITEM_TYPES: ExtendedItineraryItemType[] = [
+  "ride",
+  "activity",
+  "waiting",
+  "appointment",
+  "accommodation",
+  "other",
+];
 
-function pad(n: number) { return String(n).padStart(2, "0"); }
-function todayISO() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 function addDaysISO(iso: string, days: number) {
   const d = new Date(iso + "T00:00:00");
   d.setDate(d.getDate() + days);
@@ -52,8 +70,10 @@ function BookExtendedPage() {
       { to: "/app/passenger" as const, label: "Ride", icon: NAV_ICONS.Passenger },
       { to: "/app/passenger/bookings" as const, label: "Bookings", icon: NAV_ICONS.Profile },
     ];
-    if (roles?.includes("driver")) items.push({ to: "/app/driver" as never, label: "Drive", icon: NAV_ICONS.Driver });
-    if (roles?.includes("admin")) items.push({ to: "/app/admin" as never, label: "Admin", icon: NAV_ICONS.Admin });
+    if (roles?.includes("driver"))
+      items.push({ to: "/app/driver" as never, label: "Drive", icon: NAV_ICONS.Driver });
+    if (roles?.includes("admin"))
+      items.push({ to: "/app/admin" as never, label: "Admin", icon: NAV_ICONS.Admin });
     items.push({ to: "/app/profile" as never, label: "Profile", icon: NAV_ICONS.Profile });
     return items;
   }, [roles]);
@@ -71,7 +91,9 @@ function BookExtendedPage() {
 
   // Group + equipment
   const [groupSize, setGroupSize] = useState(1);
-  const [additional, setAdditional] = useState<{ full_name: string; phone: string; relationship: string }[]>([]);
+  const [additional, setAdditional] = useState<
+    { full_name: string; phone: string; relationship: string }[]
+  >([]);
   const [wheelchairCount, setWheelchairCount] = useState(0);
   const [equipmentCount, setEquipmentCount] = useState(0);
   const [companionCount, setCompanionCount] = useState<0 | 1 | 2 | 3 | 4>(1);
@@ -99,7 +121,11 @@ function BookExtendedPage() {
   useEffect(() => {
     if (!user || bookFor !== "self") return;
     (async () => {
-      const { data } = await supabase.from("profiles").select("full_name, phone").eq("user_id", user.id).maybeSingle();
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("user_id", user.id)
+        .maybeSingle();
       if (data) {
         setTravellerName((n) => n || data.full_name || "");
         setTravellerPhone((p) => p || data.phone || "");
@@ -120,28 +146,57 @@ function BookExtendedPage() {
     setItinerary((prev) => {
       const dayItems = prev.filter((i) => i.day === day);
       const nextSeq = dayItems.length + 1;
-      return [...prev, { day, sequence: nextSeq, type: "activity", title: "", start_time: null, end_time: null, address: null, notes: null }];
+      return [
+        ...prev,
+        {
+          day,
+          sequence: nextSeq,
+          type: "activity",
+          title: "",
+          start_time: null,
+          end_time: null,
+          address: null,
+          notes: null,
+        },
+      ];
     });
   }
   function removeItem(idx: number) {
-    setItinerary((prev) => prev.filter((_, i) => i !== idx).map((it, i, arr) => {
-      // re-sequence by day
-      const sameDayBefore = arr.slice(0, i).filter((x) => x.day === it.day).length;
-      return { ...it, sequence: sameDayBefore + 1 };
-    }));
+    setItinerary((prev) =>
+      prev
+        .filter((_, i) => i !== idx)
+        .map((it, i, arr) => {
+          // re-sequence by day
+          const sameDayBefore = arr.slice(0, i).filter((x) => x.day === it.day).length;
+          return { ...it, sequence: sameDayBefore + 1 };
+        }),
+    );
   }
   function updateItem(idx: number, patch: Partial<ExtendedItineraryItem>) {
     setItinerary((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
   }
-  function addDestination() { setDestinations((d) => [...d, ""]); }
-  function updateDestination(i: number, v: string) { setDestinations((d) => d.map((x, idx) => (idx === i ? v : x))); }
-  function removeDestination(i: number) { setDestinations((d) => d.filter((_, idx) => idx !== i)); }
+  function addDestination() {
+    setDestinations((d) => [...d, ""]);
+  }
+  function updateDestination(i: number, v: string) {
+    setDestinations((d) => d.map((x, idx) => (idx === i ? v : x)));
+  }
+  function removeDestination(i: number) {
+    setDestinations((d) => d.filter((_, idx) => idx !== i));
+  }
 
-  function addTraveller() { setAdditional((a) => [...a, { full_name: "", phone: "", relationship: "" }]); }
-  function updateTraveller(i: number, patch: Partial<{ full_name: string; phone: string; relationship: string }>) {
+  function addTraveller() {
+    setAdditional((a) => [...a, { full_name: "", phone: "", relationship: "" }]);
+  }
+  function updateTraveller(
+    i: number,
+    patch: Partial<{ full_name: string; phone: string; relationship: string }>,
+  ) {
     setAdditional((a) => a.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
   }
-  function removeTraveller(i: number) { setAdditional((a) => a.filter((_, idx) => idx !== i)); }
+  function removeTraveller(i: number) {
+    setAdditional((a) => a.filter((_, idx) => idx !== i));
+  }
 
   const canSubmit =
     !!user &&
@@ -166,7 +221,11 @@ function BookExtendedPage() {
         group_size: groupSize,
         additional_travellers: additional
           .filter((t) => t.full_name.trim())
-          .map((t) => ({ full_name: t.full_name.trim(), phone: t.phone.trim() || null, relationship: t.relationship.trim() || null })),
+          .map((t) => ({
+            full_name: t.full_name.trim(),
+            phone: t.phone.trim() || null,
+            relationship: t.relationship.trim() || null,
+          })),
         wheelchair_count: wheelchairCount,
         mobility_equipment_count: equipmentCount,
         starting_location: startingLocation.trim(),
@@ -175,7 +234,11 @@ function BookExtendedPage() {
         luggage_requirements: luggage.trim(),
         accommodation_requirements: accommodation.trim(),
         overnight_support_requirements: overnightSupport.trim(),
-        emergency_contact: { name: emergencyName.trim(), phone: emergencyPhone.trim(), relationship: emergencyRel.trim() || null },
+        emergency_contact: {
+          name: emergencyName.trim(),
+          phone: emergencyPhone.trim(),
+          relationship: emergencyRel.trim() || null,
+        },
         general_support_instructions: generalSupport.trim(),
       };
 
@@ -224,7 +287,9 @@ function BookExtendedPage() {
           .filter((i) => i.title.trim() || i.type === "ride" || i.type === "waiting")
           .map((i) => {
             const planned_start_at = i.start_time
-              ? new Date(addDaysISO(startDate, i.day - 1) + "T" + i.start_time + ":00").toISOString()
+              ? new Date(
+                  addDaysISO(startDate, i.day - 1) + "T" + i.start_time + ":00",
+                ).toISOString()
               : null;
             const planned_end_at = i.end_time
               ? new Date(addDaysISO(startDate, i.day - 1) + "T" + i.end_time + ":00").toISOString()
@@ -242,7 +307,9 @@ function BookExtendedPage() {
             };
           });
         if (items.length) {
-          const { error: itErr } = await supabase.from("booking_itinerary_items").insert(items as never);
+          const { error: itErr } = await supabase
+            .from("booking_itinerary_items")
+            .insert(items as never);
           if (itErr) throw itErr;
         }
       }
@@ -251,7 +318,11 @@ function BookExtendedPage() {
         booking_id: booking.id,
         actor_user_id: user.id,
         event_type: "booking_created",
-        payload: { service_type: "extended_journey", duration_preset: preset, days: totalDays } as never,
+        payload: {
+          service_type: "extended_journey",
+          duration_preset: preset,
+          days: totalDays,
+        } as never,
       });
 
       toast.success("Extended Journey request submitted — awaiting quote");
@@ -270,7 +341,9 @@ function BookExtendedPage() {
     <AppShell title="Extended Journey" nav={nav}>
       <div className="mb-3 flex items-center gap-2">
         <Button asChild size="sm" variant="ghost">
-          <Link to="/app/passenger/book"><ChevronLeft className="h-4 w-4" /> Back</Link>
+          <Link to="/app/passenger/book">
+            <ChevronLeft className="h-4 w-4" /> Back
+          </Link>
         </Button>
       </div>
 
@@ -281,7 +354,10 @@ function BookExtendedPage() {
           </div>
           <div>
             <h1 className="text-lg font-semibold">Access Extended Journey</h1>
-            <p className="text-xs text-muted-foreground">Premium accessible multi-day travel with a dedicated vehicle, driver and companion team.</p>
+            <p className="text-xs text-muted-foreground">
+              Premium accessible multi-day travel with a dedicated vehicle, driver and companion
+              team.
+            </p>
           </div>
         </div>
       </header>
@@ -290,37 +366,69 @@ function BookExtendedPage() {
       <section className="mt-4 rounded-xl border bg-card p-4">
         <h2 className="text-sm font-semibold">Duration</h2>
         <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {(["three_days", "five_days", "seven_days", "custom"] as ExtendedDurationPreset[]).map((p) => (
-            <Button
-              key={p}
-              type="button"
-              variant={preset === p ? "default" : "outline"}
-              size="sm"
-              onClick={() => setPreset(p)}
-            >
-              {EXTENDED_DURATION_LABEL[p]}
-            </Button>
-          ))}
+          {(["three_days", "five_days", "seven_days", "custom"] as ExtendedDurationPreset[]).map(
+            (p) => (
+              <Button
+                key={p}
+                type="button"
+                variant={preset === p ? "default" : "outline"}
+                size="sm"
+                onClick={() => setPreset(p)}
+              >
+                {EXTENDED_DURATION_LABEL[p]}
+              </Button>
+            ),
+          )}
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div>
             <Label htmlFor="ej-start">Start date</Label>
-            <Input id="ej-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <Input
+              id="ej-start"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
           </div>
           <div>
             <Label htmlFor="ej-end">End date</Label>
-            <Input id="ej-end" type="date" value={endDate} min={startDate} onChange={(e) => { setEndDate(e.target.value); setPreset("custom"); }} />
+            <Input
+              id="ej-end"
+              type="date"
+              value={endDate}
+              min={startDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPreset("custom");
+              }}
+            />
           </div>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">Total: {totalDays} day{totalDays === 1 ? "" : "s"}</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Total: {totalDays} day{totalDays === 1 ? "" : "s"}
+        </p>
       </section>
 
       {/* Traveller */}
       <section className="mt-4 rounded-xl border bg-card p-4">
         <h2 className="text-sm font-semibold">Primary traveller</h2>
         <div className="mt-2 flex gap-2">
-          <Button type="button" size="sm" variant={bookFor === "self" ? "default" : "outline"} onClick={() => setBookFor("self")}>Booking for me</Button>
-          <Button type="button" size="sm" variant={bookFor === "other" ? "default" : "outline"} onClick={() => setBookFor("other")}>Someone else</Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={bookFor === "self" ? "default" : "outline"}
+            onClick={() => setBookFor("self")}
+          >
+            Booking for me
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={bookFor === "other" ? "default" : "outline"}
+            onClick={() => setBookFor("other")}
+          >
+            Someone else
+          </Button>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div>
@@ -344,18 +452,37 @@ function BookExtendedPage() {
       <section className="mt-4 rounded-xl border bg-card p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Additional travellers</h2>
-          <Button type="button" size="sm" variant="outline" onClick={addTraveller}><Plus className="h-3.5 w-3.5" /> Add</Button>
+          <Button type="button" size="sm" variant="outline" onClick={addTraveller}>
+            <Plus className="h-3.5 w-3.5" /> Add
+          </Button>
         </div>
         {additional.length === 0 ? (
           <p className="mt-2 text-xs text-muted-foreground">No additional travellers.</p>
         ) : (
           <div className="mt-2 space-y-2">
             {additional.map((t, i) => (
-              <div key={i} className="grid gap-2 rounded border p-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
-                <Input placeholder="Full name" value={t.full_name} onChange={(e) => updateTraveller(i, { full_name: e.target.value })} />
-                <Input placeholder="Phone" value={t.phone} onChange={(e) => updateTraveller(i, { phone: e.target.value })} />
-                <Input placeholder="Relationship" value={t.relationship} onChange={(e) => updateTraveller(i, { relationship: e.target.value })} />
-                <Button type="button" size="sm" variant="ghost" onClick={() => removeTraveller(i)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              <div
+                key={i}
+                className="grid gap-2 rounded border p-2 sm:grid-cols-[1fr_1fr_1fr_auto]"
+              >
+                <Input
+                  placeholder="Full name"
+                  value={t.full_name}
+                  onChange={(e) => updateTraveller(i, { full_name: e.target.value })}
+                />
+                <Input
+                  placeholder="Phone"
+                  value={t.phone}
+                  onChange={(e) => updateTraveller(i, { phone: e.target.value })}
+                />
+                <Input
+                  placeholder="Relationship"
+                  value={t.relationship}
+                  onChange={(e) => updateTraveller(i, { relationship: e.target.value })}
+                />
+                <Button type="button" size="sm" variant="ghost" onClick={() => removeTraveller(i)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             ))}
           </div>
@@ -363,24 +490,48 @@ function BookExtendedPage() {
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div>
             <Label>Group size (total)</Label>
-            <Input type="number" min={1} value={groupSize} onChange={(e) => setGroupSize(Math.max(1, Number(e.target.value) || 1))} />
+            <Input
+              type="number"
+              min={1}
+              value={groupSize}
+              onChange={(e) => setGroupSize(Math.max(1, Number(e.target.value) || 1))}
+            />
           </div>
           <div>
             <Label>Required companions (0–4)</Label>
-            <Select value={String(companionCount)} onValueChange={(v) => setCompanionCount(Number(v) as 0 | 1 | 2 | 3 | 4)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={String(companionCount)}
+              onValueChange={(v) => setCompanionCount(Number(v) as 0 | 1 | 2 | 3 | 4)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
-                {[0, 1, 2, 3, 4].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                {[0, 1, 2, 3, 4].map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    {n}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label>Wheelchairs</Label>
-            <Input type="number" min={0} value={wheelchairCount} onChange={(e) => setWheelchairCount(Math.max(0, Number(e.target.value) || 0))} />
+            <Input
+              type="number"
+              min={0}
+              value={wheelchairCount}
+              onChange={(e) => setWheelchairCount(Math.max(0, Number(e.target.value) || 0))}
+            />
           </div>
           <div>
             <Label>Other mobility equipment</Label>
-            <Input type="number" min={0} value={equipmentCount} onChange={(e) => setEquipmentCount(Math.max(0, Number(e.target.value) || 0))} />
+            <Input
+              type="number"
+              min={0}
+              value={equipmentCount}
+              onChange={(e) => setEquipmentCount(Math.max(0, Number(e.target.value) || 0))}
+            />
           </div>
         </div>
       </section>
@@ -391,16 +542,26 @@ function BookExtendedPage() {
         <div className="mt-2 grid gap-2">
           <div>
             <Label>Starting location</Label>
-            <Input value={startingLocation} onChange={(e) => setStartingLocation(e.target.value)} placeholder="e.g. Home address, hotel name" />
+            <Input
+              value={startingLocation}
+              onChange={(e) => setStartingLocation(e.target.value)}
+              placeholder="e.g. Home address, hotel name"
+            />
           </div>
           <div>
             <Label>Main destination</Label>
-            <Input value={mainDestination} onChange={(e) => setMainDestination(e.target.value)} placeholder="e.g. Garden Route, Cape Town" />
+            <Input
+              value={mainDestination}
+              onChange={(e) => setMainDestination(e.target.value)}
+              placeholder="e.g. Garden Route, Cape Town"
+            />
           </div>
           <div>
             <div className="flex items-center justify-between">
               <Label>Other planned destinations</Label>
-              <Button type="button" size="sm" variant="outline" onClick={addDestination}><Plus className="h-3.5 w-3.5" /> Add</Button>
+              <Button type="button" size="sm" variant="outline" onClick={addDestination}>
+                <Plus className="h-3.5 w-3.5" /> Add
+              </Button>
             </div>
             {destinations.length === 0 ? (
               <p className="mt-1 text-xs text-muted-foreground">Add stops you'd like to include.</p>
@@ -409,7 +570,14 @@ function BookExtendedPage() {
                 {destinations.map((d, i) => (
                   <div key={i} className="flex gap-2">
                     <Input value={d} onChange={(e) => updateDestination(i, e.target.value)} />
-                    <Button type="button" size="sm" variant="ghost" onClick={() => removeDestination(i)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => removeDestination(i)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -424,19 +592,38 @@ function BookExtendedPage() {
         <div className="mt-2 grid gap-2">
           <div>
             <Label>Luggage requirements</Label>
-            <Textarea rows={2} value={luggage} onChange={(e) => setLuggage(e.target.value)} placeholder="Bags, mobility equipment, medical supplies…" />
+            <Textarea
+              rows={2}
+              value={luggage}
+              onChange={(e) => setLuggage(e.target.value)}
+              placeholder="Bags, mobility equipment, medical supplies…"
+            />
           </div>
           <div>
             <Label>Accommodation requirements</Label>
-            <Textarea rows={2} value={accommodation} onChange={(e) => setAccommodation(e.target.value)} placeholder="Accessible rooms, ground floor, etc." />
+            <Textarea
+              rows={2}
+              value={accommodation}
+              onChange={(e) => setAccommodation(e.target.value)}
+              placeholder="Accessible rooms, ground floor, etc."
+            />
           </div>
           <div>
             <Label>Overnight support requirements</Label>
-            <Textarea rows={2} value={overnightSupport} onChange={(e) => setOvernightSupport(e.target.value)} placeholder="Personal care, medication reminders, sleep support…" />
+            <Textarea
+              rows={2}
+              value={overnightSupport}
+              onChange={(e) => setOvernightSupport(e.target.value)}
+              placeholder="Personal care, medication reminders, sleep support…"
+            />
           </div>
           <div>
             <Label>General support instructions</Label>
-            <Textarea rows={2} value={generalSupport} onChange={(e) => setGeneralSupport(e.target.value)} />
+            <Textarea
+              rows={2}
+              value={generalSupport}
+              onChange={(e) => setGeneralSupport(e.target.value)}
+            />
           </div>
         </div>
       </section>
@@ -445,16 +632,27 @@ function BookExtendedPage() {
       <section className="mt-4 rounded-xl border bg-card p-4">
         <h2 className="text-sm font-semibold">Emergency contact</h2>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
-          <div><Label>Name</Label><Input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} /></div>
-          <div><Label>Phone</Label><Input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} /></div>
-          <div><Label>Relationship</Label><Input value={emergencyRel} onChange={(e) => setEmergencyRel(e.target.value)} /></div>
+          <div>
+            <Label>Name</Label>
+            <Input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} />
+          </div>
+          <div>
+            <Label>Phone</Label>
+            <Input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} />
+          </div>
+          <div>
+            <Label>Relationship</Label>
+            <Input value={emergencyRel} onChange={(e) => setEmergencyRel(e.target.value)} />
+          </div>
         </div>
       </section>
 
       {/* Itinerary builder */}
       <section className="mt-4 rounded-xl border bg-card p-4">
         <h2 className="text-sm font-semibold">Daily itinerary (draft)</h2>
-        <p className="text-xs text-muted-foreground">Sketch your plan — Admin will refine it and confirm rides only after you accept the quote.</p>
+        <p className="text-xs text-muted-foreground">
+          Sketch your plan — Admin will refine it and confirm rides only after you accept the quote.
+        </p>
         <div className="mt-3 space-y-3">
           {dayNumbers.map((day) => {
             const dayItems = itinerary
@@ -467,10 +665,15 @@ function BookExtendedPage() {
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">Day {day}</Badge>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(addDaysISO(startDate, day - 1) + "T00:00:00").toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" })}
+                      {new Date(addDaysISO(startDate, day - 1) + "T00:00:00").toLocaleDateString(
+                        "en-ZA",
+                        { weekday: "short", day: "numeric", month: "short" },
+                      )}
                     </span>
                   </div>
-                  <Button type="button" size="sm" variant="outline" onClick={() => addItem(day)}><Plus className="h-3.5 w-3.5" /> Item</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => addItem(day)}>
+                    <Plus className="h-3.5 w-3.5" /> Item
+                  </Button>
                 </div>
                 {dayItems.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No items yet.</p>
@@ -479,21 +682,63 @@ function BookExtendedPage() {
                     {dayItems.map(({ it, idx }) => (
                       <li key={idx} className="rounded border p-2">
                         <div className="grid gap-2 sm:grid-cols-[110px_1fr_auto]">
-                          <Select value={it.type} onValueChange={(v) => updateItem(idx, { type: v as ExtendedItineraryItemType })}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
+                          <Select
+                            value={it.type}
+                            onValueChange={(v) =>
+                              updateItem(idx, { type: v as ExtendedItineraryItemType })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
                             <SelectContent>
-                              {ITEM_TYPES.map((t) => <SelectItem key={t} value={t}>{EXTENDED_ITEM_LABEL[t]}</SelectItem>)}
+                              {ITEM_TYPES.map((t) => (
+                                <SelectItem key={t} value={t}>
+                                  {EXTENDED_ITEM_LABEL[t]}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
-                          <Input placeholder="Title (e.g. Hotel check-in)" value={it.title} onChange={(e) => updateItem(idx, { title: e.target.value })} />
-                          <Button type="button" size="sm" variant="ghost" onClick={() => removeItem(idx)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                          <Input
+                            placeholder="Title (e.g. Hotel check-in)"
+                            value={it.title}
+                            onChange={(e) => updateItem(idx, { title: e.target.value })}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeItem(idx)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                         <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_2fr]">
-                          <Input type="time" value={it.start_time ?? ""} onChange={(e) => updateItem(idx, { start_time: e.target.value || null })} />
-                          <Input type="time" value={it.end_time ?? ""} onChange={(e) => updateItem(idx, { end_time: e.target.value || null })} />
-                          <Input placeholder="Address / location" value={it.address ?? ""} onChange={(e) => updateItem(idx, { address: e.target.value || null })} />
+                          <Input
+                            type="time"
+                            value={it.start_time ?? ""}
+                            onChange={(e) =>
+                              updateItem(idx, { start_time: e.target.value || null })
+                            }
+                          />
+                          <Input
+                            type="time"
+                            value={it.end_time ?? ""}
+                            onChange={(e) => updateItem(idx, { end_time: e.target.value || null })}
+                          />
+                          <Input
+                            placeholder="Address / location"
+                            value={it.address ?? ""}
+                            onChange={(e) => updateItem(idx, { address: e.target.value || null })}
+                          />
                         </div>
-                        <Textarea className="mt-2" rows={2} placeholder="Notes" value={it.notes ?? ""} onChange={(e) => updateItem(idx, { notes: e.target.value || null })} />
+                        <Textarea
+                          className="mt-2"
+                          rows={2}
+                          placeholder="Notes"
+                          value={it.notes ?? ""}
+                          onChange={(e) => updateItem(idx, { notes: e.target.value || null })}
+                        />
                       </li>
                     ))}
                   </ol>
@@ -514,7 +759,8 @@ function BookExtendedPage() {
           {submitting ? "Submitting…" : "Submit for quote"}
         </Button>
         <p className="mt-1 text-center text-[11px] text-muted-foreground">
-          Extended Journey requests start as awaiting_quote. No rides are created until Admin reviews and you accept the quote.
+          Extended Journey requests start as awaiting_quote. No rides are created until Admin
+          reviews and you accept the quote.
         </p>
       </div>
     </AppShell>

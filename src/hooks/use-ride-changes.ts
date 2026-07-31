@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-export type RideChangeRow =
-  Database["public"]["Tables"]["ride_change_log"]["Row"];
+export type RideChangeRow = Database["public"]["Tables"]["ride_change_log"]["Row"];
 
 /**
  * Subscribe to ride_change_log entries for a single ride, newest first.

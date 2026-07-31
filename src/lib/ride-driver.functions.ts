@@ -22,7 +22,7 @@ async function callDriverRpc(
 /** Start pickup navigation for a previously accepted scheduled ride. */
 export const startScheduledPickup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => RideIdInput.parse(d))
+  .validator((d: unknown) => RideIdInput.parse(d))
   .handler(async ({ data, context }) =>
     callDriverRpc(
       context.supabase.rpc("driver_start_scheduled_pickup", { p_ride_id: data.rideId }),
@@ -32,7 +32,7 @@ export const startScheduledPickup = createServerFn({ method: "POST" })
 /** Driver confirms they've arrived at the pickup point. */
 export const markArrived = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => RideIdInput.parse(d))
+  .validator((d: unknown) => RideIdInput.parse(d))
   .handler(async ({ data, context }) =>
     callDriverRpc(context.supabase.rpc("driver_mark_arrived", { p_ride_id: data.rideId })),
   );
@@ -40,7 +40,7 @@ export const markArrived = createServerFn({ method: "POST" })
 /** Begin the passenger-carrying trip. */
 export const startTrip = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => RideIdInput.parse(d))
+  .validator((d: unknown) => RideIdInput.parse(d))
   .handler(async ({ data, context }) =>
     callDriverRpc(context.supabase.rpc("driver_start_trip", { p_ride_id: data.rideId })),
   );
@@ -53,7 +53,7 @@ const CompleteInput = z.object({
 /** Complete the trip. Duration and final distance are computed server-side. */
 export const completeTrip = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => CompleteInput.parse(d))
+  .validator((d: unknown) => CompleteInput.parse(d))
   .handler(async ({ data, context }) =>
     callDriverRpc(
       context.supabase.rpc("driver_complete_trip", {

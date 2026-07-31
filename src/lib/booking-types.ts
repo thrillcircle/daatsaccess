@@ -6,16 +6,56 @@ export type BookingStatus = Database["public"]["Enums"]["booking_status"];
 export type AssistanceCode = Database["public"]["Enums"]["assistance_requirement_code"];
 
 export const ASSISTANCE_OPTIONS: { code: AssistanceCode; label: string; description: string }[] = [
-  { code: "boarding_assistance", label: "Boarding assistance", description: "Help getting in and out of the vehicle." },
-  { code: "wheelchair_transfer", label: "Wheelchair transfer", description: "Safe transfer between wheelchair and seat." },
-  { code: "door_to_door", label: "Door-to-door support", description: "From front door to vehicle and back." },
-  { code: "facility_escort", label: "Facility escort", description: "Walk-in to reception or department." },
-  { code: "hospital_assistance", label: "Hospital assistance", description: "Support at hospital admissions and discharge." },
-  { code: "airport_assistance", label: "Airport assistance", description: "Check-in, gate transfer and arrivals." },
-  { code: "elderly_assistance", label: "Elderly assistance", description: "Patient, calm support for older passengers." },
-  { code: "luggage_assistance", label: "Luggage assistance", description: "Carrying and loading bags." },
-  { code: "mobility_equipment", label: "Mobility equipment", description: "Transport for wheelchair, walker or scooter." },
-  { code: "communication_assistance", label: "Communication assistance", description: "Help if the traveller has speech or hearing needs." },
+  {
+    code: "boarding_assistance",
+    label: "Boarding assistance",
+    description: "Help getting in and out of the vehicle.",
+  },
+  {
+    code: "wheelchair_transfer",
+    label: "Wheelchair transfer",
+    description: "Safe transfer between wheelchair and seat.",
+  },
+  {
+    code: "door_to_door",
+    label: "Door-to-door support",
+    description: "From front door to vehicle and back.",
+  },
+  {
+    code: "facility_escort",
+    label: "Facility escort",
+    description: "Walk-in to reception or department.",
+  },
+  {
+    code: "hospital_assistance",
+    label: "Hospital assistance",
+    description: "Support at hospital admissions and discharge.",
+  },
+  {
+    code: "airport_assistance",
+    label: "Airport assistance",
+    description: "Check-in, gate transfer and arrivals.",
+  },
+  {
+    code: "elderly_assistance",
+    label: "Elderly assistance",
+    description: "Patient, calm support for older passengers.",
+  },
+  {
+    code: "luggage_assistance",
+    label: "Luggage assistance",
+    description: "Carrying and loading bags.",
+  },
+  {
+    code: "mobility_equipment",
+    label: "Mobility equipment",
+    description: "Transport for wheelchair, walker or scooter.",
+  },
+  {
+    code: "communication_assistance",
+    label: "Communication assistance",
+    description: "Help if the traveller has speech or hearing needs.",
+  },
   { code: "other", label: "Other support", description: "Describe what's needed in the notes." },
 ];
 
@@ -42,7 +82,9 @@ export const SERVICE_TYPE_LABEL: Record<ServiceType, string> = {
   extended_journey: "Access Extended Journey",
 };
 
-export function bookingStatusVariant(status: BookingStatus): "default" | "secondary" | "outline" | "destructive" {
+export function bookingStatusVariant(
+  status: BookingStatus,
+): "default" | "secondary" | "outline" | "destructive" {
   if (status === "cancelled") return "destructive";
   if (status === "completed" || status === "active") return "default";
   if (status === "awaiting_quote" || status === "quoted") return "secondary";
@@ -93,12 +135,7 @@ export const EXTENDED_DURATION_DAYS: Record<Exclude<ExtendedDurationPreset, "cus
 };
 
 export type ExtendedItineraryItemType =
-  | "ride"
-  | "activity"
-  | "waiting"
-  | "appointment"
-  | "accommodation"
-  | "other";
+  "ride" | "activity" | "waiting" | "appointment" | "accommodation" | "other";
 
 export const EXTENDED_ITEM_LABEL: Record<ExtendedItineraryItemType, string> = {
   ride: "Ride leg",
@@ -123,7 +160,11 @@ export type ExtendedItineraryItem = {
 export type ExtendedJourneyMetadata = {
   duration_preset: ExtendedDurationPreset;
   group_size: number;
-  additional_travellers: { full_name: string; phone?: string | null; relationship?: string | null }[];
+  additional_travellers: {
+    full_name: string;
+    phone?: string | null;
+    relationship?: string | null;
+  }[];
   wheelchair_count: number;
   mobility_equipment_count: number;
   starting_location: string;

@@ -10,10 +10,7 @@ import { LiveTripMap } from "@/components/LiveTripMap";
 import { useRideLiveLocations } from "@/hooks/use-ride-live-locations";
 import { EditTripDialog } from "@/components/EditTripDialog";
 import { PassengerStartPin } from "@/components/PassengerStartPin";
-import {
-  getRideDriverDetails,
-  type DriverDetails,
-} from "@/lib/active-trip.functions";
+import { getRideDriverDetails, type DriverDetails } from "@/lib/active-trip.functions";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
@@ -26,9 +23,7 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
   const dLng = toRad(b.lng - a.lng);
   const lat1 = toRad(a.lat);
   const lat2 = toRad(b.lat);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
@@ -75,10 +70,7 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
     };
   }, [ride.id, ride.driver_id, fetchDriver]);
 
-  const driverLive = useMemo(
-    () => liveRows.find((r) => r.user_role === "driver"),
-    [liveRows],
-  );
+  const driverLive = useMemo(() => liveRows.find((r) => r.user_role === "driver"), [liveRows]);
   const passengerLive = useMemo(
     () => liveRows.find((r) => r.user_role === "passenger"),
     [liveRows],
@@ -186,7 +178,9 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
           ) : (
             <div className="flex items-start gap-3">
               <Avatar className="h-12 w-12">
-                {driver.avatarUrl && <AvatarImage src={driver.avatarUrl} alt={driver.fullName ?? "Driver"} />}
+                {driver.avatarUrl && (
+                  <AvatarImage src={driver.avatarUrl} alt={driver.fullName ?? "Driver"} />
+                )}
                 <AvatarFallback>
                   {(driver.fullName ?? "D").slice(0, 1).toUpperCase()}
                 </AvatarFallback>
@@ -213,7 +207,10 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
               </div>
               {driver.phone && (
                 <Button asChild size="sm" variant="outline" className="shrink-0">
-                  <a href={`tel:${driver.phone}`} aria-label={`Call ${driver.fullName ?? "driver"}`}>
+                  <a
+                    href={`tel:${driver.phone}`}
+                    aria-label={`Call ${driver.fullName ?? "driver"}`}
+                  >
                     <Phone className="h-4 w-4" />
                   </a>
                 </Button>
@@ -225,8 +222,16 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
 
       {/* Trip addresses */}
       <dl className="mt-4 space-y-2 text-sm">
-        <Row icon={<MapPin className="h-4 w-4 text-primary" />} label="From" value={ride.pickup_address} />
-        <Row icon={<Navigation className="h-4 w-4 text-primary" />} label="To" value={ride.destination_address} />
+        <Row
+          icon={<MapPin className="h-4 w-4 text-primary" />}
+          label="From"
+          value={ride.pickup_address}
+        />
+        <Row
+          icon={<Navigation className="h-4 w-4 text-primary" />}
+          label="To"
+          value={ride.destination_address}
+        />
       </dl>
 
       {ride.driver_id && <PassengerStartPin rideId={ride.id} status={ride.status} />}
@@ -267,11 +272,7 @@ function EditTripButton({ ride }: { ride: Ride }) {
   if (!EDITABLE_STATUSES.has(ride.status)) return null;
   return (
     <>
-      <Button
-        variant="outline"
-        className="mt-4 w-full"
-        onClick={() => setOpen(true)}
-      >
+      <Button variant="outline" className="mt-4 w-full" onClick={() => setOpen(true)}>
         <Pencil className="mr-2 h-4 w-4" />
         Edit trip
       </Button>

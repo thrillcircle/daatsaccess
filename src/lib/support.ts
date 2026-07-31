@@ -1,13 +1,7 @@
 export type SupportRole = "passenger" | "driver" | "admin";
 export type SupportPriority = "low" | "normal" | "high" | "urgent";
 export type SupportStatus =
-  | "open"
-  | "triage"
-  | "assigned"
-  | "waiting_for_user"
-  | "in_progress"
-  | "resolved"
-  | "closed";
+  "open" | "triage" | "assigned" | "waiting_for_user" | "in_progress" | "resolved" | "closed";
 export type SupportCategory =
   | "trip_issue"
   | "scheduled_trip"

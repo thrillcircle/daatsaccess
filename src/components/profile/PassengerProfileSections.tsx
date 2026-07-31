@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { HeartHandshake, Home, Loader2, MapPin, Pencil, Plus, Shield, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
@@ -64,7 +64,7 @@ function SavedAddressesCard({ userId }: { userId: string }) {
   const [isDefault, setIsDefault] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await db
       .from("passenger_saved_addresses")
@@ -75,11 +75,11 @@ function SavedAddressesCard({ userId }: { userId: string }) {
     if (error) toast.error(error.message);
     setAddresses((data ?? []) as SavedAddress[]);
     setLoading(false);
-  };
+  }, [userId]);
 
   useEffect(() => {
     void load();
-  }, [userId]);
+  }, [load]);
 
   function resetForm() {
     setEditingId(null);

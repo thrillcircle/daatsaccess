@@ -53,13 +53,7 @@ type FilterKey =
   | "pin_required";
 
 type DriverFilter =
-  | "all"
-  | "online"
-  | "offline"
-  | "assigned"
-  | "available"
-  | "stale"
-  | "incomplete";
+  "all" | "online" | "offline" | "assigned" | "available" | "stale" | "incomplete";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type RideChange = Database["public"]["Tables"]["ride_change_log"]["Row"];
@@ -167,11 +161,7 @@ function AdminPage() {
             .in(
               "status",
               ACTIVE_STATUSES as unknown as (
-                | "requested"
-                | "accepted"
-                | "driver_arriving"
-                | "arrived"
-                | "in_progress"
+                "requested" | "accepted" | "driver_arriving" | "arrived" | "in_progress"
               )[],
             ),
           supabase

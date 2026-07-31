@@ -6,15 +6,11 @@ const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf
 const migration = source(
   "supabase/migrations/20260731184500_phase5_dispatch_cancellation_integrity.sql",
 );
-const dispatchMigration = source(
-  "supabase/migrations/20260731131000_phase5_planning_dispatch.sql",
-);
+const dispatchMigration = source("supabase/migrations/20260731131000_phase5_planning_dispatch.sql");
 const driverFunctions = source("src/lib/ride-driver.functions.ts");
 const driverReads = source("src/lib/driver-rides.ts");
 const activeRide = source("src/components/driver/DriverActiveRide.tsx");
-const operationsPanel = source(
-  "src/components/operations/DriverOperationsPanel.tsx",
-);
+const operationsPanel = source("src/components/operations/DriverOperationsPanel.tsx");
 const generatedTypes = source("src/integrations/supabase/types.ts");
 
 function functionSection(sql: string, name: string) {
@@ -23,19 +19,13 @@ function functionSection(sql: string, name: string) {
   expect(start, `${name} must exist`).toBeGreaterThanOrEqual(0);
   const rest = sql.slice(start + marker.length);
   const next = rest.search(/\nCREATE OR REPLACE FUNCTION /);
-  return next === -1
-    ? sql.slice(start)
-    : sql.slice(start, start + marker.length + next);
+  return next === -1 ? sql.slice(start) : sql.slice(start, start + marker.length + next);
 }
 
 describe("Phase 5 dispatch and cancellation integrity closeout", () => {
   it("drops and revokes both legacy Driver ride-id mutation RPCs", () => {
-    expect(migration).toContain(
-      "DROP FUNCTION IF EXISTS public.driver_accept_ride(uuid)",
-    );
-    expect(migration).toContain(
-      "DROP FUNCTION IF EXISTS public.driver_cancel_ride(uuid)",
-    );
+    expect(migration).toContain("DROP FUNCTION IF EXISTS public.driver_accept_ride(uuid)");
+    expect(migration).toContain("DROP FUNCTION IF EXISTS public.driver_cancel_ride(uuid)");
     expect(migration).toContain(
       "REVOKE ALL ON FUNCTION public.driver_accept_ride(uuid) FROM PUBLIC, anon, authenticated",
     );
@@ -45,12 +35,7 @@ describe("Phase 5 dispatch and cancellation integrity closeout", () => {
   });
 
   it("removes every runtime source call to the legacy claim and cancel paths", () => {
-    const runtime = [
-      driverFunctions,
-      driverReads,
-      activeRide,
-      operationsPanel,
-    ].join("\n");
+    const runtime = [driverFunctions, driverReads, activeRide, operationsPanel].join("\n");
     expect(runtime).not.toContain("driver_accept_ride");
     expect(runtime).not.toContain("acceptRide");
     expect(runtime).not.toContain("driver_cancel_ride");
@@ -64,10 +49,7 @@ describe("Phase 5 dispatch and cancellation integrity closeout", () => {
     expect(migration).toContain(
       "GRANT EXECUTE ON FUNCTION public.driver_accept_dispatch_offer(uuid, integer, text)",
     );
-    const acceptance = functionSection(
-      dispatchMigration,
-      "driver_accept_dispatch_offer",
-    );
+    const acceptance = functionSection(dispatchMigration, "driver_accept_dispatch_offer");
     for (const contract of [
       "FOR UPDATE",
       "driver_user_id",
@@ -90,10 +72,7 @@ describe("Phase 5 dispatch and cancellation integrity closeout", () => {
   });
 
   it("keeps Admin cancellation inside the operation state machine", () => {
-    const cancellation = functionSection(
-      dispatchMigration,
-      "admin_cancel_operation",
-    );
+    const cancellation = functionSection(dispatchMigration, "admin_cancel_operation");
     for (const contract of [
       "FOR UPDATE",
       "operation_runs",
@@ -112,17 +91,10 @@ describe("Phase 5 dispatch and cancellation integrity closeout", () => {
     expect(migration).toContain(
       "REVOKE ALL ON FUNCTION private.is_ride_driver(uuid,uuid) FROM PUBLIC, anon, authenticated",
     );
-    expect(migration).toContain(
-      "DROP FUNCTION IF EXISTS private.is_ride_driver(uuid, uuid)",
-    );
+    expect(migration).toContain("DROP FUNCTION IF EXISTS private.is_ride_driver(uuid, uuid)");
     const policyDefinitions = migration.slice(
-      migration.indexOf(
-        'DROP POLICY IF EXISTS "participants read status events"',
-      ),
-      migration.indexOf(
-        "DO $closeout$",
-        migration.indexOf("assigned driver acks change log"),
-      ),
+      migration.indexOf('DROP POLICY IF EXISTS "participants read status events"'),
+      migration.indexOf("DO $closeout$", migration.indexOf("assigned driver acks change log")),
     );
     expect(policyDefinitions).not.toContain("private.is_ride_driver");
   });

@@ -282,7 +282,11 @@ function BookTransportPage() {
         {pickupPt && destPt ? (
           <div className="mt-3 space-y-2">
             <RouteMap origin={pickupPt} destination={destPt} className="h-40" />
-            <div className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm">
+            <div
+              className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm"
+              aria-live="polite"
+              aria-busy={estimating || pricingLoading}
+            >
               <span className="text-muted-foreground">
                 {estimating || pricingLoading
                   ? "Estimating…"
@@ -294,13 +298,19 @@ function BookTransportPage() {
             </div>
             {routeError ? (
               <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/40 px-3 py-2">
-                <p className="text-xs text-destructive">{routeError}</p>
+                <p role="alert" className="text-xs text-destructive">
+                  {routeError}
+                </p>
                 <Button type="button" size="sm" variant="outline" onClick={retryRoute}>
                   Retry
                 </Button>
               </div>
             ) : null}
-            {pricingError ? <p className="text-xs text-destructive">{pricingError}</p> : null}
+            {pricingError ? (
+              <p role="alert" className="text-xs text-destructive">
+                {pricingError}
+              </p>
+            ) : null}
           </div>
         ) : null}
       </section>

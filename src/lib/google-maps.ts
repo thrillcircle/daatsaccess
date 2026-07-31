@@ -21,15 +21,13 @@ export function loadGoogleMaps(): Promise<typeof google> {
   if (window.google?.maps) return Promise.resolve(window.google);
   if (loaderPromise) return loaderPromise;
 
-  const browserKey = import.meta.env
-    .VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
-  const channel = import.meta.env
-    .VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as string | undefined;
+  const browserKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
+    string | undefined;
+  const channel = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as
+    string | undefined;
 
   if (!browserKey) {
-    return Promise.reject(
-      new Error("Google Maps browser key is not configured."),
-    );
+    return Promise.reject(new Error("Google Maps browser key is not configured."));
   }
 
   loaderPromise = new Promise<typeof google>((resolve, reject) => {

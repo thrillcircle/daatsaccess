@@ -15,10 +15,7 @@ export type RideStatus =
   | "completed"
   | "cancelled";
 
-export const TERMINAL_STATUSES: ReadonlySet<RideStatus> = new Set([
-  "completed",
-  "cancelled",
-]);
+export const TERMINAL_STATUSES: ReadonlySet<RideStatus> = new Set(["completed", "cancelled"]);
 
 export const EDITABLE_STATUSES: ReadonlySet<RideStatus> = new Set([
   "requested",
@@ -45,26 +42,17 @@ const DRIVER_TRANSITIONS: Record<RideStatus, ReadonlyArray<RideStatus>> = {
   cancelled: [],
 };
 
-export function isDriverTransitionAllowed(
-  from: RideStatus,
-  to: RideStatus,
-): boolean {
+export function isDriverTransitionAllowed(from: RideStatus, to: RideStatus): boolean {
   return DRIVER_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
-export function isPassengerTransitionAllowed(
-  from: RideStatus,
-  to: RideStatus,
-): boolean {
+export function isPassengerTransitionAllowed(from: RideStatus, to: RideStatus): boolean {
   // Passenger may only cancel, and never from a terminal status.
   if (TERMINAL_STATUSES.has(from)) return false;
   return to === "cancelled";
 }
 
-export function isTripEditable(
-  status: RideStatus,
-  field: "pickup" | "destination",
-): boolean {
+export function isTripEditable(status: RideStatus, field: "pickup" | "destination"): boolean {
   if (!EDITABLE_STATUSES.has(status)) return false;
   if (field === "pickup") return PICKUP_EDITABLE_STATUSES.has(status);
   return true;

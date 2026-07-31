@@ -21,12 +21,12 @@ export type VerifyPinResult =
  */
 export const verifyStartTripPin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => VerifyInput.parse(d))
+  .validator((d: unknown) => VerifyInput.parse(d))
   .handler(async ({ data, context }): Promise<VerifyPinResult> => {
-    const { data: result, error } = await context.supabase.rpc(
-      "verify_ride_start_pin",
-      { _ride_id: data.rideId, _pin: data.pin },
-    );
+    const { data: result, error } = await context.supabase.rpc("verify_ride_start_pin", {
+      _ride_id: data.rideId,
+      _pin: data.pin,
+    });
     if (error) throw new Error(error.message);
     return result as VerifyPinResult;
   });
@@ -37,14 +37,11 @@ export const verifyStartTripPin = createServerFn({ method: "POST" })
  */
 export const adminResetRidePin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ rideId: z.string().uuid() }).parse(d),
-  )
+  .validator((d: unknown) => z.object({ rideId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await context.supabase.rpc(
-      "admin_reset_ride_pin",
-      { _ride_id: data.rideId },
-    );
+    const { data: result, error } = await context.supabase.rpc("admin_reset_ride_pin", {
+      _ride_id: data.rideId,
+    });
     if (error) throw new Error(error.message);
     return result as { status: "reset"; pin: string };
   });
@@ -63,14 +60,11 @@ export type AdminViewPinResult = {
  */
 export const adminViewRidePin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ rideId: z.string().uuid() }).parse(d),
-  )
+  .validator((d: unknown) => z.object({ rideId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }): Promise<AdminViewPinResult> => {
-    const { data: result, error } = await context.supabase.rpc(
-      "admin_view_ride_pin",
-      { _ride_id: data.rideId },
-    );
+    const { data: result, error } = await context.supabase.rpc("admin_view_ride_pin", {
+      _ride_id: data.rideId,
+    });
     if (error) throw new Error(error.message);
     return result as AdminViewPinResult;
   });
@@ -83,14 +77,11 @@ export const adminViewRidePin = createServerFn({ method: "POST" })
  */
 export const adminAcknowledgePinAlert = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ rideId: z.string().uuid() }).parse(d),
-  )
+  .validator((d: unknown) => z.object({ rideId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await context.supabase.rpc(
-      "admin_acknowledge_pin_alert",
-      { _ride_id: data.rideId },
-    );
+    const { data: result, error } = await context.supabase.rpc("admin_acknowledge_pin_alert", {
+      _ride_id: data.rideId,
+    });
     if (error) throw new Error(error.message);
     return result as { acknowledged: number };
   });

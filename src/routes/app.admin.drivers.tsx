@@ -61,13 +61,7 @@ const ACTIVE: Database["public"]["Enums"]["ride_status"][] = [
 const LIVE_THRESHOLD_MS = 90 * 1000; // location considered live if updated within 90s
 
 type DriverFilter =
-  | "all"
-  | "online"
-  | "offline"
-  | "assigned"
-  | "available"
-  | "stale"
-  | "incomplete";
+  "all" | "online" | "offline" | "assigned" | "available" | "stale" | "incomplete";
 
 const DRIVER_FILTERS: { key: DriverFilter; label: string }[] = [
   { key: "all", label: "All drivers" },

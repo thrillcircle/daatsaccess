@@ -12,7 +12,7 @@ import {
 export type { GeocodeResult, RouteEstimate, PlaceSuggestion };
 
 export const geocodeAddress = createServerFn({ method: "POST" })
-  .inputValidator((input: { address: string }) => {
+  .validator((input: { address: string }) => {
     if (!input || typeof input.address !== "string" || input.address.trim().length < 3) {
       throw new Error("Address is required");
     }
@@ -21,7 +21,7 @@ export const geocodeAddress = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<GeocodeResult> => geocode(data.address));
 
 export const computeRoute = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     (input: { originLat: number; originLng: number; destLat: number; destLng: number }) => {
       const nums = [input?.originLat, input?.originLng, input?.destLat, input?.destLng];
       if (nums.some((n) => typeof n !== "number" || Number.isNaN(n))) {
@@ -33,7 +33,7 @@ export const computeRoute = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<RouteEstimate> => route(data));
 
 export const searchAddresses = createServerFn({ method: "POST" })
-  .inputValidator((input: { query: string; lat?: number; lng?: number }) => {
+  .validator((input: { query: string; lat?: number; lng?: number }) => {
     if (!input || typeof input.query !== "string" || input.query.trim().length < 3) {
       throw new Error("Query is required");
     }
@@ -46,7 +46,7 @@ export const searchAddresses = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<PlaceSuggestion[]> => autocomplete(data));
 
 export const resolvePlace = createServerFn({ method: "POST" })
-  .inputValidator((input: { placeId: string }) => {
+  .validator((input: { placeId: string }) => {
     if (!input || typeof input.placeId !== "string" || !input.placeId.trim()) {
       throw new Error("placeId is required");
     }

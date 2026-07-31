@@ -10,20 +10,10 @@ export type VehicleOperationalStatus = "active" | "maintenance" | "out_of_servic
 export type AssignmentType = "primary" | "shift" | "temporary" | "trip_specific" | "replacement";
 export type AssignmentStatus = "scheduled" | "active" | "completed" | "cancelled";
 export type MaintenanceStatus =
-  | "open"
-  | "scheduled"
-  | "in_progress"
-  | "waiting_for_parts"
-  | "completed"
-  | "cancelled";
+  "open" | "scheduled" | "in_progress" | "waiting_for_parts" | "completed" | "cancelled";
 export type MaintenanceSeverity = "routine" | "attention" | "urgent" | "unsafe";
 export type VehicleDocumentType =
-  | "roadworthy"
-  | "license_disc"
-  | "insurance"
-  | "registration"
-  | "permit"
-  | "other";
+  "roadworthy" | "license_disc" | "insurance" | "registration" | "permit" | "other";
 
 export type CanonicalVehicle = {
   id: string;

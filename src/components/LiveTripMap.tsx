@@ -19,14 +19,7 @@ type Props = {
  * polyline showing the active leg. Marker positions update in place — the
  * map is created once and reused across renders to avoid flicker.
  */
-export function LiveTripMap({
-  pickup,
-  destination,
-  driver,
-  passenger,
-  phase,
-  className,
-}: Props) {
+export function LiveTripMap({ pickup, destination, driver, passenger, phase, className }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<Record<string, google.maps.Marker>>({});
@@ -106,7 +99,7 @@ export function LiveTripMap({
     upsertMarker("passenger", passenger ?? null, { label: "You", color: "#f59e0b" });
 
     // Active route leg: from → to.
-    const from = phase === "inProgress" ? pickup : driver ?? pickup;
+    const from = phase === "inProgress" ? pickup : (driver ?? pickup);
     const to = phase === "inProgress" ? destination : pickup;
     const path = [from, to];
     if (lineRef.current) {

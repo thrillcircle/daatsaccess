@@ -15,8 +15,6 @@ const TABS: ReadonlyArray<{
   { to: "/app/admin/fleet", label: "Fleet", icon: Truck },
 ];
 
-
-
 export function AdminTabs() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (

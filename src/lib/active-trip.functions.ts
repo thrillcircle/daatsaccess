@@ -23,14 +23,12 @@ export type DriverDetails = {
  */
 export const getRideDriverDetails = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({ rideId: z.string().uuid() }).parse(data))
+  .validator((data) => z.object({ rideId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { rideId } = data;
     const { userId } = context;
 
-    const { supabaseAdmin } = await import(
-      "@/integrations/supabase/client.server"
-    );
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: ride, error: rideErr } = await supabaseAdmin
       .from("rides")
@@ -43,9 +41,7 @@ export const getRideDriverDetails = createServerFn({ method: "GET" })
     }
     if (
       !ride.driver_id ||
-      !["accepted", "driver_arriving", "arrived", "in_progress"].includes(
-        ride.status,
-      )
+      !["accepted", "driver_arriving", "arrived", "in_progress"].includes(ride.status)
     ) {
       return null;
     }
@@ -62,10 +58,7 @@ export const getRideDriverDetails = createServerFn({ method: "GET" })
         .select("vehicle_type, vehicle_model, license_plate")
         .eq("user_id", driverId)
         .maybeSingle(),
-      supabaseAdmin
-        .from("ride_ratings")
-        .select("rating")
-        .eq("driver_id", driverId),
+      supabaseAdmin.from("ride_ratings").select("rating").eq("driver_id", driverId),
     ]);
 
     let avatarUrl: string | null = null;

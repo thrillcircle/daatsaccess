@@ -7,12 +7,7 @@ import type {
 } from "@/lib/pricing-engine";
 
 export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: JsonValue | undefined }
-  | JsonValue[];
+  string | number | boolean | null | { [key: string]: JsonValue | undefined } | JsonValue[];
 
 export type PricingVersionStatus = "draft" | "published" | "retired";
 

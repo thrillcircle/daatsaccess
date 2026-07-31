@@ -1,17 +1,8 @@
 export type PricingServiceCode =
-  | "ride"
-  | "transport"
-  | "assisted"
-  | "appointment"
-  | "extended_journey";
+  "ride" | "transport" | "assisted" | "appointment" | "extended_journey";
 
 export type PricingCalculationType =
-  | "flat"
-  | "per_km"
-  | "per_minute"
-  | "per_hour"
-  | "per_day"
-  | "percentage";
+  "flat" | "per_km" | "per_minute" | "per_hour" | "per_day" | "percentage";
 
 export type PricingInputs = {
   distance_km?: number;

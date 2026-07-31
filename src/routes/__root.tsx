@@ -78,15 +78,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Access — Rides for South Africa" },
-      { name: "description", content: "Access is a mobile-first ride-hailing app for South Africa, connecting passengers with drivers for seamless trip requests and completions." },
+      {
+        name: "description",
+        content:
+          "Access is a mobile-first ride-hailing app for South Africa, connecting passengers with drivers for seamless trip requests and completions.",
+      },
       { name: "author", content: "Access" },
       { property: "og:site_name", content: "Access" },
       { property: "og:title", content: "Access — Rides for South Africa" },
-      { property: "og:description", content: "Access is a mobile-first ride-hailing app for South Africa, connecting passengers with drivers for seamless trip requests and completions." },
+      {
+        property: "og:description",
+        content:
+          "Access is a mobile-first ride-hailing app for South Africa, connecting passengers with drivers for seamless trip requests and completions.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Access — Rides for South Africa" },
-      { name: "twitter:description", content: "Access is a mobile-first ride-hailing app for South Africa, connecting passengers with drivers for seamless trip requests and completions." },
+      {
+        name: "twitter:description",
+        content:
+          "Access is a mobile-first ride-hailing app for South Africa, connecting passengers with drivers for seamless trip requests and completions.",
+      },
     ],
     links: [
       {
@@ -104,8 +116,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
               "@type": "WebSite",
               name: "Access",
               url: "https://daats.app",
-              description:
-                "Mobile-first ride-hailing and accessible transport for South Africa.",
+              description: "Mobile-first ride-hailing and accessible transport for South Africa.",
             },
             {
               "@type": "Organization",

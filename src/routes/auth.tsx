@@ -90,9 +90,7 @@ function AuthPage() {
               {mode === "signup" ? "Create your account" : "Welcome back"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {mode === "signup"
-                ? "Sign up to request rides or drive."
-                : "Sign in to continue."}
+              {mode === "signup" ? "Sign up to request rides or drive." : "Sign in to continue."}
             </p>
           </div>
 
@@ -155,9 +153,7 @@ function AuthPage() {
             onClick={() => setMode((m) => (m === "signup" ? "signin" : "signup"))}
             className="mt-6 text-center text-sm text-muted-foreground hover:text-foreground"
           >
-            {mode === "signup"
-              ? "Already have an account? Sign in"
-              : "New here? Create an account"}
+            {mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account"}
           </button>
         </main>
       </div>
