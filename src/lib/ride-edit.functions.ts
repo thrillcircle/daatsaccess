@@ -42,14 +42,17 @@ export const updateRideTrip = createServerFn({ method: "POST" })
     if (rideError) throw new Error(rideError.message);
     if (!ride || ride.passenger_id !== context.userId) throw new Error("Not authorized");
 
-    const { data: result, error } = await context.supabase.rpc("passenger_update_priced_ride_route", {
-      p_ride_id: data.rideId,
-      p_pickup: rpcNullable(data.pickup as unknown as JsonValue),
-      p_destination: rpcNullable(data.destination as unknown as JsonValue),
-      p_distance_km: data.distanceKm,
-      p_duration_seconds: rpcNullable(data.durationMin != null ? data.durationMin * 60 : null),
-      p_expected_route_version: ride.route_version ?? 1,
-    });
+    const { data: result, error } = await context.supabase.rpc(
+      "passenger_update_priced_ride_route",
+      {
+        p_ride_id: data.rideId,
+        p_pickup: rpcNullable(data.pickup as unknown as JsonValue),
+        p_destination: rpcNullable(data.destination as unknown as JsonValue),
+        p_distance_km: data.distanceKm,
+        p_duration_seconds: rpcNullable(data.durationMin != null ? data.durationMin * 60 : null),
+        p_expected_route_version: ride.route_version ?? 1,
+      },
+    );
     if (error) throw new Error(error.message);
     return result;
   });

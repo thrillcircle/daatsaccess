@@ -148,9 +148,6 @@ export function rpcNullable<T>(value: T | null | undefined): T {
   return (value ?? null) as T;
 }
 
-
-
-
 export function asCalculationSnapshot(value: JsonValue | null): PricingCalculationSnapshot | null {
   if (!value || Array.isArray(value) || typeof value !== "object") return null;
   const candidate = value as unknown as PricingCalculationSnapshot;
