@@ -1,4 +1,6 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
+
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { routePairKey, useRouteEstimate, type RoutePoint } from "@/hooks/use-route-estimate";
 
