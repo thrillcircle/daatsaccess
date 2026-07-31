@@ -168,15 +168,18 @@ function RatePrompt({ userId }: { userId?: string }) {
 }
 
 function RideRequest({ userId }: { userId?: string }) {
-  const route = useServerFn(computeRoute);
-
   const [pickupPt, setPickupPt] = useState<AddressPick | null>(null);
   const [destPt, setDestPt] = useState<AddressPick | null>(null);
   const [bias, setBias] = useState<{ lat: number; lng: number } | null>(null);
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
-  const [durationMin, setDurationMin] = useState<number | null>(null);
-  const [estimating, setEstimating] = useState(false);
+  const {
+    distanceKm,
+    durationMin,
+    estimating,
+    error: routeError,
+    retry: retryRoute,
+  } = useRouteEstimate(pickupPt, destPt);
   const [submitting, setSubmitting] = useState(false);
+
   const [activeRide, setActiveRide] = useState<Ride | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
