@@ -13,7 +13,10 @@ export type RouteEstimateState = {
 };
 
 /** Stable identity for a coordinate pair — 6dp ≈ 0.1 m, plenty for routing. */
-export function routePairKey(origin: RoutePoint | null, destination: RoutePoint | null): string | null {
+export function routePairKey(
+  origin: RoutePoint | null,
+  destination: RoutePoint | null,
+): string | null {
   if (!origin || !destination) return null;
   const n = (v: number) => v.toFixed(6);
   return `${n(origin.lat)},${n(origin.lng)}|${n(destination.lat)},${n(destination.lng)}`;

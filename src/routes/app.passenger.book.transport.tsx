@@ -35,7 +35,6 @@ function BookTransportPage() {
   const { user } = useAuth();
   const { roles } = useUserRoles(user?.id);
   const navigate = useNavigate();
-  
 
   const nav = useMemo(() => {
     const items = [
@@ -87,7 +86,6 @@ function BookTransportPage() {
   }, [user, bookFor]);
 
   // Route distance/duration are computed by useRouteEstimate (race-safe).
-
 
   const scheduleDate = mode === "scheduled" && scheduleLocal ? new Date(scheduleLocal) : null;
   const scheduleValid =
@@ -303,7 +301,6 @@ function BookTransportPage() {
               </div>
             ) : null}
             {pricingError ? <p className="text-xs text-destructive">{pricingError}</p> : null}
-
           </div>
         ) : null}
       </section>

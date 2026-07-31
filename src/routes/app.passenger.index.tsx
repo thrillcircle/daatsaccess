@@ -219,7 +219,6 @@ function RideRequest({ userId }: { userId?: string }) {
 
   // Route distance/duration are computed by useRouteEstimate (race-safe).
 
-
   // Load + subscribe to active ride. A scheduled ride only becomes "current"
   // once its scheduled time has arrived (or it's a "now" request).
   useEffect(() => {
