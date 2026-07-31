@@ -139,7 +139,11 @@ export function DriverOperationsPanel({
       activeAssignments
         .map((assignment) => ({ assignment, run: runById.get(assignment.operation_run_id) }))
         .filter(
-          (item): item is { assignment: OperationAssignment; run: OperationRun } => !!item.run,
+          (item): item is { assignment: OperationAssignment; run: OperationRun } =>
+            !!item.run &&
+            !DRIVER_TERMINAL_OPERATION_STATUSES.includes(
+              item.run.operational_status as (typeof DRIVER_TERMINAL_OPERATION_STATUSES)[number],
+            ),
         )
         .sort(
           (a, b) =>
@@ -148,6 +152,7 @@ export function DriverOperationsPanel({
         ),
     [activeAssignments, runById],
   );
+
   const tracking = activeRuns.find(({ run }) =>
     [
       "dispatched",
