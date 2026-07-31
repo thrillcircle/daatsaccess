@@ -49,7 +49,7 @@ function Landing() {
           <span className="text-lg font-semibold tracking-tight">Access</span>
         </header>
 
-        <div className="my-auto space-y-6">
+        <main className="my-auto space-y-6">
           <div className="inline-flex items-center gap-2 rounded-full border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
             <Car className="h-3.5 w-3.5" /> South Africa · MVP
           </div>
