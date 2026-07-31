@@ -1,0 +1,64 @@
+name: Phase 5 Final Format
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  format-and-verify:
+    if: github.event.pull_request.head.ref == 'phase-5-final-dispatch-onboarding-closeout' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out closeout branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase-5-final-dispatch-onboarding-closeout
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Format final regression
+        run: bunx prettier --write src/lib/phase5-dispatch-cancellation-integrity.test.ts
+
+      - name: Verify full closeout
+        run: |
+          bunx prettier --check \
+            src/components/driver/DriverActiveRide.tsx \
+            src/components/operations/DriverOperationsPanel.tsx \
+            src/lib/driver-rides.ts \
+            src/lib/phase5-dispatch-cancellation-integrity.test.ts \
+            src/lib/ride-driver.functions.ts
+          bunx eslint \
+            src/components/driver/DriverActiveRide.tsx \
+            src/components/operations/DriverOperationsPanel.tsx \
+            src/lib/driver-rides.ts \
+            src/lib/phase5-dispatch-cancellation-integrity.test.ts \
+            src/lib/ride-driver.functions.ts
+          bun run test
+          bunx tsc --noEmit
+          bun run build
+
+      - name: Commit formatted product head
+        run: |
+          rm .github/workflows/phase5-final-format.yml
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Phase 5: format final closeout regression"
+          git push origin HEAD:phase-5-final-dispatch-onboarding-closeout
