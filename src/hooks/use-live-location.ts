@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { operationsDb } from "@/lib/operations";
 
 export type LiveLocationState = {
   status: "idle" | "starting" | "watching" | "denied" | "unavailable" | "error";
@@ -17,8 +18,10 @@ type Options = {
   /** Identify the writer so the right rows are upserted. */
   userId: string | undefined;
   role: "driver" | "passenger";
-  /** When set, also upsert into `ride_live_locations` for this ride. */
+  /** Compatibility ride link for Passenger tracking and older ride screens. */
   rideId?: string | null;
+  /** Canonical Phase 5 operation run for protected Driver location updates. */
+  operationRunId?: string | null;
   /** When true (driver only), also update `driver_profiles.current_lat/lng`. */
   updateDriverProfile?: boolean;
   /** Minimum ms between server upserts. Default 10s. */
@@ -34,9 +37,7 @@ function haversineMeters(a: [number, number], b: [number, number]) {
   const dLng = toRad(b[1] - a[1]);
   const lat1 = toRad(a[0]);
   const lat2 = toRad(b[0]);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
@@ -54,6 +55,7 @@ export function useLiveLocation(opts: Options): LiveLocationState {
     userId,
     role,
     rideId,
+    operationRunId,
     updateDriverProfile,
     throttleMs = 10_000,
     minDistanceMeters = 25,
@@ -89,52 +91,41 @@ export function useLiveLocation(opts: Options): LiveLocationState {
         });
 
         const now = Date.now();
-        const movedFar =
-          lastSentPosRef.current
-            ? haversineMeters(lastSentPosRef.current, [lat, lng]) >= minDistanceMeters
-            : true;
+        const movedFar = lastSentPosRef.current
+          ? haversineMeters(lastSentPosRef.current, [lat, lng]) >= minDistanceMeters
+          : true;
         const timeReady = now - lastSentAtRef.current >= throttleMs;
         if (!(movedFar || timeReady) || inflightRef.current) return;
 
         inflightRef.current = true;
         try {
-          const writes: Promise<unknown>[] = [];
-          if (updateDriverProfile && role === "driver") {
-            writes.push(
-              Promise.resolve(
-                supabase
-                  .from("driver_profiles")
-                  .update({
-                    current_lat: lat,
-                    current_lng: lng,
-                    heading: heading ?? null,
-                    location_accuracy: accuracy ?? null,
-                    location_updated_at: new Date().toISOString(),
-                  })
-                  .eq("user_id", userId),
-              ),
+          if (role === "driver" && updateDriverProfile) {
+            const { error } = await operationsDb.rpc("driver_update_location", {
+              p_latitude: lat,
+              p_longitude: lng,
+              p_captured_at: new Date(pos.timestamp || Date.now()).toISOString(),
+              p_accuracy: accuracy ?? null,
+              p_heading: heading ?? null,
+              p_operation_run_id: operationRunId ?? null,
+              p_source: "browser",
+            });
+            if (error) throw error;
+          } else if (rideId) {
+            const { error } = await supabase.from("ride_live_locations").upsert(
+              {
+                ride_id: rideId,
+                user_id: userId,
+                user_role: role,
+                latitude: lat,
+                longitude: lng,
+                heading: heading ?? null,
+                accuracy: accuracy ?? null,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "ride_id,user_id" },
             );
+            if (error) throw error;
           }
-          if (rideId) {
-            writes.push(
-              Promise.resolve(
-                supabase.from("ride_live_locations").upsert(
-                  {
-                    ride_id: rideId,
-                    user_id: userId,
-                    user_role: role,
-                    latitude: lat,
-                    longitude: lng,
-                    heading: heading ?? null,
-                    accuracy: accuracy ?? null,
-                    updated_at: new Date().toISOString(),
-                  },
-                  { onConflict: "ride_id,user_id" },
-                ),
-              ),
-            );
-          }
-          await Promise.all(writes);
           lastSentAtRef.current = now;
           lastSentPosRef.current = [lat, lng];
         } catch (err) {
@@ -154,7 +145,16 @@ export function useLiveLocation(opts: Options): LiveLocationState {
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [enabled, userId, role, rideId, updateDriverProfile, throttleMs, minDistanceMeters]);
+  }, [
+    enabled,
+    userId,
+    role,
+    rideId,
+    operationRunId,
+    updateDriverProfile,
+    throttleMs,
+    minDistanceMeters,
+  ]);
 
   return state;
 }

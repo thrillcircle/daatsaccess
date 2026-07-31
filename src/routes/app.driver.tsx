@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AppShell } from "@/components/AppShell";
@@ -37,14 +37,10 @@ import { useRideChanges } from "@/hooks/use-ride-changes";
 import { useRideLiveLocations } from "@/hooks/use-ride-live-locations";
 import { useServerFn } from "@tanstack/react-start";
 import { acknowledgeRideChange } from "@/lib/ride-edit.functions";
-import {
-  acceptRide,
-  markArrived,
-  completeTrip,
-  startScheduledPickup,
-} from "@/lib/ride-driver.functions";
+import { markArrived, completeTrip, startScheduledPickup } from "@/lib/ride-driver.functions";
 import { getRidePassengerDetails, type PassengerDetails } from "@/lib/driver-trip.functions";
 import { StartTripPinDialog } from "@/components/StartTripPinDialog";
+import { DriverOperationsPanel } from "@/components/operations/DriverOperationsPanel";
 
 const PICKUP_WINDOW_MS = 30 * 60 * 1000;
 const isFarFutureScheduled = (r: Ride) =>
@@ -75,7 +71,8 @@ function DriverPage() {
   const [profile, setProfile] = useState<DriverProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [activeRide, setActiveRide] = useState<Ride | null>(null);
-  const [openRides, setOpenRides] = useState<Ride[]>([]);
+  const [trackingOperationRunId, setTrackingOperationRunId] = useState<string | null>(null);
+  const [trackingOperationRideId, setTrackingOperationRideId] = useState<string | null>(null);
 
   // Load driver profile
   useEffect(() => {
@@ -132,44 +129,18 @@ function DriverPage() {
     return () => unsub?.();
   }, [user]);
 
-  // Open ride requests (only when online and no active ride)
-  useEffect(() => {
-    if (!user || !profile?.is_available || activeRide) {
-      setOpenRides([]);
-      return;
-    }
-    const load = async () => {
-      const nowIso = new Date().toISOString();
-      const { data } = await supabase
-        .from("rides")
-        .select("*")
-        .is("driver_id", null)
-        .eq("status", "requested")
-        .or(`request_type.eq.now,scheduled_at.lte.${nowIso}`)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      setOpenRides((data ?? []) as Ride[]);
-    };
-    load();
-    const ch = supabase
-      .channel("driver-open-rides")
-      .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, () => load())
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, [user, profile?.is_available, activeRide]);
-
   const trackingRideId =
-    activeRide &&
+    trackingOperationRideId ??
+    (activeRide &&
     ["accepted", "driver_arriving", "arrived", "in_progress"].includes(activeRide.status)
       ? activeRide.id
-      : null;
+      : null);
   const live = useLiveLocation({
     enabled: !!profile?.is_available,
     userId: user?.id,
     role: "driver",
     rideId: trackingRideId,
+    operationRunId: trackingOperationRunId,
     updateDriverProfile: true,
   });
 
@@ -198,25 +169,21 @@ function DriverPage() {
           Location unavailable — passengers can't see you. Enable location and try again.
         </div>
       )}
-      {activeRide ? (
-        <ActiveRideCard ride={activeRide} onUpdate={setActiveRide} />
-      ) : profile.is_available ? (
-        <>
-          <OpenRidesList
-            rides={openRides.filter(
-              (r) =>
-                r.request_type !== "scheduled" ||
-                (r.scheduled_at != null && new Date(r.scheduled_at).getTime() <= Date.now()),
-            )}
-            driverId={user!.id}
-          />
-          <ScheduledOpenRequests driverId={user!.id} online={profile.is_available} />
-        </>
-      ) : (
+      <DriverOperationsPanel
+        driverId={user!.id}
+        online={profile.is_available}
+        onTrackingRunChange={(runId, rideId) => {
+          setTrackingOperationRunId(runId);
+          setTrackingOperationRideId(rideId);
+        }}
+      />
+      {activeRide ? <ActiveRideCard ride={activeRide} onUpdate={setActiveRide} /> : null}
+      {!profile.is_available && !activeRide ? (
         <div className="mt-4 rounded-2xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
-          You're offline. Go online to see ride requests.
+          You're offline. Scheduled work remains visible, but immediate dispatch offers require
+          online status.
         </div>
-      )}
+      ) : null}
       <div id="upcoming" className="scroll-mt-20">
         <UpcomingScheduledTrips driverId={user!.id} onActivate={setActiveRide} />
       </div>
@@ -328,26 +295,9 @@ function OnlineToggle({
 
   async function toggle(checked: boolean) {
     setBusy(true);
-    let payload: Partial<DriverProfile> = { is_available: checked };
-    if (checked && "geolocation" in navigator) {
-      await new Promise<void>((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            payload = {
-              ...payload,
-              current_lat: pos.coords.latitude,
-              current_lng: pos.coords.longitude,
-            };
-            resolve();
-          },
-          () => resolve(),
-          { timeout: 5000 },
-        );
-      });
-    }
     const { data, error } = await supabase
       .from("driver_profiles")
-      .update(payload)
+      .update({ is_available: checked })
       .eq("user_id", profile.user_id)
       .select()
       .single();
@@ -371,63 +321,6 @@ function OnlineToggle({
         </p>
       </div>
       <Switch checked={profile.is_available} onCheckedChange={toggle} disabled={busy} />
-    </section>
-  );
-}
-
-function OpenRidesList({ rides }: { rides: Ride[]; driverId: string }) {
-  const accept = useServerFn(acceptRide);
-  async function onAccept(ride: Ride) {
-    // Pre-open the Maps tab synchronously so the popup-blocker treats it as
-    // user-initiated. If the server claim fails we close the placeholder.
-    const win = openMapsNav(ride.pickup_lat, ride.pickup_lng);
-    try {
-      await accept({ data: { rideId: ride.id } });
-      toast.success("Ride accepted — navigating to pickup");
-    } catch (e) {
-      win?.close();
-      toast.error(e instanceof Error ? e.message : "Could not accept ride");
-    }
-  }
-
-  if (!rides.length) {
-    return (
-      <div className="mt-4 rounded-2xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
-        Waiting for ride requests…
-      </div>
-    );
-  }
-  return (
-    <section className="mt-4 space-y-3">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Open requests ({rides.length})
-      </h3>
-      {rides.map((r) => (
-        <div
-          key={r.id}
-          className="space-y-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-2 text-sm">
-              <p className="flex items-start gap-2">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <span className="truncate">{r.pickup_address}</span>
-              </p>
-              <p className="flex items-start gap-2">
-                <Navigation className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <span className="truncate">{r.destination_address}</span>
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-medium">{Number(r.distance_km).toFixed(1)} km</p>
-              <p className="text-xs text-muted-foreground">Trip distance</p>
-            </div>
-          </div>
-          <Button className="w-full" onClick={() => onAccept(r)}>
-            Accept ride
-          </Button>
-        </div>
-      ))}
     </section>
   );
 }
@@ -976,108 +869,6 @@ function formatJoburg(iso: string): string {
   });
 }
 
-function ScheduledOpenRequests({ driverId, online }: { driverId: string; online: boolean }) {
-  const [rides, setRides] = useState<Ride[]>([]);
-  const [passengers, setPassengers] = useState<Map<string, PassengerLite>>(new Map());
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const accept = useServerFn(acceptRide);
-
-  const load = async () => {
-    const nowIso = new Date().toISOString();
-    const { data } = await supabase
-      .from("rides")
-      .select("*")
-      .is("driver_id", null)
-      .eq("status", "requested")
-      .eq("request_type", "scheduled")
-      .gt("scheduled_at", nowIso)
-      .order("scheduled_at", { ascending: true })
-      .limit(20);
-    const list = (data ?? []) as Ride[];
-    setRides(list);
-    const ids = Array.from(new Set(list.map((r) => r.passenger_id)));
-    if (ids.length) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .in("user_id", ids);
-      setPassengers(new Map(((profs ?? []) as PassengerLite[]).map((p) => [p.user_id, p])));
-    } else {
-      setPassengers(new Map());
-    }
-  };
-
-  useEffect(() => {
-    if (!online) return;
-    load();
-    const ch = supabase
-      .channel("driver-scheduled-open")
-      .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, () => load())
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, [online, driverId]);
-
-  async function onAccept(r: Ride) {
-    setBusyId(r.id);
-    try {
-      await accept({ data: { rideId: r.id } });
-      toast.success("Scheduled trip accepted — see Upcoming trips");
-      load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not accept ride");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  if (!online || !rides.length) return null;
-  return (
-    <section className="mt-4 space-y-3">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Upcoming scheduled requests ({rides.length})
-      </h3>
-      {rides.map((r) => {
-        const p = passengers.get(r.passenger_id);
-        const durMin = r.estimated_duration_seconds
-          ? Math.round(r.estimated_duration_seconds / 60)
-          : null;
-        return (
-          <div
-            key={r.id}
-            className="space-y-3 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 space-y-1 text-sm">
-                <p className="flex items-center gap-1.5 text-xs font-medium text-primary">
-                  <Clock className="h-3.5 w-3.5" />
-                  {r.scheduled_at ? formatJoburg(r.scheduled_at) : "—"}
-                </p>
-                <p className="flex items-start gap-2">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span className="truncate">{r.pickup_address}</span>
-                </p>
-                <p className="flex items-start gap-2">
-                  <Navigation className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span className="truncate">{r.destination_address}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {p?.full_name ?? "Passenger"} · {Number(r.distance_km).toFixed(1)} km
-                  {durMin != null ? ` · ~${durMin} min` : ""}
-                </p>
-              </div>
-            </div>
-            <Button className="w-full" onClick={() => onAccept(r)} disabled={busyId === r.id}>
-              {busyId === r.id ? "Accepting…" : "Accept scheduled trip"}
-            </Button>
-          </div>
-        );
-      })}
-    </section>
-  );
-}
-
 function UpcomingScheduledTrips({
   driverId,
   onActivate,
@@ -1091,7 +882,7 @@ function UpcomingScheduledTrips({
   const [, force] = useState(0);
   const start = useServerFn(startScheduledPickup);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const { data } = await supabase
       .from("rides")
       .select("*")
@@ -1109,7 +900,7 @@ function UpcomingScheduledTrips({
         .in("user_id", ids);
       setPassengers(new Map(((profs ?? []) as PassengerLite[]).map((p) => [p.user_id, p])));
     }
-  };
+  }, [driverId]);
 
   useEffect(() => {
     load();
@@ -1128,7 +919,7 @@ function UpcomingScheduledTrips({
       supabase.removeChannel(ch);
       clearInterval(tick);
     };
-  }, [driverId]);
+  }, [driverId, load]);
 
   async function onStart(r: Ride) {
     setBusyId(r.id);

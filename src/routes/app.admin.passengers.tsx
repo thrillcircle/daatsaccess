@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Activity, Loader2, Phone, Search, UserCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,7 +39,7 @@ const VALID_FILTERS = new Set<PassengerFilter>([
 
 export const Route = createFileRoute("/app/admin/passengers")({
   head: () => ({ meta: [{ title: "Passengers — Admin" }] }),
-  validateSearch: (raw: Record<string, unknown>): PassengerSearch => ({
+  validateSearch: (raw: Record<string, unknown> & SearchSchemaInput): PassengerSearch => ({
     q: typeof raw.q === "string" ? raw.q : "",
     filter:
       typeof raw.filter === "string" && VALID_FILTERS.has(raw.filter as PassengerFilter)

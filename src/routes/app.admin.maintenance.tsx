@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -37,7 +37,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/admin/maintenance")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown> & SearchSchemaInput) => ({
     q: typeof search.q === "string" ? search.q : "",
     status: typeof search.status === "string" ? search.status : "open",
     severity: typeof search.severity === "string" ? search.severity : "all",

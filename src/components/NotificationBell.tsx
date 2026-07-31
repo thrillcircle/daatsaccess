@@ -11,6 +11,9 @@ import type { Database } from "@/integrations/supabase/types";
 type Notification = Database["public"]["Tables"]["notifications"]["Row"] & {
   support_ticket_id?: string | null;
   service_booking_id?: string | null;
+  operation_run_id?: string | null;
+  operational_alert_id?: string | null;
+  operational_incident_id?: string | null;
 };
 
 export function NotificationBell() {
@@ -19,6 +22,7 @@ export function NotificationBell() {
   const [items, setItems] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
   const isAdmin = !!roles?.includes("admin");
+  const isDriver = !!roles?.includes("driver") && !isAdmin;
 
   useEffect(() => {
     if (!user) return;
@@ -137,7 +141,25 @@ export function NotificationBell() {
                 );
 
                 let destination: ReactNode = inner;
-                if (notification.support_ticket_id) {
+                if (notification.operation_run_id) {
+                  destination = isAdmin ? (
+                    <Link
+                      to="/app/admin/operations/$runId"
+                      params={{ runId: notification.operation_run_id }}
+                      onClick={() => setOpen(false)}
+                    >
+                      {inner}
+                    </Link>
+                  ) : isDriver ? (
+                    <Link to="/app/driver" onClick={() => setOpen(false)}>
+                      {inner}
+                    </Link>
+                  ) : (
+                    <Link to="/app/passenger" onClick={() => setOpen(false)}>
+                      {inner}
+                    </Link>
+                  );
+                } else if (notification.support_ticket_id) {
                   destination = isAdmin ? (
                     <Link
                       to="/app/admin/support/$ticketId"

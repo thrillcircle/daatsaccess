@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
@@ -24,13 +24,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -54,20 +48,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/integrations/supabase/types";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
 type Profile = { user_id: string; full_name: string | null; phone: string | null };
-type DriverVehicle = { user_id: string; vehicle_model: string | null; license_plate: string | null; vehicle_type: string | null };
-type FleetVehicle = { id: string; vehicle_name: string | null; vehicle_type: string | null; license_plate: string | null };
+type DriverVehicle = {
+  user_id: string;
+  vehicle_model: string | null;
+  license_plate: string | null;
+  vehicle_type: string | null;
+};
+type FleetVehicle = {
+  id: string;
+  vehicle_name: string | null;
+  vehicle_type: string | null;
+  license_plate: string | null;
+};
 type PaymentRow = { ride_id: string; status: PaymentStatus; amount: number };
 
 type StatusFilter = "all" | "scheduled" | "active" | "completed" | "cancelled";
@@ -81,7 +80,13 @@ const STATUS_OPTIONS: { key: StatusFilter; label: string }[] = [
 const VALID_STATUS = new Set<StatusFilter>(STATUS_OPTIONS.map((s) => s.key));
 const VALID_SORT = new Set<SortOrder>(["newest", "oldest"]);
 type SortOrder = "newest" | "oldest";
-const ACTIVE_STATUSES = ["requested", "accepted", "driver_arriving", "arrived", "in_progress"] as const;
+const ACTIVE_STATUSES = [
+  "requested",
+  "accepted",
+  "driver_arriving",
+  "arrived",
+  "in_progress",
+] as const;
 const PAGE_SIZE = 10;
 
 type Counts = {
@@ -104,7 +109,7 @@ type HistorySearch = {
 
 export const Route = createFileRoute("/app/admin/trip-history")({
   head: () => ({ meta: [{ title: "Trip History — Admin" }] }),
-  validateSearch: (raw: Record<string, unknown>): HistorySearch => ({
+  validateSearch: (raw: Record<string, unknown> & SearchSchemaInput): HistorySearch => ({
     status:
       typeof raw.status === "string" && VALID_STATUS.has(raw.status as StatusFilter)
         ? (raw.status as StatusFilter)
@@ -162,7 +167,15 @@ function TripHistoryPage() {
 
   useEffect(() => {
     setPageSize(PAGE_SIZE);
-  }, [search.status, search.driver, search.vehicle, search.sort, debounced, search.from, search.to]);
+  }, [
+    search.status,
+    search.driver,
+    search.vehicle,
+    search.sort,
+    debounced,
+    search.from,
+    search.to,
+  ]);
 
   // Summary counts (always overall — independent of filters)
   useEffect(() => {
@@ -180,8 +193,14 @@ function TripHistoryPage() {
           .from("rides")
           .select("id", { count: "exact", head: true })
           .in("status", ACTIVE_STATUSES as unknown as Ride["status"][]),
-        supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "completed"),
-        supabase.from("rides").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
+        supabase
+          .from("rides")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "completed"),
+        supabase
+          .from("rides")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "cancelled"),
       ]);
       if (cancelled) return;
       setCounts({
@@ -271,7 +290,9 @@ function TripHistoryPage() {
             q = q.lte("created_at", end.toISOString());
           }
           if (debounced) {
-            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(debounced);
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+              debounced,
+            );
             const parts: string[] = [
               `pickup_address.ilike.%${debounced}%`,
               `destination_address.ilike.%${debounced}%`,
@@ -302,7 +323,9 @@ function TripHistoryPage() {
         setRides(list);
 
         const personIds = Array.from(
-          new Set(list.flatMap((r) => [r.passenger_id, r.driver_id]).filter((v): v is string => !!v)),
+          new Set(
+            list.flatMap((r) => [r.passenger_id, r.driver_id]).filter((v): v is string => !!v),
+          ),
         );
         if (personIds.length) {
           const { data: profs } = await supabase
@@ -314,28 +337,28 @@ function TripHistoryPage() {
           }
         } else setProfiles(new Map());
 
-        const driverIds = Array.from(new Set(list.map((r) => r.driver_id).filter((v): v is string => !!v)));
+        const driverIds = Array.from(
+          new Set(list.map((r) => r.driver_id).filter((v): v is string => !!v)),
+        );
         if (driverIds.length) {
           const { data: vs } = await supabase
             .from("driver_profiles")
             .select("user_id, vehicle_model, license_plate, vehicle_type")
             .in("user_id", driverIds);
           if (!cancelled)
-            setDriverVehicles(
-              new Map(((vs ?? []) as DriverVehicle[]).map((v) => [v.user_id, v])),
-            );
+            setDriverVehicles(new Map(((vs ?? []) as DriverVehicle[]).map((v) => [v.user_id, v])));
         } else setDriverVehicles(new Map());
 
-        const fleetIds = Array.from(new Set(list.map((r) => r.vehicle_id).filter((v): v is string => !!v)));
+        const fleetIds = Array.from(
+          new Set(list.map((r) => r.vehicle_id).filter((v): v is string => !!v)),
+        );
         if (fleetIds.length) {
           const { data: fvs } = await supabase
             .from("vehicle_profiles")
             .select("id, vehicle_name, vehicle_type, license_plate")
             .in("id", fleetIds);
           if (!cancelled)
-            setFleetVehicles(
-              new Map(((fvs ?? []) as FleetVehicle[]).map((v) => [v.id, v])),
-            );
+            setFleetVehicles(new Map(((fvs ?? []) as FleetVehicle[]).map((v) => [v.id, v])));
         } else setFleetVehicles(new Map());
 
         if (list.length) {
@@ -356,7 +379,17 @@ function TripHistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, search.status, search.driver, search.vehicle, search.sort, debounced, search.from, search.to, pageSize]);
+  }, [
+    isAdmin,
+    search.status,
+    search.driver,
+    search.vehicle,
+    search.sort,
+    debounced,
+    search.from,
+    search.to,
+    pageSize,
+  ]);
 
   const activeFilterCount = useMemo(() => {
     let n = 0;
@@ -387,7 +420,6 @@ function TripHistoryPage() {
   const updateSearch = (patch: Partial<HistorySearch>) =>
     navigate({ search: (p: HistorySearch) => ({ ...p, ...patch }) } as never);
 
-
   const exportCsv = () => {
     if (!rides.length) return;
     const header = [
@@ -404,13 +436,15 @@ function TripHistoryPage() {
     ];
     const rows = rides.map((r) => {
       const pax = profiles.get(r.passenger_id)?.full_name ?? "";
-      const drv = r.driver_id ? profiles.get(r.driver_id)?.full_name ?? "Assigned" : "Unassigned";
+      const drv = r.driver_id ? (profiles.get(r.driver_id)?.full_name ?? "Assigned") : "Unassigned";
       const fleet = r.vehicle_id ? fleetVehicles.get(r.vehicle_id) : null;
       const dvVeh = r.driver_id ? driverVehicles.get(r.driver_id) : null;
       const vehicleLabel = fleet
         ? [fleet.vehicle_name, fleet.vehicle_type, fleet.license_plate].filter(Boolean).join(" · ")
         : dvVeh
-          ? [dvVeh.vehicle_model, dvVeh.vehicle_type, dvVeh.license_plate].filter(Boolean).join(" · ")
+          ? [dvVeh.vehicle_model, dvVeh.vehicle_type, dvVeh.license_plate]
+              .filter(Boolean)
+              .join(" · ")
           : "";
       return [
         r.id,
@@ -527,7 +561,12 @@ function TripHistoryPage() {
 
           {/* Desktop inline filters */}
           <div className="hidden flex-wrap items-center gap-2 lg:flex">
-            <FilterControls search={search} onUpdate={updateSearch} drivers={allDrivers} vehicles={allFleet} />
+            <FilterControls
+              search={search}
+              onUpdate={updateSearch}
+              drivers={allDrivers}
+              vehicles={allFleet}
+            />
             <Button
               variant="ghost"
               size="sm"
@@ -629,27 +668,37 @@ function TripHistoryPage() {
               <TableBody>
                 {loading && !rides.length ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
+                    <TableCell
+                      colSpan={8}
+                      className="py-10 text-center text-sm text-muted-foreground"
+                    >
                       Loading trips…
                     </TableCell>
                   </TableRow>
                 ) : !rides.length ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
+                    <TableCell
+                      colSpan={8}
+                      className="py-10 text-center text-sm text-muted-foreground"
+                    >
                       No trips match these filters.
                     </TableCell>
                   </TableRow>
                 ) : (
                   rides.map((r) => {
                     const pax = profiles.get(r.passenger_id) ?? null;
-                    const drv = r.driver_id ? profiles.get(r.driver_id) ?? null : null;
-                    const fleet = r.vehicle_id ? fleetVehicles.get(r.vehicle_id) ?? null : null;
-                    const dvVeh = r.driver_id ? driverVehicles.get(r.driver_id) ?? null : null;
+                    const drv = r.driver_id ? (profiles.get(r.driver_id) ?? null) : null;
+                    const fleet = r.vehicle_id ? (fleetVehicles.get(r.vehicle_id) ?? null) : null;
+                    const dvVeh = r.driver_id ? (driverVehicles.get(r.driver_id) ?? null) : null;
                     const pay = payments.get(r.id) ?? null;
                     const vehicleLabel = fleet
-                      ? [fleet.vehicle_name, fleet.vehicle_type, fleet.license_plate].filter(Boolean).join(" · ")
+                      ? [fleet.vehicle_name, fleet.vehicle_type, fleet.license_plate]
+                          .filter(Boolean)
+                          .join(" · ")
                       : dvVeh
-                        ? [dvVeh.vehicle_model, dvVeh.vehicle_type, dvVeh.license_plate].filter(Boolean).join(" · ")
+                        ? [dvVeh.vehicle_model, dvVeh.vehicle_type, dvVeh.license_plate]
+                            .filter(Boolean)
+                            .join(" · ")
                         : null;
                     return (
                       <TableRow key={r.id}>
@@ -657,7 +706,9 @@ function TripHistoryPage() {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="min-w-0 cursor-default">
-                                <p className="truncate text-sm font-medium">{r.destination_address}</p>
+                                <p className="truncate text-sm font-medium">
+                                  {r.destination_address}
+                                </p>
                                 <p className="truncate text-xs text-muted-foreground">
                                   From {r.pickup_address}
                                 </p>
@@ -755,14 +806,18 @@ function TripHistoryPage() {
           ) : (
             rides.map((r) => {
               const pax = profiles.get(r.passenger_id) ?? null;
-              const drv = r.driver_id ? profiles.get(r.driver_id) ?? null : null;
-              const fleet = r.vehicle_id ? fleetVehicles.get(r.vehicle_id) ?? null : null;
-              const dvVeh = r.driver_id ? driverVehicles.get(r.driver_id) ?? null : null;
+              const drv = r.driver_id ? (profiles.get(r.driver_id) ?? null) : null;
+              const fleet = r.vehicle_id ? (fleetVehicles.get(r.vehicle_id) ?? null) : null;
+              const dvVeh = r.driver_id ? (driverVehicles.get(r.driver_id) ?? null) : null;
               const pay = payments.get(r.id) ?? null;
               const vehicleLabel = fleet
-                ? [fleet.vehicle_name, fleet.vehicle_type, fleet.license_plate].filter(Boolean).join(" · ")
+                ? [fleet.vehicle_name, fleet.vehicle_type, fleet.license_plate]
+                    .filter(Boolean)
+                    .join(" · ")
                 : dvVeh
-                  ? [dvVeh.vehicle_model, dvVeh.vehicle_type, dvVeh.license_plate].filter(Boolean).join(" · ")
+                  ? [dvVeh.vehicle_model, dvVeh.vehicle_type, dvVeh.license_plate]
+                      .filter(Boolean)
+                      .join(" · ")
                   : null;
               const when = r.scheduled_at ?? r.updated_at ?? r.created_at;
               return (
@@ -833,17 +888,11 @@ function TripHistoryPage() {
         {/* Pagination */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3">
           <p className="text-xs text-muted-foreground">
-            {totalMatches === 0
-              ? "No results"
-              : `Showing 1–${showingTo} of ${totalMatches} trips`}
+            {totalMatches === 0 ? "No results" : `Showing 1–${showingTo} of ${totalMatches} trips`}
           </p>
           <div className="flex items-center gap-2">
             {hasMore && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setPageSize((s) => s + PAGE_SIZE)}
-              >
+              <Button size="sm" variant="outline" onClick={() => setPageSize((s) => s + PAGE_SIZE)}>
                 {loading ? "Loading…" : "Load more"}
               </Button>
             )}

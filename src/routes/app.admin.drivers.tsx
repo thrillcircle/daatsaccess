@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
@@ -84,7 +84,7 @@ type DriversSearch = { status: DriverFilter; q: string };
 
 export const Route = createFileRoute("/app/admin/drivers")({
   head: () => ({ meta: [{ title: "Drivers — Admin" }] }),
-  validateSearch: (raw: Record<string, unknown>): DriversSearch => ({
+  validateSearch: (raw: Record<string, unknown> & SearchSchemaInput): DriversSearch => ({
     status:
       typeof raw.status === "string" && VALID_DRIVER_FILTERS.has(raw.status as DriverFilter)
         ? (raw.status as DriverFilter)

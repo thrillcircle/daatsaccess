@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { LifeBuoy, Loader2, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,7 +36,7 @@ const VALID_CATEGORY = new Set(["all", ...SUPPORT_CATEGORIES.map((item) => item.
 
 export const Route = createFileRoute("/app/admin/support")({
   head: () => ({ meta: [{ title: "Support — Admin" }] }),
-  validateSearch: (raw: Record<string, unknown>): SupportSearch => ({
+  validateSearch: (raw: Record<string, unknown> & SearchSchemaInput): SupportSearch => ({
     q: typeof raw.q === "string" ? raw.q : "",
     status:
       typeof raw.status === "string" && VALID_STATUS.has(raw.status)
