@@ -14,8 +14,8 @@ import {
 } from "@/components/driver/driver-utils";
 
 /**
- * Explicit, non-financial column list. Driver views must never read
- * estimated_price, estimate_snapshot or pricing_version_id.
+ * Explicit, non-financial column list. Driver views must never read any
+ * pricing, quote, deposit or fare columns from the rides table.
  */
 export const DRIVER_RIDE_COLUMNS = [
   "id",
