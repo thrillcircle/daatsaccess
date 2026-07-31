@@ -33,6 +33,7 @@ export const Route = createFileRoute("/app/driver")({
         property: "og:description",
         content: "Access Driver hub: active work, upcoming assignments and trip history.",
       },
+      { property: "og:url", content: "https://daats.app/app/driver" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

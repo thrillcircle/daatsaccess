@@ -19,6 +19,18 @@ export const Route = createFileRoute("/")({
         content: "Request rides and drive with Access. Built for South Africa.",
       },
       { property: "og:url", content: "https://daats.app/" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f2045ba6-5f07-479d-9b4a-5e9382129db1/id-preview-bbcda78b--f96f4986-6396-4e06-9fe2-51bdf8c72bd1.lovable.app-1782242389329.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f2045ba6-5f07-479d-9b4a-5e9382129db1/id-preview-bbcda78b--f96f4986-6396-4e06-9fe2-51bdf8c72bd1.lovable.app-1782242389329.png",
+      },
     ],
     links: [{ rel: "canonical", href: "https://daats.app/" }],
   }),

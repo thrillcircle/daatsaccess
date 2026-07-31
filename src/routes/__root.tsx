@@ -87,8 +87,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Access — Rides for South Africa" },
       { name: "twitter:description", content: "Access is a mobile-first ride-hailing app for South Africa, connecting passengers with drivers for seamless trip requests and completions." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f2045ba6-5f07-479d-9b4a-5e9382129db1/id-preview-bbcda78b--f96f4986-6396-4e06-9fe2-51bdf8c72bd1.lovable.app-1782242389329.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f2045ba6-5f07-479d-9b4a-5e9382129db1/id-preview-bbcda78b--f96f4986-6396-4e06-9fe2-51bdf8c72bd1.lovable.app-1782242389329.png" },
     ],
     links: [
       {
