@@ -38,7 +38,7 @@ export function loadGoogleMaps(): Promise<typeof google> {
       else reject(new Error("Google Maps failed to initialize"));
     };
     const params = new URLSearchParams({
-      key,
+      key: browserKey,
       v: "weekly",
       loading: "async",
       libraries: "places,marker",
