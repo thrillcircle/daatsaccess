@@ -1320,6 +1320,7 @@ export type Database = {
           distance_km: number
           driver_arrived_at: string | null
           driver_id: string | null
+          estimate_snapshot: Json
           estimated_duration_seconds: number | null
           estimated_price: number
           id: string
@@ -1331,6 +1332,7 @@ export type Database = {
           pickup_lat: number
           pickup_lng: number
           pickup_place_id: string | null
+          pricing_version_id: string | null
           request_type: string
           route_version: number
           scheduled_at: string | null
@@ -1354,6 +1356,7 @@ export type Database = {
           distance_km: number
           driver_arrived_at?: string | null
           driver_id?: string | null
+          estimate_snapshot?: Json
           estimated_duration_seconds?: number | null
           estimated_price: number
           id?: string
@@ -1365,6 +1368,7 @@ export type Database = {
           pickup_lat: number
           pickup_lng: number
           pickup_place_id?: string | null
+          pricing_version_id?: string | null
           request_type?: string
           route_version?: number
           scheduled_at?: string | null
@@ -1388,6 +1392,7 @@ export type Database = {
           distance_km?: number
           driver_arrived_at?: string | null
           driver_id?: string | null
+          estimate_snapshot?: Json
           estimated_duration_seconds?: number | null
           estimated_price?: number
           id?: string
@@ -1399,6 +1404,7 @@ export type Database = {
           pickup_lat?: number
           pickup_lng?: number
           pickup_place_id?: string | null
+          pricing_version_id?: string | null
           request_type?: string
           route_version?: number
           scheduled_at?: string | null
@@ -1414,6 +1420,13 @@ export type Database = {
             columns: ["itinerary_item_id"]
             isOneToOne: false
             referencedRelation: "booking_itinerary_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rides_pricing_version_id_fkey"
+            columns: ["pricing_version_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_versions"
             referencedColumns: ["id"]
           },
           {
@@ -1476,12 +1489,14 @@ export type Database = {
           deposit_amount: number | null
           deposit_status: Database["public"]["Enums"]["deposit_status"]
           end_at: string | null
+          estimate_snapshot: Json
           estimated_total: number | null
           id: string
           journey_pattern: Database["public"]["Enums"]["journey_pattern"]
           metadata: Json
           parent_booking_id: string | null
           passenger_notes: string | null
+          pricing_version_id: string | null
           quoted_total: number | null
           recurrence_rule: Json | null
           requested_companion_count: number
@@ -1499,12 +1514,14 @@ export type Database = {
           deposit_amount?: number | null
           deposit_status?: Database["public"]["Enums"]["deposit_status"]
           end_at?: string | null
+          estimate_snapshot?: Json
           estimated_total?: number | null
           id?: string
           journey_pattern: Database["public"]["Enums"]["journey_pattern"]
           metadata?: Json
           parent_booking_id?: string | null
           passenger_notes?: string | null
+          pricing_version_id?: string | null
           quoted_total?: number | null
           recurrence_rule?: Json | null
           requested_companion_count?: number
@@ -1522,12 +1539,14 @@ export type Database = {
           deposit_amount?: number | null
           deposit_status?: Database["public"]["Enums"]["deposit_status"]
           end_at?: string | null
+          estimate_snapshot?: Json
           estimated_total?: number | null
           id?: string
           journey_pattern?: Database["public"]["Enums"]["journey_pattern"]
           metadata?: Json
           parent_booking_id?: string | null
           passenger_notes?: string | null
+          pricing_version_id?: string | null
           quoted_total?: number | null
           recurrence_rule?: Json | null
           requested_companion_count?: number
@@ -1543,6 +1562,13 @@ export type Database = {
             columns: ["parent_booking_id"]
             isOneToOne: false
             referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_bookings_pricing_version_id_fkey"
+            columns: ["pricing_version_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -2795,6 +2821,48 @@ export type Database = {
         }
         Returns: Json
       }
+      passenger_create_priced_ride: {
+        Args: {
+          p_destination_address: string
+          p_destination_lat: number
+          p_destination_lng: number
+          p_destination_place_id: string
+          p_distance_km: number
+          p_duration_seconds: number
+          p_idempotency_key?: string
+          p_pickup_address: string
+          p_pickup_lat: number
+          p_pickup_lng: number
+          p_pickup_place_id: string
+          p_request_type: string
+          p_scheduled_at: string
+        }
+        Returns: Json
+      }
+      passenger_create_transport_booking: {
+        Args: {
+          p_assistance_codes?: string[]
+          p_destination_address: string
+          p_destination_lat: number
+          p_destination_lng: number
+          p_destination_place_id: string
+          p_distance_km: number
+          p_duration_seconds: number
+          p_idempotency_key?: string
+          p_passenger_notes?: string
+          p_pickup_address: string
+          p_pickup_lat: number
+          p_pickup_lng: number
+          p_pickup_place_id: string
+          p_relationship: string
+          p_request_type: string
+          p_scheduled_at: string
+          p_traveller_is_self: boolean
+          p_traveller_name: string
+          p_traveller_phone: string
+        }
+        Returns: Json
+      }
       passenger_decline_service_quote: {
         Args: {
           p_expected_row_version: number
@@ -2803,9 +2871,29 @@ export type Database = {
         }
         Returns: Json
       }
+      passenger_pricing_estimate: {
+        Args: {
+          p_additional_inputs?: Json
+          p_distance_km: number
+          p_effective_at?: string
+          p_service_code: string
+        }
+        Returns: Json
+      }
       passenger_quote_summaries: { Args: never; Returns: Json }
       passenger_quote_workspace: {
         Args: { p_booking_id: string }
+        Returns: Json
+      }
+      passenger_update_priced_ride_route: {
+        Args: {
+          p_destination: Json
+          p_distance_km: number
+          p_duration_seconds: number
+          p_expected_route_version: number
+          p_pickup: Json
+          p_ride_id: string
+        }
         Returns: Json
       }
       pricing_assert_draft: {
