@@ -41,15 +41,14 @@ const PASSENGER_NAV: NavItem[] = [
   { to: "/app/profile", label: "Profile", icon: <UserCircle2 className="h-5 w-5" /> },
 ];
 
-const DRIVER_NAV: NavItem[] = [
+export const DRIVER_NAV: NavItem[] = [
   { to: "/app/driver", label: "Drive", icon: <Car className="h-5 w-5" /> },
   {
-    to: "/app/driver",
-    hash: "upcoming",
+    to: "/app/driver/upcoming",
     label: "Upcoming",
     icon: <CalendarRange className="h-5 w-5" />,
   },
-  { to: "/app/driver", hash: "history", label: "History", icon: <History className="h-5 w-5" /> },
+  { to: "/app/driver/history", label: "History", icon: <History className="h-5 w-5" /> },
   { to: "/app/profile", label: "Profile", icon: <UserCircle2 className="h-5 w-5" /> },
 ];
 
@@ -58,10 +57,13 @@ const ADMIN_PROFILE_NAV: NavItem[] = [
   { to: "/app/profile", label: "Profile", icon: <UserCircle2 className="h-5 w-5" /> },
 ];
 
-function isNavActive(pathname: string, item: NavItem): boolean {
+export function isNavActive(pathname: string, item: NavItem): boolean {
   if (item.hash) return false;
   if (item.to === "/app/passenger") {
     return pathname === "/app/passenger" || pathname === "/app/passenger/";
+  }
+  if (item.to === "/app/driver") {
+    return pathname === "/app/driver" || pathname === "/app/driver/";
   }
   if (item.to === "/app/passenger/book") {
     return pathname === item.to || pathname.startsWith(item.to + "/");
@@ -191,6 +193,7 @@ export function AppShell({
                   key={item.to}
                   to={item.to}
                   className={className}
+                  activeOptions={{ exact: true }}
                   aria-current={active ? "page" : undefined}
                 >
                   {item.icon}

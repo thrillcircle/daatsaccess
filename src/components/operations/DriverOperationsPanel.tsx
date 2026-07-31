@@ -33,6 +33,7 @@ import {
   type OperationStatus,
 } from "@/lib/operations";
 import { toast } from "sonner";
+import { DRIVER_TERMINAL_OPERATION_STATUSES } from "@/components/driver/driver-utils";
 
 export function DriverOperationsPanel({
   driverId,
@@ -139,7 +140,11 @@ export function DriverOperationsPanel({
       activeAssignments
         .map((assignment) => ({ assignment, run: runById.get(assignment.operation_run_id) }))
         .filter(
-          (item): item is { assignment: OperationAssignment; run: OperationRun } => !!item.run,
+          (item): item is { assignment: OperationAssignment; run: OperationRun } =>
+            !!item.run &&
+            !DRIVER_TERMINAL_OPERATION_STATUSES.includes(
+              item.run.operational_status as (typeof DRIVER_TERMINAL_OPERATION_STATUSES)[number],
+            ),
         )
         .sort(
           (a, b) =>
@@ -148,6 +153,7 @@ export function DriverOperationsPanel({
         ),
     [activeAssignments, runById],
   );
+
   const tracking = activeRuns.find(({ run }) =>
     [
       "dispatched",
@@ -249,7 +255,9 @@ export function DriverOperationsPanel({
       p_title: incidentTitle.trim(),
       p_internal_notes: incidentNotes.trim(),
       p_passenger_visible_summary:
-        incidentType === "delay" ? "Your service is delayed. Operations has been notified." : undefined,
+        incidentType === "delay"
+          ? "Your service is delayed. Operations has been notified."
+          : undefined,
     });
     setBusy(null);
     if (error) toast.error(error.message);
