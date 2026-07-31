@@ -115,7 +115,5 @@ export function hasNoFinancialFields(payload: unknown): boolean {
   if (payload == null || typeof payload !== "object") return true;
   if (Array.isArray(payload)) return payload.every(hasNoFinancialFields);
   const keys = Object.keys(payload as Record<string, unknown>);
-  return !keys.some((k) =>
-    (DRIVER_PROHIBITED_RIDE_KEYS as readonly string[]).includes(k),
-  );
+  return !keys.some((k) => (DRIVER_PROHIBITED_RIDE_KEYS as readonly string[]).includes(k));
 }

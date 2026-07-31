@@ -104,7 +104,8 @@ function TripChangeAlerts({
   ride,
   passengerName,
 }: {
-  ride: DriverSafeRide; passengerName: string | null;
+  ride: DriverSafeRide;
+  passengerName: string | null;
 }) {
   const changes = useRideChanges(ride.id);
   const ack = useServerFn(acknowledgeRideChange);

@@ -45,8 +45,7 @@ export function UpcomingScheduledTrips({
       list = [];
     }
     list.sort(
-      (a, b) =>
-        new Date(a.scheduled_at ?? 0).getTime() - new Date(b.scheduled_at ?? 0).getTime(),
+      (a, b) => new Date(a.scheduled_at ?? 0).getTime() - new Date(b.scheduled_at ?? 0).getTime(),
     );
     setRides(list);
     const ids = Array.from(new Set(list.map((r) => r.passenger_id)));

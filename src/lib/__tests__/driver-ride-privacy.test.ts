@@ -100,7 +100,9 @@ describe("phase 5 driver boundary migration", () => {
   const sql = readFileSync(MIGRATION, "utf8");
 
   it("removes the direct driver rides SELECT branch", () => {
-    expect(sql).toContain('drop policy if exists "driver sees assigned or open rides" on public.rides');
+    expect(sql).toContain(
+      'drop policy if exists "driver sees assigned or open rides" on public.rides',
+    );
     expect(sql).not.toMatch(/create policy[^;]*on public\.rides\s+for select/i);
   });
 
@@ -137,7 +139,9 @@ describe("phase 5 driver boundary migration", () => {
       "driver_cancel_ride",
     ]) {
       expect(sql).toMatch(new RegExp(`revoke all on function public\\.${fn}\\([^)]*\\) from anon`));
-      expect(sql).toMatch(new RegExp(`grant execute on function public\\.${fn}\\([^)]*\\) to authenticated`));
+      expect(sql).toMatch(
+        new RegExp(`grant execute on function public\\.${fn}\\([^)]*\\) to authenticated`),
+      );
     }
   });
 
