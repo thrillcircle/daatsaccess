@@ -28,9 +28,3 @@ export async function fetchDriverRide(rideId: string): Promise<DriverSafeRide | 
   if (error) throw new Error(error.message);
   return data ? sanitizeDriverRide(data) : null;
 }
-
-export async function cancelDriverRide(rideId: string): Promise<DriverSafeRide> {
-  const { data, error } = await supabase.rpc("driver_cancel_ride", { p_ride_id: rideId });
-  if (error) throw new Error(error.message);
-  return sanitizeDriverRide(data);
-}

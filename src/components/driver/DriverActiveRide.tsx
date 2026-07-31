@@ -33,7 +33,7 @@ import {
   timeAgo,
   type DriverSafeRide,
 } from "@/components/driver/driver-utils";
-import { cancelDriverRide, fetchDriverRide } from "@/lib/driver-rides";
+import { fetchDriverRide } from "@/lib/driver-rides";
 
 export function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -246,16 +246,6 @@ export function ActiveRideCard({
     }
   }
 
-  async function cancel() {
-    try {
-      await cancelDriverRide(ride.id);
-      onUpdate(null);
-      toast.success("Ride cancelled");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not cancel ride");
-    }
-  }
-
   const fetchPassenger = useServerFn(getRidePassengerDetails);
   const [passenger, setPassenger] = useState<PassengerDetails | null | undefined>(undefined);
   useEffect(() => {
@@ -416,11 +406,10 @@ export function ActiveRideCard({
           Complete trip
         </Button>
       )}
-      {ride.status !== "in_progress" && (
-        <Button variant="outline" className="mt-2 w-full" onClick={cancel} disabled={busy}>
-          Cancel
-        </Button>
-      )}
+      <p className="mt-3 text-center text-xs text-muted-foreground">
+        Need to stop or change the service? Use the operational decline, no-show, incident, or
+        support actions so Operations can keep the Ride and operation run synchronized.
+      </p>
     </section>
   );
 }

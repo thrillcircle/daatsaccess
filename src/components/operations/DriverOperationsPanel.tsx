@@ -245,6 +245,20 @@ export function DriverOperationsPanel({
     }
   }
 
+  async function reportNoShow(run: OperationRun) {
+    setBusy(`no-show:${run.id}`);
+    const { error } = await operationsDb.rpc("driver_report_no_show", {
+      p_run_id: run.id,
+      p_expected_run_version: run.row_version,
+      p_details: "Passenger did not arrive at the confirmed pickup point.",
+    });
+    setBusy(null);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Passenger no-show reported to Operations");
+      await load();
+    }
+  }
   async function reportIncident() {
     if (!incidentRun || !incidentTitle.trim() || !incidentNotes.trim()) return;
     setBusy(`incident:${incidentRun.id}`);
@@ -425,6 +439,17 @@ export function DriverOperationsPanel({
                         </Button>
                       ))
                     : null}
+                  {assignment.status === "acknowledged" &&
+                  ["driver_arrived", "waiting"].includes(run.operational_status) ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => void reportNoShow(run)}
+                      disabled={busy === `no-show:${run.id}`}
+                    >
+                      <AlertTriangle className="mr-2 h-4 w-4" />
+                      Passenger no-show
+                    </Button>
+                  ) : null}
                 </div>
                 {run.operational_status === "driver_arrived" && run.ride_id ? (
                   <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
@@ -492,7 +517,6 @@ export function DriverOperationsPanel({
                     {[
                       "delay",
                       "breakdown",
-                      "passenger_no_show",
                       "safety_concern",
                       "accessibility_failure",
                       "medical_escalation",
