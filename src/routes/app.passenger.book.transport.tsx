@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { RouteMap } from "@/components/RouteMap";
-import { computeRoute } from "@/lib/maps.functions";
+import { useRouteEstimate } from "@/hooks/use-route-estimate";
 import { formatZAR } from "@/lib/pricing";
 import { pricingDb, rpcNullable } from "@/lib/pricing-api";
 import { usePassengerPricingEstimate } from "@/hooks/use-passenger-pricing-estimate";
@@ -35,7 +35,6 @@ function BookTransportPage() {
   const { user } = useAuth();
   const { roles } = useUserRoles(user?.id);
   const navigate = useNavigate();
-  const route = useServerFn(computeRoute);
 
   const nav = useMemo(() => {
     const items = [
@@ -58,9 +57,14 @@ function BookTransportPage() {
   const [scheduleLocal, setScheduleLocal] = useState("");
   const [pickupPt, setPickupPt] = useState<AddressPick | null>(null);
   const [destPt, setDestPt] = useState<AddressPick | null>(null);
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
-  const [durationMin, setDurationMin] = useState<number | null>(null);
-  const [estimating, setEstimating] = useState(false);
+  const {
+    distanceKm,
+    durationMin,
+    estimating,
+    error: routeError,
+    retry: retryRoute,
+  } = useRouteEstimate(pickupPt, destPt);
+
   const [assistance, setAssistance] = useState<AssistanceCode[]>([]);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -81,36 +85,7 @@ function BookTransportPage() {
     })();
   }, [user, bookFor]);
 
-  // Compute route.
-  useEffect(() => {
-    if (!pickupPt || !destPt) {
-      setDistanceKm(null);
-      setDurationMin(null);
-      return;
-    }
-    let cancelled = false;
-    setEstimating(true);
-    route({
-      data: {
-        originLat: pickupPt.lat,
-        originLng: pickupPt.lng,
-        destLat: destPt.lat,
-        destLng: destPt.lng,
-      },
-    })
-      .then((r) => {
-        if (cancelled) return;
-        setDistanceKm(r.distanceKm);
-        setDurationMin(r.durationMin);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) toast.error(err instanceof Error ? err.message : "Could not compute route");
-      })
-      .finally(() => !cancelled && setEstimating(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [pickupPt, destPt, route]);
+  // Route distance/duration are computed by useRouteEstimate (race-safe).
 
   const scheduleDate = mode === "scheduled" && scheduleLocal ? new Date(scheduleLocal) : null;
   const scheduleValid =
@@ -317,6 +292,14 @@ function BookTransportPage() {
               </span>
               <span className="font-semibold">{price != null ? formatZAR(price) : "—"}</span>
             </div>
+            {routeError ? (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/40 px-3 py-2">
+                <p className="text-xs text-destructive">{routeError}</p>
+                <Button type="button" size="sm" variant="outline" onClick={retryRoute}>
+                  Retry
+                </Button>
+              </div>
+            ) : null}
             {pricingError ? <p className="text-xs text-destructive">{pricingError}</p> : null}
           </div>
         ) : null}

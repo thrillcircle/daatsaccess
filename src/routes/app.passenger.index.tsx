@@ -9,8 +9,8 @@ import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { ActiveTripCard } from "@/components/ActiveTripCard";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { toast } from "sonner";
-import { useServerFn } from "@tanstack/react-start";
-import { computeRoute } from "@/lib/maps.functions";
+import { useRouteEstimate } from "@/hooks/use-route-estimate";
+
 import { formatZAR } from "@/lib/pricing";
 import { pricingDb, rpcNullable } from "@/lib/pricing-api";
 import { usePassengerPricingEstimate } from "@/hooks/use-passenger-pricing-estimate";
@@ -168,15 +168,18 @@ function RatePrompt({ userId }: { userId?: string }) {
 }
 
 function RideRequest({ userId }: { userId?: string }) {
-  const route = useServerFn(computeRoute);
-
   const [pickupPt, setPickupPt] = useState<AddressPick | null>(null);
   const [destPt, setDestPt] = useState<AddressPick | null>(null);
   const [bias, setBias] = useState<{ lat: number; lng: number } | null>(null);
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
-  const [durationMin, setDurationMin] = useState<number | null>(null);
-  const [estimating, setEstimating] = useState(false);
+  const {
+    distanceKm,
+    durationMin,
+    estimating,
+    error: routeError,
+    retry: retryRoute,
+  } = useRouteEstimate(pickupPt, destPt);
   const [submitting, setSubmitting] = useState(false);
+
   const [activeRide, setActiveRide] = useState<Ride | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -214,37 +217,7 @@ function RideRequest({ userId }: { userId?: string }) {
     );
   }, []);
 
-  // Auto-compute route whenever both points are valid.
-  useEffect(() => {
-    if (!pickupPt || !destPt) {
-      setDistanceKm(null);
-      setDurationMin(null);
-      return;
-    }
-    let cancelled = false;
-    setEstimating(true);
-    route({
-      data: {
-        originLat: pickupPt.lat,
-        originLng: pickupPt.lng,
-        destLat: destPt.lat,
-        destLng: destPt.lng,
-      },
-    })
-      .then((r) => {
-        if (cancelled) return;
-        setDistanceKm(r.distanceKm);
-        setDurationMin(r.durationMin);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        toast.error(err instanceof Error ? err.message : "Could not compute route");
-      })
-      .finally(() => !cancelled && setEstimating(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [pickupPt, destPt, route]);
+  // Route distance/duration are computed by useRouteEstimate (race-safe).
 
   // Load + subscribe to active ride. A scheduled ride only becomes "current"
   // once its scheduled time has arrived (or it's a "now" request).
@@ -495,7 +468,16 @@ function RideRequest({ userId }: { userId?: string }) {
             </span>
             <span className="font-semibold">{price != null ? formatZAR(price) : "—"}</span>
           </div>
+          {routeError ? (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/40 px-3 py-2">
+              <p className="text-xs text-destructive">{routeError}</p>
+              <Button type="button" size="sm" variant="outline" onClick={retryRoute}>
+                Retry
+              </Button>
+            </div>
+          ) : null}
           {pricingError ? <p className="text-xs text-destructive">{pricingError}</p> : null}
+
           <Button
             className="w-full"
             size="lg"
