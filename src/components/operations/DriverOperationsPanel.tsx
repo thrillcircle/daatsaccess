@@ -33,6 +33,8 @@ import {
   type OperationStatus,
 } from "@/lib/operations";
 import { toast } from "sonner";
+import { DRIVER_TERMINAL_OPERATION_STATUSES } from "@/components/driver/driver-utils";
+
 
 export function DriverOperationsPanel({
   driverId,
