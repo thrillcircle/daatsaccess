@@ -29,11 +29,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for part in .phase5-payload/part*; do
+          parts=(
+            .phase5-payload/part00
+            .phase5-payload/part01
+            .phase5-payload/part02
+            .phase5-payload/part04
+            .phase5-payload/part06
+            .phase5-payload/part08a
+            .phase5-payload/part09
+            .phase5-payload/part10
+          )
+          for part in "${parts[@]}"; do
             wc -c "$part"
             sha256sum "$part"
           done
-          cat .phase5-payload/part* > /tmp/phase5-product.b64
+          cat "${parts[@]}" > /tmp/phase5-product.b64
           wc -c /tmp/phase5-product.b64
           sha256sum /tmp/phase5-product.b64
           echo "1449effaaac7028fe2001eb43a21732e89243c296298f8c53f89d01124f77f18  /tmp/phase5-product.b64" | sha256sum -c -
