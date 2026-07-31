@@ -217,37 +217,8 @@ function RideRequest({ userId }: { userId?: string }) {
     );
   }, []);
 
-  // Auto-compute route whenever both points are valid.
-  useEffect(() => {
-    if (!pickupPt || !destPt) {
-      setDistanceKm(null);
-      setDurationMin(null);
-      return;
-    }
-    let cancelled = false;
-    setEstimating(true);
-    route({
-      data: {
-        originLat: pickupPt.lat,
-        originLng: pickupPt.lng,
-        destLat: destPt.lat,
-        destLng: destPt.lng,
-      },
-    })
-      .then((r) => {
-        if (cancelled) return;
-        setDistanceKm(r.distanceKm);
-        setDurationMin(r.durationMin);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        toast.error(err instanceof Error ? err.message : "Could not compute route");
-      })
-      .finally(() => !cancelled && setEstimating(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [pickupPt, destPt, route]);
+  // Route distance/duration are computed by useRouteEstimate (race-safe).
+
 
   // Load + subscribe to active ride. A scheduled ride only becomes "current"
   // once its scheduled time has arrived (or it's a "now" request).
