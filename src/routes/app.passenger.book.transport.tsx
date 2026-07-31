@@ -58,9 +58,14 @@ function BookTransportPage() {
   const [scheduleLocal, setScheduleLocal] = useState("");
   const [pickupPt, setPickupPt] = useState<AddressPick | null>(null);
   const [destPt, setDestPt] = useState<AddressPick | null>(null);
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
-  const [durationMin, setDurationMin] = useState<number | null>(null);
-  const [estimating, setEstimating] = useState(false);
+  const {
+    distanceKm,
+    durationMin,
+    estimating,
+    error: routeError,
+    retry: retryRoute,
+  } = useRouteEstimate(pickupPt, destPt);
+
   const [assistance, setAssistance] = useState<AssistanceCode[]>([]);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
