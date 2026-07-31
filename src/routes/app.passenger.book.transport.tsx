@@ -14,7 +14,7 @@ import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutoc
 import { RouteMap } from "@/components/RouteMap";
 import { computeRoute } from "@/lib/maps.functions";
 import { formatZAR } from "@/lib/pricing";
-import { pricingDb } from "@/lib/pricing-api";
+import { pricingDb, rpcNullable } from "@/lib/pricing-api";
 import { usePassengerPricingEstimate } from "@/hooks/use-passenger-pricing-estimate";
 import { ASSISTANCE_OPTIONS, type AssistanceCode } from "@/lib/booking-types";
 import { toast } from "sonner";
@@ -155,15 +155,17 @@ function BookTransportPage() {
         p_pickup_address: pickupPt.address,
         p_pickup_lat: pickupPt.lat,
         p_pickup_lng: pickupPt.lng,
-        p_pickup_place_id: pickupPt.placeId ?? null,
+        p_pickup_place_id: rpcNullable(pickupPt.placeId),
         p_destination_address: destPt.address,
         p_destination_lat: destPt.lat,
         p_destination_lng: destPt.lng,
-        p_destination_place_id: destPt.placeId ?? null,
+        p_destination_place_id: rpcNullable(destPt.placeId),
         p_distance_km: distanceKm,
-        p_duration_seconds: durationMin != null ? Math.round(durationMin * 60) : null,
+        p_duration_seconds: rpcNullable(durationMin != null ? Math.round(durationMin * 60) : null),
         p_request_type: mode,
-        p_scheduled_at: mode === "scheduled" && scheduleDate ? scheduleDate.toISOString() : null,
+        p_scheduled_at: rpcNullable(
+          mode === "scheduled" && scheduleDate ? scheduleDate.toISOString() : null,
+        ),
         p_traveller_is_self: bookFor === "self",
         p_traveller_name: travellerName.trim(),
         p_traveller_phone: travellerPhone.trim(),

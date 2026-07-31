@@ -559,6 +559,7 @@ export type Database = {
           id: string
           read_at: string | null
           ride_id: string | null
+          service_booking_id: string | null
           support_ticket_id: string | null
           title: string
           type: string
@@ -570,6 +571,7 @@ export type Database = {
           id?: string
           read_at?: string | null
           ride_id?: string | null
+          service_booking_id?: string | null
           support_ticket_id?: string | null
           title: string
           type: string
@@ -581,6 +583,7 @@ export type Database = {
           id?: string
           read_at?: string | null
           ride_id?: string | null
+          service_booking_id?: string | null
           support_ticket_id?: string | null
           title?: string
           type?: string
@@ -592,6 +595,13 @@ export type Database = {
             columns: ["ride_id"]
             isOneToOne: false
             referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_service_booking_id_fkey"
+            columns: ["service_booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
             referencedColumns: ["id"]
           },
           {
@@ -757,6 +767,210 @@ export type Database = {
           },
         ]
       }
+      pricing_audit_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          new_value: Json | null
+          performed_by: string | null
+          previous_value: Json | null
+          pricing_version_id: string | null
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          new_value?: Json | null
+          performed_by?: string | null
+          previous_value?: Json | null
+          pricing_version_id?: string | null
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          new_value?: Json | null
+          performed_by?: string | null
+          previous_value?: Json | null
+          pricing_version_id?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_audit_events_pricing_version_id_fkey"
+            columns: ["pricing_version_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pricing_components: {
+        Row: {
+          amount: number
+          applicability_conditions: Json
+          calculation_order: number
+          calculation_type: string
+          component_code: string
+          created_at: string
+          customer_label: string
+          customer_visible: boolean
+          id: string
+          internal_description: string | null
+          is_active: boolean
+          maximum_quantity: number | null
+          minimum_quantity: number
+          pricing_version_id: string
+          service_code: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          applicability_conditions?: Json
+          calculation_order?: number
+          calculation_type: string
+          component_code: string
+          created_at?: string
+          customer_label: string
+          customer_visible?: boolean
+          id?: string
+          internal_description?: string | null
+          is_active?: boolean
+          maximum_quantity?: number | null
+          minimum_quantity?: number
+          pricing_version_id: string
+          service_code: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          applicability_conditions?: Json
+          calculation_order?: number
+          calculation_type?: string
+          component_code?: string
+          created_at?: string
+          customer_label?: string
+          customer_visible?: boolean
+          id?: string
+          internal_description?: string | null
+          is_active?: boolean
+          maximum_quantity?: number | null
+          minimum_quantity?: number
+          pricing_version_id?: string
+          service_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_components_pricing_version_id_fkey"
+            columns: ["pricing_version_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pricing_operation_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: string
+          idempotency_key: string
+          operation_type: string
+          result: Json
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          operation_type: string
+          result: Json
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          operation_type?: string
+          result?: Json
+        }
+        Relationships: []
+      }
+      pricing_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          effective_from: string | null
+          effective_to: string | null
+          id: string
+          is_mock: boolean
+          name: string
+          published_at: string | null
+          published_by: string | null
+          retired_at: string | null
+          row_version: number
+          service_code: string
+          source_rule_id: string | null
+          status: string
+          updated_at: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
+          id?: string
+          is_mock?: boolean
+          name: string
+          published_at?: string | null
+          published_by?: string | null
+          retired_at?: string | null
+          row_version?: number
+          service_code: string
+          source_rule_id?: string | null
+          status?: string
+          updated_at?: string
+          version_number: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
+          id?: string
+          is_mock?: boolean
+          name?: string
+          published_at?: string | null
+          published_by?: string | null
+          retired_at?: string | null
+          row_version?: number
+          service_code?: string
+          source_rule_id?: string | null
+          status?: string
+          updated_at?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_versions_source_rule_id_fkey"
+            columns: ["source_rule_id"]
+            isOneToOne: false
+            referencedRelation: "service_pricing_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -786,6 +1000,57 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      quote_audit_events: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          new_value: Json | null
+          performed_by: string | null
+          previous_value: Json | null
+          quote_id: string | null
+          reason: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          new_value?: Json | null
+          performed_by?: string | null
+          previous_value?: Json | null
+          quote_id?: string | null
+          reason?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          new_value?: Json | null
+          performed_by?: string | null
+          previous_value?: Json | null
+          quote_id?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_audit_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_audit_events_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "service_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ride_change_log: {
         Row: {
@@ -1065,6 +1330,7 @@ export type Database = {
           distance_km: number
           driver_arrived_at: string | null
           driver_id: string | null
+          estimate_snapshot: Json
           estimated_duration_seconds: number | null
           estimated_price: number
           id: string
@@ -1076,6 +1342,7 @@ export type Database = {
           pickup_lat: number
           pickup_lng: number
           pickup_place_id: string | null
+          pricing_version_id: string | null
           request_type: string
           route_version: number
           scheduled_at: string | null
@@ -1099,6 +1366,7 @@ export type Database = {
           distance_km: number
           driver_arrived_at?: string | null
           driver_id?: string | null
+          estimate_snapshot?: Json
           estimated_duration_seconds?: number | null
           estimated_price: number
           id?: string
@@ -1110,6 +1378,7 @@ export type Database = {
           pickup_lat: number
           pickup_lng: number
           pickup_place_id?: string | null
+          pricing_version_id?: string | null
           request_type?: string
           route_version?: number
           scheduled_at?: string | null
@@ -1133,6 +1402,7 @@ export type Database = {
           distance_km?: number
           driver_arrived_at?: string | null
           driver_id?: string | null
+          estimate_snapshot?: Json
           estimated_duration_seconds?: number | null
           estimated_price?: number
           id?: string
@@ -1144,6 +1414,7 @@ export type Database = {
           pickup_lat?: number
           pickup_lng?: number
           pickup_place_id?: string | null
+          pricing_version_id?: string | null
           request_type?: string
           route_version?: number
           scheduled_at?: string | null
@@ -1159,6 +1430,13 @@ export type Database = {
             columns: ["itinerary_item_id"]
             isOneToOne: false
             referencedRelation: "booking_itinerary_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rides_pricing_version_id_fkey"
+            columns: ["pricing_version_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_versions"
             referencedColumns: ["id"]
           },
           {
@@ -1221,12 +1499,14 @@ export type Database = {
           deposit_amount: number | null
           deposit_status: Database["public"]["Enums"]["deposit_status"]
           end_at: string | null
+          estimate_snapshot: Json
           estimated_total: number | null
           id: string
           journey_pattern: Database["public"]["Enums"]["journey_pattern"]
           metadata: Json
           parent_booking_id: string | null
           passenger_notes: string | null
+          pricing_version_id: string | null
           quoted_total: number | null
           recurrence_rule: Json | null
           requested_companion_count: number
@@ -1244,12 +1524,14 @@ export type Database = {
           deposit_amount?: number | null
           deposit_status?: Database["public"]["Enums"]["deposit_status"]
           end_at?: string | null
+          estimate_snapshot?: Json
           estimated_total?: number | null
           id?: string
           journey_pattern: Database["public"]["Enums"]["journey_pattern"]
           metadata?: Json
           parent_booking_id?: string | null
           passenger_notes?: string | null
+          pricing_version_id?: string | null
           quoted_total?: number | null
           recurrence_rule?: Json | null
           requested_companion_count?: number
@@ -1267,12 +1549,14 @@ export type Database = {
           deposit_amount?: number | null
           deposit_status?: Database["public"]["Enums"]["deposit_status"]
           end_at?: string | null
+          estimate_snapshot?: Json
           estimated_total?: number | null
           id?: string
           journey_pattern?: Database["public"]["Enums"]["journey_pattern"]
           metadata?: Json
           parent_booking_id?: string | null
           passenger_notes?: string | null
+          pricing_version_id?: string | null
           quoted_total?: number | null
           recurrence_rule?: Json | null
           requested_companion_count?: number
@@ -1288,6 +1572,13 @@ export type Database = {
             columns: ["parent_booking_id"]
             isOneToOne: false
             referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_bookings_pricing_version_id_fkey"
+            columns: ["pricing_version_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -1366,33 +1657,57 @@ export type Database = {
       }
       service_quote_items: {
         Row: {
+          adjustment: number
+          calculation_order: number
+          component_code: string | null
+          customer_visible: boolean
           description: string | null
           id: string
+          internal_explanation: string | null
           label: string
+          line_subtotal: number | null
           line_total: number
           quantity: number
           quote_id: string
           sort_order: number
+          source_pricing_component_id: string | null
+          unit: string | null
           unit_price: number
         }
         Insert: {
+          adjustment?: number
+          calculation_order?: number
+          component_code?: string | null
+          customer_visible?: boolean
           description?: string | null
           id?: string
+          internal_explanation?: string | null
           label: string
+          line_subtotal?: number | null
           line_total?: number
           quantity?: number
           quote_id: string
           sort_order?: number
+          source_pricing_component_id?: string | null
+          unit?: string | null
           unit_price?: number
         }
         Update: {
+          adjustment?: number
+          calculation_order?: number
+          component_code?: string | null
+          customer_visible?: boolean
           description?: string | null
           id?: string
+          internal_explanation?: string | null
           label?: string
+          line_subtotal?: number | null
           line_total?: number
           quantity?: number
           quote_id?: string
           sort_order?: number
+          source_pricing_component_id?: string | null
+          unit?: string | null
           unit_price?: number
         }
         Relationships: [
@@ -1403,52 +1718,116 @@ export type Database = {
             referencedRelation: "service_quotes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "service_quote_items_source_pricing_component_id_fkey"
+            columns: ["source_pricing_component_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_components"
+            referencedColumns: ["id"]
+          },
         ]
       }
       service_quotes: {
         Row: {
+          accepted_at: string | null
+          adjustments_total: number
+          admin_override_reason: string | null
           booking_id: string
+          calculation_engine_version: string
+          calculation_snapshot: Json
+          cancelled_at: string | null
           created_at: string
           created_by_user_id: string | null
           currency: string
+          declined_at: string | null
+          deposit_amount_snapshot: number
+          deposit_required: boolean
+          expired_at: string | null
+          final_total: number | null
           id: string
+          margin_amount: number
           notes: string | null
+          pricing_version_id: string | null
           quote_reference: string
+          revision_number: number
+          row_version: number
+          sent_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
           subtotal: number
+          superseded_at: string | null
+          superseded_by_quote_id: string | null
           tax_amount: number
           total: number
           updated_at: string
+          updated_by: string | null
           valid_until: string | null
         }
         Insert: {
+          accepted_at?: string | null
+          adjustments_total?: number
+          admin_override_reason?: string | null
           booking_id: string
+          calculation_engine_version?: string
+          calculation_snapshot?: Json
+          cancelled_at?: string | null
           created_at?: string
           created_by_user_id?: string | null
           currency?: string
+          declined_at?: string | null
+          deposit_amount_snapshot?: number
+          deposit_required?: boolean
+          expired_at?: string | null
+          final_total?: number | null
           id?: string
+          margin_amount?: number
           notes?: string | null
+          pricing_version_id?: string | null
           quote_reference?: string
+          revision_number?: number
+          row_version?: number
+          sent_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
           subtotal?: number
+          superseded_at?: string | null
+          superseded_by_quote_id?: string | null
           tax_amount?: number
           total?: number
           updated_at?: string
+          updated_by?: string | null
           valid_until?: string | null
         }
         Update: {
+          accepted_at?: string | null
+          adjustments_total?: number
+          admin_override_reason?: string | null
           booking_id?: string
+          calculation_engine_version?: string
+          calculation_snapshot?: Json
+          cancelled_at?: string | null
           created_at?: string
           created_by_user_id?: string | null
           currency?: string
+          declined_at?: string | null
+          deposit_amount_snapshot?: number
+          deposit_required?: boolean
+          expired_at?: string | null
+          final_total?: number | null
           id?: string
+          margin_amount?: number
           notes?: string | null
+          pricing_version_id?: string | null
           quote_reference?: string
+          revision_number?: number
+          row_version?: number
+          sent_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
           subtotal?: number
+          superseded_at?: string | null
+          superseded_by_quote_id?: string | null
           tax_amount?: number
           total?: number
           updated_at?: string
+          updated_by?: string | null
           valid_until?: string | null
         }
         Relationships: [
@@ -1457,6 +1836,20 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_quotes_pricing_version_id_fkey"
+            columns: ["pricing_version_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_quotes_superseded_by_quote_id_fkey"
+            columns: ["superseded_by_quote_id"]
+            isOneToOne: false
+            referencedRelation: "service_quotes"
             referencedColumns: ["id"]
           },
         ]
@@ -2159,6 +2552,15 @@ export type Database = {
     }
     Functions: {
       admin_acknowledge_pin_alert: { Args: { _ride_id: string }; Returns: Json }
+      admin_apply_quote_override: {
+        Args: {
+          p_adjustment: number
+          p_expected_row_version: number
+          p_quote_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       admin_assign_booking_vehicle: {
         Args: {
           p_booking_id: string
@@ -2193,6 +2595,15 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_cancel_service_quote: {
+        Args: {
+          p_expected_row_version: number
+          p_idempotency_key?: string
+          p_quote_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       admin_change_vehicle_status: {
         Args: {
           p_expected_status?: string
@@ -2211,6 +2622,16 @@ export type Database = {
           p_scheduled_at?: string
           p_severity: string
           p_ticket_id: string
+        }
+        Returns: Json
+      }
+      admin_create_pricing_draft: {
+        Args: {
+          p_clone_from_version_id?: string
+          p_effective_from?: string
+          p_idempotency_key?: string
+          p_name?: string
+          p_service_code: string
         }
         Returns: Json
       }
@@ -2234,6 +2655,14 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_delete_pricing_draft: {
+        Args: {
+          p_expected_row_version: number
+          p_reason: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
       admin_end_vehicle_assignment: {
         Args: {
           p_assignment_id: string
@@ -2242,12 +2671,23 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_expire_service_quotes: { Args: never; Returns: number }
       admin_fleet_consolidation_report: {
         Args: never
         Returns: {
           metric: string
           value: number
         }[]
+      }
+      admin_generate_service_quote: {
+        Args: {
+          p_booking_id: string
+          p_expected_booking_status?: string
+          p_idempotency_key?: string
+          p_inputs: Json
+          p_valid_until: string
+        }
+        Returns: Json
       }
       admin_link_support_vehicle: {
         Args: { p_reason: string; p_ticket_id: string; p_vehicle_id: string }
@@ -2264,6 +2704,38 @@ export type Database = {
           p_severity: string
           p_support_ticket_id?: string
           p_vehicle_id: string
+        }
+        Returns: Json
+      }
+      admin_pricing_calculate: {
+        Args: {
+          p_effective_at?: string
+          p_inputs?: Json
+          p_pricing_version_id?: string
+          p_service_code: string
+        }
+        Returns: Json
+      }
+      admin_publish_pricing_version: {
+        Args: {
+          p_confirmation: string
+          p_expected_row_version: number
+          p_version_id: string
+        }
+        Returns: Json
+      }
+      admin_quote_summaries: {
+        Args: { p_booking_ids?: string[] }
+        Returns: Json
+      }
+      admin_quote_workspace: { Args: { p_booking_id: string }; Returns: Json }
+      admin_recalculate_service_quote: {
+        Args: {
+          p_expected_row_version: number
+          p_idempotency_key?: string
+          p_inputs: Json
+          p_quote_id: string
+          p_valid_until: string
         }
         Returns: Json
       }
@@ -2284,6 +2756,27 @@ export type Database = {
         Returns: Json
       }
       admin_reset_ride_pin: { Args: { _ride_id: string }; Returns: Json }
+      admin_retire_pricing_version: {
+        Args: {
+          p_expected_row_version: number
+          p_reason: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
+      admin_save_pricing_draft: {
+        Args: {
+          p_components: Json
+          p_description: string
+          p_effective_from: string
+          p_effective_to: string
+          p_expected_row_version: number
+          p_is_mock: boolean
+          p_name: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
       admin_save_vehicle_document: {
         Args: {
           p_document_number?: string
@@ -2293,6 +2786,25 @@ export type Database = {
           p_issued_at?: string
           p_storage_path?: string
           p_vehicle_id: string
+        }
+        Returns: Json
+      }
+      admin_send_service_quote: {
+        Args: {
+          p_expected_row_version: number
+          p_idempotency_key?: string
+          p_quote_id: string
+          p_valid_until: string
+        }
+        Returns: Json
+      }
+      admin_set_quote_deposit: {
+        Args: {
+          p_amount: number
+          p_expected_row_version: number
+          p_quote_id: string
+          p_reason: string
+          p_required: boolean
         }
         Returns: Json
       }
@@ -2332,6 +2844,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_validate_pricing_version: {
+        Args: { p_version_id: string }
+        Returns: Json
+      }
       admin_view_ride_pin: { Args: { _ride_id: string }; Returns: Json }
       driver_current_vehicle_document_status: {
         Args: never
@@ -2359,6 +2875,166 @@ export type Database = {
         Returns: string
       }
       notify_approaching_scheduled_rides: { Args: never; Returns: undefined }
+      passenger_accept_service_quote: {
+        Args: {
+          p_expected_row_version: number
+          p_idempotency_key?: string
+          p_quote_id: string
+        }
+        Returns: Json
+      }
+      passenger_create_priced_ride: {
+        Args: {
+          p_destination_address: string
+          p_destination_lat: number
+          p_destination_lng: number
+          p_destination_place_id: string
+          p_distance_km: number
+          p_duration_seconds: number
+          p_idempotency_key?: string
+          p_pickup_address: string
+          p_pickup_lat: number
+          p_pickup_lng: number
+          p_pickup_place_id: string
+          p_request_type: string
+          p_scheduled_at: string
+        }
+        Returns: Json
+      }
+      passenger_create_transport_booking: {
+        Args: {
+          p_assistance_codes?: string[]
+          p_destination_address: string
+          p_destination_lat: number
+          p_destination_lng: number
+          p_destination_place_id: string
+          p_distance_km: number
+          p_duration_seconds: number
+          p_idempotency_key?: string
+          p_passenger_notes?: string
+          p_pickup_address: string
+          p_pickup_lat: number
+          p_pickup_lng: number
+          p_pickup_place_id: string
+          p_relationship: string
+          p_request_type: string
+          p_scheduled_at: string
+          p_traveller_is_self: boolean
+          p_traveller_name: string
+          p_traveller_phone: string
+        }
+        Returns: Json
+      }
+      passenger_decline_service_quote: {
+        Args: {
+          p_expected_row_version: number
+          p_quote_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      passenger_pricing_estimate: {
+        Args: {
+          p_additional_inputs?: Json
+          p_distance_km: number
+          p_effective_at?: string
+          p_service_code: string
+        }
+        Returns: Json
+      }
+      passenger_quote_summaries: { Args: never; Returns: Json }
+      passenger_quote_workspace: {
+        Args: { p_booking_id: string }
+        Returns: Json
+      }
+      passenger_update_priced_ride_route: {
+        Args: {
+          p_destination: Json
+          p_distance_km: number
+          p_duration_seconds: number
+          p_expected_route_version: number
+          p_pickup: Json
+          p_ride_id: string
+        }
+        Returns: Json
+      }
+      pricing_assert_draft: {
+        Args: { p_expected_row_version?: number; p_version_id: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          effective_from: string | null
+          effective_to: string | null
+          id: string
+          is_mock: boolean
+          name: string
+          published_at: string | null
+          published_by: string | null
+          retired_at: string | null
+          row_version: number
+          service_code: string
+          source_rule_id: string | null
+          status: string
+          updated_at: string
+          version_number: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pricing_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      pricing_calculate: {
+        Args: {
+          p_effective_at?: string
+          p_inputs?: Json
+          p_pricing_version_id?: string
+          p_service_code: string
+        }
+        Returns: Json
+      }
+      pricing_expire_due_quotes: {
+        Args: { p_booking_id?: string }
+        Returns: number
+      }
+      pricing_require_admin: { Args: never; Returns: string }
+      pricing_resolve_version: {
+        Args: { p_effective_at?: string; p_service_code: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          effective_from: string | null
+          effective_to: string | null
+          id: string
+          is_mock: boolean
+          name: string
+          published_at: string | null
+          published_by: string | null
+          retired_at: string | null
+          row_version: number
+          service_code: string
+          source_rule_id: string | null
+          status: string
+          updated_at: string
+          version_number: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pricing_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      pricing_round_zar: { Args: { p_amount: number }; Returns: number }
+      pricing_validate_version_internal: {
+        Args: { p_version_id: string }
+        Returns: Json
+      }
       refresh_vehicle_assignment_compatibility: {
         Args: { p_driver_id?: string; p_vehicle_id: string }
         Returns: undefined
@@ -2522,7 +3198,15 @@ export type Database = {
         | "recurring"
         | "multi_day"
       payment_status: "pending" | "paid" | "failed" | "refunded"
-      quote_status: "draft" | "sent" | "accepted" | "rejected" | "expired"
+      quote_status:
+        | "draft"
+        | "sent"
+        | "accepted"
+        | "rejected"
+        | "expired"
+        | "declined"
+        | "superseded"
+        | "cancelled"
       ride_status:
         | "requested"
         | "accepted"
@@ -2712,7 +3396,16 @@ export const Constants = {
         "multi_day",
       ],
       payment_status: ["pending", "paid", "failed", "refunded"],
-      quote_status: ["draft", "sent", "accepted", "rejected", "expired"],
+      quote_status: [
+        "draft",
+        "sent",
+        "accepted",
+        "rejected",
+        "expired",
+        "declined",
+        "superseded",
+        "cancelled",
+      ],
       ride_status: [
         "requested",
         "accepted",

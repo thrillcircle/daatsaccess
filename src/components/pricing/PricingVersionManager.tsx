@@ -17,6 +17,7 @@ import { formatZAR } from "@/lib/pricing";
 import {
   asCalculationSnapshot,
   pricingDb,
+  rpcNullable,
   type JsonValue,
   type PricingAuditRow,
   type PricingComponentRow,
@@ -140,9 +141,9 @@ export function PricingVersionManager() {
       setLoading(false);
       return;
     }
-    const nextVersions = versionResult.data ?? [];
+    const nextVersions = (versionResult.data ?? []) as unknown as PricingVersionRow[];
     setVersions(nextVersions);
-    setComponents(componentResult.data ?? []);
+    setComponents((componentResult.data ?? []) as unknown as PricingComponentRow[]);
     setAudit(auditResult.data ?? []);
     setSelectedId((current) => {
       if (current && nextVersions.some((item) => item.id === current)) return current;
@@ -233,8 +234,8 @@ export function PricingVersionManager() {
       p_version_id: draftVersion.id,
       p_name: draftVersion.name,
       p_description: draftVersion.description ?? "",
-      p_effective_from: toIso(localDateTime(draftVersion.effective_from)),
-      p_effective_to: toIso(localDateTime(draftVersion.effective_to)),
+      p_effective_from: rpcNullable(toIso(localDateTime(draftVersion.effective_from))),
+      p_effective_to: rpcNullable(toIso(localDateTime(draftVersion.effective_to))),
       p_is_mock: draftVersion.is_mock,
       p_components: payload,
       p_expected_row_version: draftVersion.row_version,

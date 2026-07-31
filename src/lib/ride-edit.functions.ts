@@ -1,8 +1,7 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { JsonValue, PricingDatabase } from "@/lib/pricing-api";
+import { rpcNullable, type JsonValue } from "@/lib/pricing-api";
 
 const PointSchema = z.object({
   address: z.string().min(3).max(300),
@@ -43,15 +42,17 @@ export const updateRideTrip = createServerFn({ method: "POST" })
     if (rideError) throw new Error(rideError.message);
     if (!ride || ride.passenger_id !== context.userId) throw new Error("Not authorized");
 
-    const pricingClient = context.supabase as unknown as SupabaseClient<PricingDatabase>;
-    const { data: result, error } = await pricingClient.rpc("passenger_update_priced_ride_route", {
-      p_ride_id: data.rideId,
-      p_pickup: (data.pickup ?? null) as unknown as JsonValue | null,
-      p_destination: (data.destination ?? null) as unknown as JsonValue | null,
-      p_distance_km: data.distanceKm,
-      p_duration_seconds: data.durationMin != null ? data.durationMin * 60 : null,
-      p_expected_route_version: ride.route_version ?? 1,
-    });
+    const { data: result, error } = await context.supabase.rpc(
+      "passenger_update_priced_ride_route",
+      {
+        p_ride_id: data.rideId,
+        p_pickup: rpcNullable(data.pickup as unknown as JsonValue),
+        p_destination: rpcNullable(data.destination as unknown as JsonValue),
+        p_distance_km: data.distanceKm,
+        p_duration_seconds: rpcNullable(data.durationMin != null ? data.durationMin * 60 : null),
+        p_expected_route_version: ride.route_version ?? 1,
+      },
+    );
     if (error) throw new Error(error.message);
     return result;
   });
