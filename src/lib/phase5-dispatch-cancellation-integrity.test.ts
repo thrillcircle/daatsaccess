@@ -115,6 +115,7 @@ describe("Phase 5 dispatch and cancellation integrity closeout", () => {
     expect(migration).toContain("NOTIFY pgrst, 'reload schema'");
   });
 
+  // Driver onboarding and role management are deliberately deferred to Phase 6/7.
   it("leaves Driver onboarding and role management outside this Phase 5 closeout", () => {
     expect(migration).not.toContain("driver_profiles");
     expect(migration).not.toContain("user_roles");
