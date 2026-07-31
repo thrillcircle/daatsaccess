@@ -217,7 +217,7 @@ function PassengerBookingsPage() {
                 .in("id", vIds)
             : Promise.resolve({ data: [] as FleetVehicle[] }),
           cIds.length
-            ? supabase.from("companion_profiles").select("id,full_name,photo_url").in("id", cIds)
+            ? supabase.rpc("my_booking_companions")
             : Promise.resolve({ data: [] as Companion[] }),
           drIds.length
             ? supabase.from("profiles").select("user_id,full_name").in("user_id", drIds)

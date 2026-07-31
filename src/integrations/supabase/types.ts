@@ -2345,6 +2345,15 @@ export type Database = {
       }
       fleet_require_admin: { Args: never; Returns: string }
       generate_ride_pin: { Args: never; Returns: string }
+      my_booking_companions: {
+        Args: never
+        Returns: {
+          full_name: string
+          id: string
+          is_available: boolean
+          photo_url: string
+        }[]
+      }
       normalize_vehicle_registration: {
         Args: { value: string }
         Returns: string

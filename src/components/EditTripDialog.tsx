@@ -146,7 +146,7 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
         },
       });
       toast.success("Trip updated — your driver has been notified");
-      onSaved?.(res.ride as Ride);
+      onSaved?.((res as unknown as { ride: Ride }).ride);
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to update trip");

@@ -47,18 +47,16 @@ export function usePassengerPricingEstimate({
           if (estimateError) {
             setEstimate(null);
             setError(estimateError.message);
-            return;
+          } else {
+            const next = asPassengerEstimate(data);
+            if (!next) {
+              setEstimate(null);
+              setError("The pricing service returned an invalid estimate");
+            } else {
+              setEstimate(next);
+            }
           }
-          const next = asPassengerEstimate(data);
-          if (!next) {
-            setEstimate(null);
-            setError("The pricing service returned an invalid estimate");
-            return;
-          }
-          setEstimate(next);
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
+          setLoading(false);
         });
     }, 150);
 
