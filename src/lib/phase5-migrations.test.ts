@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const migration = (name: string) =>
   readFileSync(resolve(process.cwd(), "supabase/migrations", name), "utf8");
+const source = (name: string) => readFileSync(resolve(process.cwd(), name), "utf8");
 
 const foundation = migration("20260731130000_phase5_operations_foundation.sql");
 const dispatch = migration("20260731131000_phase5_planning_dispatch.sql");
@@ -75,5 +76,22 @@ describe("Phase 5 database contracts", () => {
       "REVOKE ALL ON FUNCTION public.operations_scheduler_tick(text,text) FROM PUBLIC, anon, authenticated",
     );
     expect(foundation).toContain("REVOKE INSERT, UPDATE, DELETE ON");
+  });
+
+  it("keeps validated search inputs optional for generic navigation", () => {
+    for (const route of [
+      "src/routes/app.support.tsx",
+      "src/routes/app.admin.vehicle-profiles.tsx",
+      "src/routes/app.admin.maintenance.tsx",
+      "src/routes/app.admin.driver-assignments.tsx",
+      "src/routes/app.admin.drivers.tsx",
+      "src/routes/app.admin.index.tsx",
+      "src/routes/app.admin.trip-history.tsx",
+      "src/routes/app.admin.support.tsx",
+      "src/routes/app.admin.trips.tsx",
+      "src/routes/app.admin.passengers.tsx",
+    ]) {
+      expect(source(route)).toContain("SearchSchemaInput");
+    }
   });
 });
