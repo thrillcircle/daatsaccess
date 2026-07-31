@@ -83,7 +83,14 @@ function BookTransportPage() {
 
   // Compute route.
   useEffect(() => {
-    console.log("ROUTE EFFECT", { pickupPt, destPt });
+    console.log("ROUTE EFFECT", {
+      pickupAddr: pickupPt?.address,
+      pickupLat: pickupPt?.lat,
+      pickupLng: pickupPt?.lng,
+      destAddr: destPt?.address,
+      destLat: destPt?.lat,
+      destLng: destPt?.lng,
+    });
     if (!pickupPt || !destPt) {
       setDistanceKm(null);
       setDurationMin(null);
