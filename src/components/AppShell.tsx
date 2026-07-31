@@ -196,7 +196,6 @@ export function AppShell({
                   activeOptions={{ exact: true }}
                   aria-current={active ? "page" : undefined}
                 >
-
                   {item.icon}
                   <span className="truncate">{item.label}</span>
                 </Link>
