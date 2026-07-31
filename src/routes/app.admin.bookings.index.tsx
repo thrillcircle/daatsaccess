@@ -39,7 +39,7 @@ import { toast } from "sonner";
 import { Filter, ExternalLink, MapPin, ClipboardList } from "lucide-react";
 import { ExtendedJourneyAdminPanel, type EJBooking } from "@/components/ExtendedJourneyAdmin";
 
-export const Route = createFileRoute("/app/admin/bookings")({
+export const Route = createFileRoute("/app/admin/bookings/")({
   head: () => ({ meta: [{ title: "Service Bookings — Admin" }] }),
   component: AdminBookingsPage,
 });

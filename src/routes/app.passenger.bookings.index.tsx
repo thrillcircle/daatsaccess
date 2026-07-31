@@ -19,7 +19,7 @@ import { asQuoteSummaries, pricingDb } from "@/lib/pricing-api";
 import { fleetDb } from "@/lib/fleet";
 import { ChevronRight, LifeBuoy, Plus } from "lucide-react";
 
-export const Route = createFileRoute("/app/passenger/bookings")({
+export const Route = createFileRoute("/app/passenger/bookings/")({
   head: () => ({ meta: [{ title: "My Trips — Access" }] }),
   component: PassengerBookingsPage,
 });
