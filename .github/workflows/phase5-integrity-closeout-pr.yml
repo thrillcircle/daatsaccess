@@ -46,12 +46,40 @@ jobs:
             src/lib/phase5-dispatch-cancellation-integrity.test.ts
 
       - name: Verify legacy paths are absent
-        shell: bash
         run: |
-          ! rg -n "driver_accept_ride|acceptRide|driver_cancel_ride|cancelDriverRide" \
-            src --glob '!**/*.test.ts' --glob '!**/__tests__/**'
-          rg -n "driver_accept_dispatch_offer" src/components/operations/DriverOperationsPanel.tsx
-          ! rg -n '>\s*Cancel\s*<' src/components/driver/DriverActiveRide.tsx
+          python3 <<'PY'
+          from pathlib import Path
+
+          prohibited = (
+              "driver_accept_ride",
+              "acceptRide",
+              "driver_cancel_ride",
+              "cancelDriverRide",
+          )
+          runtime = []
+          for path in Path("src").rglob("*"):
+              if path.suffix not in {".ts", ".tsx"}:
+                  continue
+              if path.name.endswith(".test.ts") or "__tests__" in path.parts:
+                  continue
+              runtime.append((path, path.read_text()))
+          failures = [
+              f"{path}: {token}"
+              for path, text in runtime
+              for token in prohibited
+              if token in text
+          ]
+          if failures:
+              raise SystemExit("Legacy runtime path remains:\n" + "\n".join(failures))
+
+          panel = Path("src/components/operations/DriverOperationsPanel.tsx").read_text()
+          if "driver_accept_dispatch_offer" not in panel:
+              raise SystemExit("Protected dispatch-offer acceptance path is missing")
+
+          active = Path("src/components/driver/DriverActiveRide.tsx").read_text()
+          if "onClick={cancel}" in active or ">Cancel<" in active:
+              raise SystemExit("Generic Driver cancellation UI remains")
+          PY
 
       - name: Lint changed TypeScript
         run: |
