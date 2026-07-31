@@ -80,7 +80,8 @@ describe("Phase 5 driver hub navigation closeout", () => {
     expect(history).toContain("useDriverHistory");
     expect(history).not.toContain("useDriverUpcoming");
     const hook = read("src/hooks/use-driver-work.ts");
-    expect(hook).toContain('.in("status", ["completed", "cancelled"])');
+    expect(hook).toContain('fetchDriverRides("history"');
+    expect(hook).not.toContain('from("rides")');
   });
 
   it("keeps financial fields out of driver views", () => {
