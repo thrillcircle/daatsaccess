@@ -64,6 +64,8 @@ export function AddressAutocomplete({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mapsReady, setMapsReady] = useState(false);
+  const [serverOnly, setServerOnly] = useState(false);
+
   const [dirty, setDirty] = useState(false);
   const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
   const placesLibRef = useRef<google.maps.PlacesLibrary | null>(null);
