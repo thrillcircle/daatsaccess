@@ -11,15 +11,18 @@ export const Route = createFileRoute("/")({
       { title: "Access — Rides for South Africa" },
       {
         name: "description",
-        content: "Request rides and drive with Access. A simple, mobile-first ride-hailing app for South Africa.",
+        content: "Request rides and drive with Access. A simple, mobile-first ride-hailing app for South Africa, with an R20 base fare and R13.50 per km.",
       },
       { property: "og:title", content: "Access — Rides for South Africa" },
       {
         property: "og:description",
         content: "Request rides and drive with Access. Built for South Africa.",
       },
+      { property: "og:url", content: "https://daats.app/" },
     ],
+    links: [{ rel: "canonical", href: "https://daats.app/" }],
   }),
+
   component: Landing,
 });
 
@@ -46,7 +49,7 @@ function Landing() {
           <span className="text-lg font-semibold tracking-tight">Access</span>
         </header>
 
-        <div className="my-auto space-y-6">
+        <main className="my-auto space-y-6">
           <div className="inline-flex items-center gap-2 rounded-full border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
             <Car className="h-3.5 w-3.5" /> South Africa · MVP
           </div>
@@ -66,7 +69,8 @@ function Landing() {
               I already have an account
             </Button>
           </div>
-        </div>
+        </main>
+
 
         <footer className="pt-8 text-center text-xs text-muted-foreground">© {new Date().getFullYear()} Access</footer>
       </div>

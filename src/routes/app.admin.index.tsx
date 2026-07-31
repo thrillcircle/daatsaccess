@@ -65,7 +65,25 @@ type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type RideChange = Database["public"]["Tables"]["ride_change_log"]["Row"];
 
 export const Route = createFileRoute("/app/admin/")({
-  head: () => ({ meta: [{ title: "Admin — Access" }] }),
+  head: () => ({
+    meta: [
+      { title: "Admin — Access" },
+      {
+        name: "description",
+        content:
+          "Access admin overview: monitor live trips, drivers, fleet readiness and booking activity across the Access network.",
+      },
+      { property: "og:title", content: "Admin — Access" },
+      {
+        property: "og:description",
+        content:
+          "Access admin overview: monitor live trips, drivers, fleet readiness and booking activity across the Access network.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+
   validateSearch: (raw: Record<string, unknown> & SearchSchemaInput): OverviewSearch => {
     const f =
       typeof raw.filter === "string" && VALID_OVERVIEW.has(raw.filter as OverviewFilter)

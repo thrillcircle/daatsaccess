@@ -77,15 +77,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
+      { title: "Access — Rides for South Africa" },
       { name: "description", content: "Access is a mobile-first ride-hailing app for South Africa, connecting passengers with drivers for seamless trip requests and completions." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
+      { name: "author", content: "Access" },
+      { property: "og:site_name", content: "Access" },
+      { property: "og:title", content: "Access — Rides for South Africa" },
       { property: "og:description", content: "Access is a mobile-first ride-hailing app for South Africa, connecting passengers with drivers for seamless trip requests and completions." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
+      { name: "twitter:title", content: "Access — Rides for South Africa" },
       { name: "twitter:description", content: "Access is a mobile-first ride-hailing app for South Africa, connecting passengers with drivers for seamless trip requests and completions." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f2045ba6-5f07-479d-9b4a-5e9382129db1/id-preview-bbcda78b--f96f4986-6396-4e06-9fe2-51bdf8c72bd1.lovable.app-1782242389329.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f2045ba6-5f07-479d-9b4a-5e9382129db1/id-preview-bbcda78b--f96f4986-6396-4e06-9fe2-51bdf8c72bd1.lovable.app-1782242389329.png" },
@@ -96,7 +96,33 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
     ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "WebSite",
+              name: "Access",
+              url: "https://daats.app",
+              description:
+                "Mobile-first ride-hailing and accessible transport for South Africa.",
+            },
+            {
+              "@type": "Organization",
+              name: "Access",
+              url: "https://daats.app",
+              description:
+                "Access connects passengers in South Africa with drivers for everyday rides, assisted travel, appointment transport and extended journeys.",
+              areaServed: "ZA",
+            },
+          ],
+        }),
+      },
+    ],
   }),
+
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,

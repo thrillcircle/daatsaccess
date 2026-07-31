@@ -1,0 +1,10 @@
+# Access
+
+> Access is a mobile-first ride-hailing and accessible transport service for South Africa, connecting passengers with vetted drivers for everyday rides, assisted travel, appointment transport and extended journeys.
+
+Pricing is transparent: an R20 base fare plus R13.50 per kilometre. Passengers can book transport for themselves or someone else, request assisted travel with companions, arrange healthcare appointment trips, and request quotes for multi-day extended journeys.
+
+## Pages
+
+- [Home](/): What Access is, who it serves and how pricing works.
+- [Sign in](/auth): Create an Access account or sign in to book a ride.

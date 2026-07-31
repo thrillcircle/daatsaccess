@@ -134,7 +134,13 @@ export function OnlineToggle({
               : `★ ${rating.avg.toFixed(2)} from ${rating.count} rating${rating.count === 1 ? "" : "s"}`}
         </p>
       </div>
-      <Switch checked={profile.is_available} onCheckedChange={toggle} disabled={busy} />
+      <Switch
+        checked={profile.is_available}
+        onCheckedChange={toggle}
+        disabled={busy}
+        aria-label={profile.is_available ? "Go offline" : "Go online"}
+      />
+
     </section>
   );
 }

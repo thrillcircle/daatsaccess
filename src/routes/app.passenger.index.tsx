@@ -51,7 +51,25 @@ function localInputNow(): string {
 }
 
 export const Route = createFileRoute("/app/passenger/")({
-  head: () => ({ meta: [{ title: "Ride — Access" }] }),
+  head: () => ({
+    meta: [
+      { title: "Ride — Access" },
+      {
+        name: "description",
+        content:
+          "Your Access passenger dashboard: request a ride, follow your active trip and review your recent Access journeys.",
+      },
+      { property: "og:title", content: "Ride — Access" },
+      {
+        property: "og:description",
+        content:
+          "Your Access passenger dashboard: request a ride, follow your active trip and review your recent Access journeys.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+
   component: PassengerPage,
 });
 
@@ -75,7 +93,9 @@ function PassengerPage() {
 
   return (
     <AppShell title="Ride" nav={nav}>
+      <h1 className="mb-3 text-xl font-semibold tracking-tight">Book a ride</h1>
       <RideRequest userId={user?.id} />
+
       <PassengerOperationsTimeline userId={user?.id} />
       <RatePrompt userId={user?.id} />
       <ScheduledTrips userId={user?.id} />
