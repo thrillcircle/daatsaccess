@@ -35,7 +35,6 @@ import {
 import { toast } from "sonner";
 import { DRIVER_TERMINAL_OPERATION_STATUSES } from "@/components/driver/driver-utils";
 
-
 export function DriverOperationsPanel({
   driverId,
   online,
@@ -256,7 +255,9 @@ export function DriverOperationsPanel({
       p_title: incidentTitle.trim(),
       p_internal_notes: incidentNotes.trim(),
       p_passenger_visible_summary:
-        incidentType === "delay" ? "Your service is delayed. Operations has been notified." : undefined,
+        incidentType === "delay"
+          ? "Your service is delayed. Operations has been notified."
+          : undefined,
     });
     setBusy(null);
     if (error) toast.error(error.message);
