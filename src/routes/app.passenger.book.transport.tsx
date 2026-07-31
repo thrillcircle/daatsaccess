@@ -35,7 +35,7 @@ function BookTransportPage() {
   const { user } = useAuth();
   const { roles } = useUserRoles(user?.id);
   const navigate = useNavigate();
-  const route = useServerFn(computeRoute);
+  
 
   const nav = useMemo(() => {
     const items = [
