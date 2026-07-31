@@ -2595,6 +2595,15 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_cancel_service_quote: {
+        Args: {
+          p_expected_row_version: number
+          p_idempotency_key?: string
+          p_quote_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       admin_change_vehicle_status: {
         Args: {
           p_expected_status?: string
@@ -2643,6 +2652,14 @@ export type Database = {
           p_wheelchair_accessible?: boolean
           p_wheelchair_capacity?: number
           p_year?: number
+        }
+        Returns: Json
+      }
+      admin_delete_pricing_draft: {
+        Args: {
+          p_expected_row_version: number
+          p_reason: string
+          p_version_id: string
         }
         Returns: Json
       }
@@ -2712,6 +2729,16 @@ export type Database = {
         Returns: Json
       }
       admin_quote_workspace: { Args: { p_booking_id: string }; Returns: Json }
+      admin_recalculate_service_quote: {
+        Args: {
+          p_expected_row_version: number
+          p_idempotency_key?: string
+          p_inputs: Json
+          p_quote_id: string
+          p_valid_until: string
+        }
+        Returns: Json
+      }
       admin_record_vehicle_odometer: {
         Args: {
           p_allow_correction?: boolean
@@ -2815,6 +2842,10 @@ export type Database = {
           p_wheelchair_capacity?: number
           p_year?: number
         }
+        Returns: Json
+      }
+      admin_validate_pricing_version: {
+        Args: { p_version_id: string }
         Returns: Json
       }
       admin_view_ride_pin: { Args: { _ride_id: string }; Returns: Json }
@@ -3000,6 +3031,10 @@ export type Database = {
         }
       }
       pricing_round_zar: { Args: { p_amount: number }; Returns: number }
+      pricing_validate_version_internal: {
+        Args: { p_version_id: string }
+        Returns: Json
+      }
       refresh_vehicle_assignment_compatibility: {
         Args: { p_driver_id?: string; p_vehicle_id: string }
         Returns: undefined
