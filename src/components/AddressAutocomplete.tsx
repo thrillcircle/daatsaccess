@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { resolvePlace, searchAddresses } from "@/lib/maps.functions";
 
-
 export type AddressPick = {
   address: string;
   placeId: string | null;
@@ -33,7 +32,6 @@ type Suggestion = {
   /** Present only for browser-side (Maps JS) suggestions; server suggestions resolve via placeId. */
   raw?: google.maps.places.AutocompleteSuggestion;
 };
-
 
 type SavedAddress = {
   id: string;
@@ -203,7 +201,6 @@ export function AddressAutocomplete({
       } finally {
         setLoading(false);
       }
-
     }, 250);
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
@@ -235,8 +232,7 @@ export function AddressAutocomplete({
         const detail = await resolvePlace({ data: { placeId: suggestion.placeId } });
         pick = {
           address:
-            detail.address ||
-            [suggestion.primary, suggestion.secondary].filter(Boolean).join(", "),
+            detail.address || [suggestion.primary, suggestion.secondary].filter(Boolean).join(", "),
           placeId: detail.placeId,
           lat: detail.lat,
           lng: detail.lng,
@@ -253,7 +249,6 @@ export function AddressAutocomplete({
       setLoading(false);
     }
   }
-
 
   function selectSavedAddress(address: SavedAddress) {
     const pick: AddressPick = {
