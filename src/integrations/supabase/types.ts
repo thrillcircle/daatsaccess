@@ -388,6 +388,199 @@ export type Database = {
         }
         Relationships: []
       }
+      dispatch_offer_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          dispatch_offer_id: string
+          event_type: string
+          id: string
+          new_state: Json | null
+          operation_run_id: string
+          previous_state: Json | null
+          reason: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          dispatch_offer_id: string
+          event_type: string
+          id?: string
+          new_state?: Json | null
+          operation_run_id: string
+          previous_state?: Json | null
+          reason?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          dispatch_offer_id?: string
+          event_type?: string
+          id?: string
+          new_state?: Json | null
+          operation_run_id?: string
+          previous_state?: Json | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_offer_events_dispatch_offer_id_fkey"
+            columns: ["dispatch_offer_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_offer_events_operation_run_id_fkey"
+            columns: ["operation_run_id"]
+            isOneToOne: false
+            referencedRelation: "operation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_offers: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          declined_at: string | null
+          dispatch_wave: number
+          driver_user_id: string
+          eligibility_snapshot: Json
+          expires_at: string
+          id: string
+          offered_at: string
+          operation_run_id: string
+          response_reason: string | null
+          ride_id: string | null
+          row_version: number
+          status: string
+          suitability_snapshot: Json
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          declined_at?: string | null
+          dispatch_wave?: number
+          driver_user_id: string
+          eligibility_snapshot?: Json
+          expires_at: string
+          id?: string
+          offered_at?: string
+          operation_run_id: string
+          response_reason?: string | null
+          ride_id?: string | null
+          row_version?: number
+          status?: string
+          suitability_snapshot?: Json
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          declined_at?: string | null
+          dispatch_wave?: number
+          driver_user_id?: string
+          eligibility_snapshot?: Json
+          expires_at?: string
+          id?: string
+          offered_at?: string
+          operation_run_id?: string
+          response_reason?: string | null
+          ride_id?: string | null
+          row_version?: number
+          status?: string
+          suitability_snapshot?: Json
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_offers_operation_run_id_fkey"
+            columns: ["operation_run_id"]
+            isOneToOne: false
+            referencedRelation: "operation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_offers_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_offers_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_location_history: {
+        Row: {
+          accuracy_meters: number | null
+          captured_at: string
+          driver_user_id: string
+          freshness_state: string
+          heading: number | null
+          id: string
+          latitude: number
+          longitude: number
+          operation_run_id: string | null
+          received_at: string
+          ride_id: string | null
+          source: string
+        }
+        Insert: {
+          accuracy_meters?: number | null
+          captured_at: string
+          driver_user_id: string
+          freshness_state?: string
+          heading?: number | null
+          id?: string
+          latitude: number
+          longitude: number
+          operation_run_id?: string | null
+          received_at?: string
+          ride_id?: string | null
+          source?: string
+        }
+        Update: {
+          accuracy_meters?: number | null
+          captured_at?: string
+          driver_user_id?: string
+          freshness_state?: string
+          heading?: number | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          operation_run_id?: string | null
+          received_at?: string
+          ride_id?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_location_history_operation_run_id_fkey"
+            columns: ["operation_run_id"]
+            isOneToOne: false
+            referencedRelation: "operation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_location_history_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_profiles: {
         Row: {
           created_at: string
@@ -552,11 +745,143 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_delivery_attempts: {
+        Row: {
+          attempt_number: number
+          completed_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          notification_outbox_id: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          attempt_number: number
+          completed_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          notification_outbox_id: string
+          started_at?: string
+          status: string
+        }
+        Update: {
+          attempt_number?: number
+          completed_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          notification_outbox_id?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_delivery_attempts_notification_outbox_id_fkey"
+            columns: ["notification_outbox_id"]
+            isOneToOne: false
+            referencedRelation: "notification_outbox"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_outbox: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          deduplication_key: string
+          delivered_at: string | null
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          locked_by: string | null
+          message: string | null
+          next_retry_at: string | null
+          notification_type: string
+          operation_run_id: string | null
+          recipient_user_id: string
+          ride_id: string | null
+          scheduled_for: string
+          service_booking_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          deduplication_key: string
+          delivered_at?: string | null
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          message?: string | null
+          next_retry_at?: string | null
+          notification_type: string
+          operation_run_id?: string | null
+          recipient_user_id: string
+          ride_id?: string | null
+          scheduled_for?: string
+          service_booking_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          deduplication_key?: string
+          delivered_at?: string | null
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          message?: string | null
+          next_retry_at?: string | null
+          notification_type?: string
+          operation_run_id?: string | null
+          recipient_user_id?: string
+          ride_id?: string | null
+          scheduled_for?: string
+          service_booking_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_outbox_operation_run_id_fkey"
+            columns: ["operation_run_id"]
+            isOneToOne: false
+            referencedRelation: "operation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_service_booking_id_fkey"
+            columns: ["service_booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string | null
           created_at: string
           id: string
+          operation_run_id: string | null
+          operational_alert_id: string | null
+          operational_incident_id: string | null
           read_at: string | null
           ride_id: string | null
           service_booking_id: string | null
@@ -569,6 +894,9 @@ export type Database = {
           body?: string | null
           created_at?: string
           id?: string
+          operation_run_id?: string | null
+          operational_alert_id?: string | null
+          operational_incident_id?: string | null
           read_at?: string | null
           ride_id?: string | null
           service_booking_id?: string | null
@@ -581,6 +909,9 @@ export type Database = {
           body?: string | null
           created_at?: string
           id?: string
+          operation_run_id?: string | null
+          operational_alert_id?: string | null
+          operational_incident_id?: string | null
           read_at?: string | null
           ride_id?: string | null
           service_booking_id?: string | null
@@ -590,6 +921,27 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_operation_run_id_fkey"
+            columns: ["operation_run_id"]
+            isOneToOne: false
+            referencedRelation: "operation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_operational_alert_id_fkey"
+            columns: ["operational_alert_id"]
+            isOneToOne: false
+            referencedRelation: "operational_alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_operational_incident_id_fkey"
+            columns: ["operational_incident_id"]
+            isOneToOne: false
+            referencedRelation: "operational_incidents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_ride_id_fkey"
             columns: ["ride_id"]
@@ -612,6 +964,691 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      operation_plans: {
+        Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          plan_reference: string
+          published_at: string | null
+          published_by: string | null
+          row_version: number
+          service_booking_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          validation_snapshot: Json
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          plan_reference?: string
+          published_at?: string | null
+          published_by?: string | null
+          row_version?: number
+          service_booking_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          validation_snapshot?: Json
+        }
+        Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          plan_reference?: string
+          published_at?: string | null
+          published_by?: string | null
+          row_version?: number
+          service_booking_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          validation_snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operation_plans_service_booking_id_fkey"
+            columns: ["service_booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operation_reconciliation_issues: {
+        Row: {
+          created_at: string
+          details: Json
+          id: string
+          issue_type: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          source_id: string | null
+          source_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          id?: string
+          issue_type: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          source_id?: string | null
+          source_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          id?: string
+          issue_type?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          source_id?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      operation_run_assignments: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledgement_deadline: string | null
+          assigned_by: string | null
+          assignment_source: string
+          companion_id: string | null
+          created_at: string
+          decline_reason: string | null
+          declined_at: string | null
+          driver_user_id: string | null
+          id: string
+          operation_run_id: string
+          planned_end_at: string
+          planned_start_at: string
+          release_reason: string | null
+          released_at: string | null
+          resource_type: string
+          row_version: number
+          status: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledgement_deadline?: string | null
+          assigned_by?: string | null
+          assignment_source?: string
+          companion_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          declined_at?: string | null
+          driver_user_id?: string | null
+          id?: string
+          operation_run_id: string
+          planned_end_at: string
+          planned_start_at: string
+          release_reason?: string | null
+          released_at?: string | null
+          resource_type: string
+          row_version?: number
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledgement_deadline?: string | null
+          assigned_by?: string | null
+          assignment_source?: string
+          companion_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          declined_at?: string | null
+          driver_user_id?: string | null
+          id?: string
+          operation_run_id?: string
+          planned_end_at?: string
+          planned_start_at?: string
+          release_reason?: string | null
+          released_at?: string | null
+          resource_type?: string
+          row_version?: number
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operation_run_assignments_companion_id_fkey"
+            columns: ["companion_id"]
+            isOneToOne: false
+            referencedRelation: "companion_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_run_assignments_operation_run_id_fkey"
+            columns: ["operation_run_id"]
+            isOneToOne: false
+            referencedRelation: "operation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_run_assignments_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operation_run_events: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string
+          driver_visible: boolean
+          event_type: string
+          id: string
+          metadata: Json
+          new_state: Json | null
+          operation_run_id: string
+          passenger_visible: boolean
+          previous_state: Json | null
+          reason: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          driver_visible?: boolean
+          event_type: string
+          id?: string
+          metadata?: Json
+          new_state?: Json | null
+          operation_run_id: string
+          passenger_visible?: boolean
+          previous_state?: Json | null
+          reason?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          driver_visible?: boolean
+          event_type?: string
+          id?: string
+          metadata?: Json
+          new_state?: Json | null
+          operation_run_id?: string
+          passenger_visible?: boolean
+          previous_state?: Json | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operation_run_events_operation_run_id_fkey"
+            columns: ["operation_run_id"]
+            isOneToOne: false
+            referencedRelation: "operation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operation_runs: {
+        Row: {
+          accessibility_requirements: Json
+          actual_end_at: string | null
+          actual_start_at: string | null
+          created_at: string
+          created_by: string | null
+          destination_address: string | null
+          destination_lat: number | null
+          destination_lng: number | null
+          dispatch_status: string
+          id: string
+          is_verification_record: boolean
+          itinerary_item_id: string | null
+          operation_plan_id: string | null
+          operational_status: string
+          passenger_count: number
+          passenger_id: string
+          pickup_address: string | null
+          pickup_lat: number | null
+          pickup_lng: number | null
+          planned_end_at: string | null
+          planned_start_at: string | null
+          planning_status: string
+          priority: string
+          ride_id: string | null
+          row_version: number
+          run_reference: string
+          run_type: string
+          service_booking_id: string | null
+          service_type: string
+          source_id: string
+          source_type: string
+          updated_at: string
+          updated_by: string | null
+          wheelchair_count: number
+        }
+        Insert: {
+          accessibility_requirements?: Json
+          actual_end_at?: string | null
+          actual_start_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_address?: string | null
+          destination_lat?: number | null
+          destination_lng?: number | null
+          dispatch_status?: string
+          id?: string
+          is_verification_record?: boolean
+          itinerary_item_id?: string | null
+          operation_plan_id?: string | null
+          operational_status?: string
+          passenger_count?: number
+          passenger_id: string
+          pickup_address?: string | null
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          planned_end_at?: string | null
+          planned_start_at?: string | null
+          planning_status?: string
+          priority?: string
+          ride_id?: string | null
+          row_version?: number
+          run_reference?: string
+          run_type: string
+          service_booking_id?: string | null
+          service_type: string
+          source_id: string
+          source_type: string
+          updated_at?: string
+          updated_by?: string | null
+          wheelchair_count?: number
+        }
+        Update: {
+          accessibility_requirements?: Json
+          actual_end_at?: string | null
+          actual_start_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_address?: string | null
+          destination_lat?: number | null
+          destination_lng?: number | null
+          dispatch_status?: string
+          id?: string
+          is_verification_record?: boolean
+          itinerary_item_id?: string | null
+          operation_plan_id?: string | null
+          operational_status?: string
+          passenger_count?: number
+          passenger_id?: string
+          pickup_address?: string | null
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          planned_end_at?: string | null
+          planned_start_at?: string | null
+          planning_status?: string
+          priority?: string
+          ride_id?: string | null
+          row_version?: number
+          run_reference?: string
+          run_type?: string
+          service_booking_id?: string | null
+          service_type?: string
+          source_id?: string
+          source_type?: string
+          updated_at?: string
+          updated_by?: string | null
+          wheelchair_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operation_runs_itinerary_item_id_fkey"
+            columns: ["itinerary_item_id"]
+            isOneToOne: false
+            referencedRelation: "booking_itinerary_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_runs_operation_plan_id_fkey"
+            columns: ["operation_plan_id"]
+            isOneToOne: false
+            referencedRelation: "operation_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_runs_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_runs_service_booking_id_fkey"
+            columns: ["service_booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          deduplication_key: string
+          details: Json
+          id: string
+          operation_run_id: string | null
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          ride_id: string | null
+          service_booking_id: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string
+          deduplication_key: string
+          details?: Json
+          id?: string
+          operation_run_id?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          ride_id?: string | null
+          service_booking_id?: string | null
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string
+          deduplication_key?: string
+          details?: Json
+          id?: string
+          operation_run_id?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          ride_id?: string | null
+          service_booking_id?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_alerts_operation_run_id_fkey"
+            columns: ["operation_run_id"]
+            isOneToOne: false
+            referencedRelation: "operation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_alerts_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_alerts_service_booking_id_fkey"
+            columns: ["service_booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_incident_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          internal_note: string | null
+          new_state: Json | null
+          operational_incident_id: string
+          passenger_visible_summary: string | null
+          previous_state: Json | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          internal_note?: string | null
+          new_state?: Json | null
+          operational_incident_id: string
+          passenger_visible_summary?: string | null
+          previous_state?: Json | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          internal_note?: string | null
+          new_state?: Json | null
+          operational_incident_id?: string
+          passenger_visible_summary?: string | null
+          previous_state?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_incident_events_operational_incident_id_fkey"
+            columns: ["operational_incident_id"]
+            isOneToOne: false
+            referencedRelation: "operational_incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_incidents: {
+        Row: {
+          created_at: string
+          id: string
+          incident_reference: string
+          incident_type: string
+          internal_notes: string | null
+          maintenance_work_order_id: string | null
+          operation_run_id: string | null
+          owner_admin_id: string | null
+          passenger_visible_summary: string | null
+          reported_by: string | null
+          resolution_summary: string | null
+          resolved_at: string | null
+          ride_id: string | null
+          service_booking_id: string | null
+          severity: string
+          status: string
+          support_ticket_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          incident_reference?: string
+          incident_type: string
+          internal_notes?: string | null
+          maintenance_work_order_id?: string | null
+          operation_run_id?: string | null
+          owner_admin_id?: string | null
+          passenger_visible_summary?: string | null
+          reported_by?: string | null
+          resolution_summary?: string | null
+          resolved_at?: string | null
+          ride_id?: string | null
+          service_booking_id?: string | null
+          severity?: string
+          status?: string
+          support_ticket_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          incident_reference?: string
+          incident_type?: string
+          internal_notes?: string | null
+          maintenance_work_order_id?: string | null
+          operation_run_id?: string | null
+          owner_admin_id?: string | null
+          passenger_visible_summary?: string | null
+          reported_by?: string | null
+          resolution_summary?: string | null
+          resolved_at?: string | null
+          ride_id?: string | null
+          service_booking_id?: string | null
+          severity?: string
+          status?: string
+          support_ticket_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_incidents_maintenance_work_order_id_fkey"
+            columns: ["maintenance_work_order_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_maintenance_work_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_incidents_operation_run_id_fkey"
+            columns: ["operation_run_id"]
+            isOneToOne: false
+            referencedRelation: "operation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_incidents_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_incidents_service_booking_id_fkey"
+            columns: ["service_booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_incidents_support_ticket_id_fkey"
+            columns: ["support_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operations_operation_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: string
+          idempotency_key: string
+          operation_type: string
+          result: Json
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          operation_type: string
+          result: Json
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          operation_type?: string
+          result?: Json
+        }
+        Relationships: []
+      }
+      operations_scheduler_runs: {
+        Row: {
+          completed_at: string | null
+          created_by: string | null
+          duration_ms: number | null
+          failure_reason: string | null
+          id: string
+          processed_counts: Json
+          scheduler_key: string
+          started_at: string
+          status: string
+          trigger_source: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_by?: string | null
+          duration_ms?: number | null
+          failure_reason?: string | null
+          id?: string
+          processed_counts?: Json
+          scheduler_key: string
+          started_at?: string
+          status?: string
+          trigger_source: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_by?: string | null
+          duration_ms?: number | null
+          failure_reason?: string | null
+          id?: string
+          processed_counts?: Json
+          scheduler_key?: string
+          started_at?: string
+          status?: string
+          trigger_source?: string
+        }
+        Relationships: []
       }
       passenger_preferences: {
         Row: {
@@ -1048,6 +2085,78 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "service_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_availability_windows: {
+        Row: {
+          availability_type: string
+          companion_id: string | null
+          created_at: string
+          created_by: string | null
+          driver_user_id: string | null
+          ends_at: string
+          id: string
+          override_reason: string | null
+          reason: string | null
+          recurrence_rule: Json | null
+          resource_type: string
+          source: string
+          starts_at: string
+          timezone: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          availability_type: string
+          companion_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          driver_user_id?: string | null
+          ends_at: string
+          id?: string
+          override_reason?: string | null
+          reason?: string | null
+          recurrence_rule?: Json | null
+          resource_type: string
+          source?: string
+          starts_at: string
+          timezone?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          availability_type?: string
+          companion_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          driver_user_id?: string | null
+          ends_at?: string
+          id?: string
+          override_reason?: string | null
+          reason?: string | null
+          recurrence_rule?: Json | null
+          resource_type?: string
+          source?: string
+          starts_at?: string
+          timezone?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_availability_windows_companion_id_fkey"
+            columns: ["companion_id"]
+            isOneToOne: false
+            referencedRelation: "companion_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_availability_windows_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2585,6 +3694,18 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_assign_operation_resource: {
+        Args: {
+          p_assignment_source?: string
+          p_expected_run_version: number
+          p_idempotency_key?: string
+          p_reason?: string
+          p_resource_id: string
+          p_resource_type: string
+          p_run_id: string
+        }
+        Returns: Json
+      }
       admin_assign_ride_resources: {
         Args: {
           p_driver_id: string
@@ -2592,6 +3713,14 @@ export type Database = {
           p_idempotency_key?: string
           p_ride_id: string
           p_vehicle_id: string
+        }
+        Returns: Json
+      }
+      admin_cancel_operation: {
+        Args: {
+          p_expected_run_version: number
+          p_reason: string
+          p_run_id: string
         }
         Returns: Json
       }
@@ -2622,6 +3751,19 @@ export type Database = {
           p_scheduled_at?: string
           p_severity: string
           p_ticket_id: string
+        }
+        Returns: Json
+      }
+      admin_create_operational_incident: {
+        Args: {
+          p_incident_type: string
+          p_internal_notes?: string
+          p_maintenance_work_order_id?: string
+          p_passenger_visible_summary?: string
+          p_run_id: string
+          p_severity: string
+          p_support_ticket_id?: string
+          p_title: string
         }
         Returns: Json
       }
@@ -2660,6 +3802,16 @@ export type Database = {
           p_expected_row_version: number
           p_reason: string
           p_version_id: string
+        }
+        Returns: Json
+      }
+      admin_dispatch_operation: {
+        Args: {
+          p_candidate_limit?: number
+          p_expected_run_version: number
+          p_idempotency_key?: string
+          p_offer_minutes?: number
+          p_run_id: string
         }
         Returns: Json
       }
@@ -2707,12 +3859,30 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_plan_service_booking: {
+        Args: {
+          p_booking_id: string
+          p_idempotency_key?: string
+          p_include_verification?: boolean
+        }
+        Returns: Json
+      }
       admin_pricing_calculate: {
         Args: {
           p_effective_at?: string
           p_inputs?: Json
           p_pricing_version_id?: string
           p_service_code: string
+        }
+        Returns: Json
+      }
+      admin_publish_operation_plan: {
+        Args: {
+          p_confirmation: string
+          p_expected_row_version: number
+          p_idempotency_key?: string
+          p_plan_id: string
+          p_warning_override_reason?: string
         }
         Returns: Json
       }
@@ -2729,6 +3899,16 @@ export type Database = {
         Returns: Json
       }
       admin_quote_workspace: { Args: { p_booking_id: string }; Returns: Json }
+      admin_reassign_operation_resource: {
+        Args: {
+          p_assignment_id: string
+          p_expected_assignment_version: number
+          p_idempotency_key?: string
+          p_new_resource_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       admin_recalculate_service_quote: {
         Args: {
           p_expected_row_version: number
@@ -2751,11 +3931,27 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_release_operation_resource: {
+        Args: {
+          p_assignment_id: string
+          p_expected_assignment_version: number
+          p_reason: string
+        }
+        Returns: Json
+      }
       admin_remove_vehicle_document: {
         Args: { p_document_id: string; p_reason: string }
         Returns: Json
       }
       admin_reset_ride_pin: { Args: { _ride_id: string }; Returns: Json }
+      admin_resolve_operational_alert: {
+        Args: {
+          p_alert_id: string
+          p_dismiss?: boolean
+          p_resolution_note: string
+        }
+        Returns: Json
+      }
       admin_retire_pricing_version: {
         Args: {
           p_expected_row_version: number
@@ -2844,11 +4040,31 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_validate_operation_plan: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
       admin_validate_pricing_version: {
         Args: { p_version_id: string }
         Returns: Json
       }
       admin_view_ride_pin: { Args: { _ride_id: string }; Returns: Json }
+      driver_accept_dispatch_offer: {
+        Args: {
+          p_expected_offer_version: number
+          p_idempotency_key?: string
+          p_offer_id: string
+        }
+        Returns: Json
+      }
+      driver_acknowledge_operation: {
+        Args: {
+          p_assignment_id: string
+          p_expected_assignment_version: number
+          p_idempotency_key?: string
+        }
+        Returns: Json
+      }
       driver_current_vehicle_document_status: {
         Args: never
         Returns: {
@@ -2858,6 +4074,63 @@ export type Database = {
           status: string
           vehicle_id: string
         }[]
+      }
+      driver_decline_dispatch_offer: {
+        Args: {
+          p_expected_offer_version: number
+          p_offer_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      driver_decline_operation: {
+        Args: {
+          p_assignment_id: string
+          p_expected_assignment_version: number
+          p_reason: string
+        }
+        Returns: Json
+      }
+      driver_report_incident: {
+        Args: {
+          p_incident_type: string
+          p_internal_notes: string
+          p_passenger_visible_summary?: string
+          p_run_id: string
+          p_severity: string
+          p_title: string
+        }
+        Returns: Json
+      }
+      driver_report_no_show: {
+        Args: {
+          p_details: string
+          p_expected_run_version: number
+          p_run_id: string
+        }
+        Returns: Json
+      }
+      driver_transition_operation: {
+        Args: {
+          p_expected_run_version: number
+          p_idempotency_key?: string
+          p_reason?: string
+          p_run_id: string
+          p_target_status: string
+        }
+        Returns: Json
+      }
+      driver_update_location: {
+        Args: {
+          p_accuracy?: number
+          p_captured_at: string
+          p_heading?: number
+          p_latitude: number
+          p_longitude: number
+          p_operation_run_id?: string
+          p_source?: string
+        }
+        Returns: Json
       }
       fleet_require_admin: { Args: never; Returns: string }
       generate_ride_pin: { Args: never; Returns: string }
@@ -2875,12 +4148,17 @@ export type Database = {
         Returns: string
       }
       notify_approaching_scheduled_rides: { Args: never; Returns: undefined }
+      operations_require_admin: { Args: never; Returns: string }
       passenger_accept_service_quote: {
         Args: {
           p_expected_row_version: number
           p_idempotency_key?: string
           p_quote_id: string
         }
+        Returns: Json
+      }
+      passenger_active_driver_location: {
+        Args: { p_operation_run_id: string }
         Returns: Json
       }
       passenger_create_priced_ride: {
@@ -2933,6 +4211,10 @@ export type Database = {
         }
         Returns: Json
       }
+      passenger_operation_timeline: {
+        Args: { p_ride_id?: string; p_service_booking_id?: string }
+        Returns: Json
+      }
       passenger_pricing_estimate: {
         Args: {
           p_additional_inputs?: Json
@@ -2945,6 +4227,15 @@ export type Database = {
       passenger_quote_summaries: { Args: never; Returns: Json }
       passenger_quote_workspace: {
         Args: { p_booking_id: string }
+        Returns: Json
+      }
+      passenger_report_operation_issue: {
+        Args: {
+          p_description: string
+          p_operation_run_id: string
+          p_priority?: string
+          p_subject: string
+        }
         Returns: Json
       }
       passenger_update_priced_ride_route: {
