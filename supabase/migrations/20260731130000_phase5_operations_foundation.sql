@@ -623,30 +623,39 @@ DROP POLICY IF EXISTS "Admins read operation reconciliation" ON public.operation
 CREATE POLICY "Admins read operation reconciliation" ON public.operation_reconciliation_issues
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::public.app_role));
 
+DROP TRIGGER IF EXISTS operation_plans_updated_at ON public.operation_plans;
 CREATE TRIGGER operation_plans_updated_at
   BEFORE UPDATE ON public.operation_plans
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS operation_runs_updated_at ON public.operation_runs;
 CREATE TRIGGER operation_runs_updated_at
   BEFORE UPDATE ON public.operation_runs
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS operation_assignments_updated_at ON public.operation_run_assignments;
 CREATE TRIGGER operation_assignments_updated_at
   BEFORE UPDATE ON public.operation_run_assignments
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS resource_availability_updated_at ON public.resource_availability_windows;
 CREATE TRIGGER resource_availability_updated_at
   BEFORE UPDATE ON public.resource_availability_windows
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS dispatch_offers_updated_at ON public.dispatch_offers;
 CREATE TRIGGER dispatch_offers_updated_at
   BEFORE UPDATE ON public.dispatch_offers
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS notification_outbox_updated_at ON public.notification_outbox;
 CREATE TRIGGER notification_outbox_updated_at
   BEFORE UPDATE ON public.notification_outbox
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS operational_alerts_updated_at ON public.operational_alerts;
 CREATE TRIGGER operational_alerts_updated_at
   BEFORE UPDATE ON public.operational_alerts
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS operational_incidents_updated_at ON public.operational_incidents;
 CREATE TRIGGER operational_incidents_updated_at
   BEFORE UPDATE ON public.operational_incidents
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS operation_reconciliation_updated_at ON public.operation_reconciliation_issues;
 CREATE TRIGGER operation_reconciliation_updated_at
   BEFORE UPDATE ON public.operation_reconciliation_issues
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
