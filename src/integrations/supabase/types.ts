@@ -4100,6 +4100,21 @@ export type Database = {
         Returns: Json
       }
       driver_mark_arrived: { Args: { p_ride_id: string }; Returns: Json }
+      driver_operation_incidents: {
+        Args: { p_run_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          incident_reference: string
+          incident_type: string
+          operation_run_id: string
+          passenger_visible_summary: string
+          resolved_at: string
+          severity: string
+          status: string
+          title: string
+        }[]
+      }
       driver_report_incident: {
         Args: {
           p_incident_type: string
