@@ -883,10 +883,30 @@ REVOKE ALL ON FUNCTION public.operations_require_admin()
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.operations_require_admin() TO service_role;
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.operation_runs;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.operation_run_assignments;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.dispatch_offers;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.operational_alerts;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notification_outbox;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'operation_runs') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.operation_runs;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'operation_run_assignments') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.operation_run_assignments;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'dispatch_offers') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.dispatch_offers;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'operational_alerts') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.operational_alerts;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'notification_outbox') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.notification_outbox;
+  END IF;
+END $$;
 
 NOTIFY pgrst, 'reload schema';
