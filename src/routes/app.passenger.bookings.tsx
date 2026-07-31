@@ -167,7 +167,7 @@ function PassengerBookingsPage() {
         const [tr, ar, qr, dr, vr, cr, rr, ir] = await Promise.all([
           supabase.from("booking_travellers").select("*").in("booking_id", ids),
           supabase.from("booking_assistance_requirements").select("*").in("booking_id", ids),
-          pricingDb.rpc("passenger_quote_summaries", {}),
+          pricingDb.rpc("passenger_quote_summaries"),
           supabase.from("booking_driver_assignments").select("*").in("booking_id", ids),
           fleetDb.from("booking_vehicle_assignments").select("*").in("booking_id", ids),
           supabase.from("booking_companion_assignments").select("*").in("booking_id", ids),
