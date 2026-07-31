@@ -86,36 +86,8 @@ function BookTransportPage() {
     })();
   }, [user, bookFor]);
 
-  // Compute route.
-  useEffect(() => {
-    if (!pickupPt || !destPt) {
-      setDistanceKm(null);
-      setDurationMin(null);
-      return;
-    }
-    let cancelled = false;
-    setEstimating(true);
-    route({
-      data: {
-        originLat: pickupPt.lat,
-        originLng: pickupPt.lng,
-        destLat: destPt.lat,
-        destLng: destPt.lng,
-      },
-    })
-      .then((r) => {
-        if (cancelled) return;
-        setDistanceKm(r.distanceKm);
-        setDurationMin(r.durationMin);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) toast.error(err instanceof Error ? err.message : "Could not compute route");
-      })
-      .finally(() => !cancelled && setEstimating(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [pickupPt, destPt, route]);
+  // Route distance/duration are computed by useRouteEstimate (race-safe).
+
 
   const scheduleDate = mode === "scheduled" && scheduleLocal ? new Date(scheduleLocal) : null;
   const scheduleValid =
