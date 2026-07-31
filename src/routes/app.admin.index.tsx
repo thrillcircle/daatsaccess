@@ -79,9 +79,11 @@ export const Route = createFileRoute("/app/admin/")({
         content:
           "Access admin overview: monitor live trips, drivers, fleet readiness and booking activity across the Access network.",
       },
+      { property: "og:url", content: "https://daats.app/app/admin" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://daats.app/app/admin" }],
   }),
 
   validateSearch: (raw: Record<string, unknown> & SearchSchemaInput): OverviewSearch => {

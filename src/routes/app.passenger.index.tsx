@@ -65,9 +65,11 @@ export const Route = createFileRoute("/app/passenger/")({
         content:
           "Your Access passenger dashboard: request a ride, follow your active trip and review your recent Access journeys.",
       },
+      { property: "og:url", content: "https://daats.app/app/passenger" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://daats.app/app/passenger" }],
   }),
 
   component: PassengerPage,
