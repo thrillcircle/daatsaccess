@@ -294,7 +294,16 @@ function BookTransportPage() {
               </span>
               <span className="font-semibold">{price != null ? formatZAR(price) : "—"}</span>
             </div>
+            {routeError ? (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/40 px-3 py-2">
+                <p className="text-xs text-destructive">{routeError}</p>
+                <Button type="button" size="sm" variant="outline" onClick={retryRoute}>
+                  Retry
+                </Button>
+              </div>
+            ) : null}
             {pricingError ? <p className="text-xs text-destructive">{pricingError}</p> : null}
+
           </div>
         ) : null}
       </section>
