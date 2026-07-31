@@ -19,14 +19,6 @@ async function callDriverRpc(
   return sanitizeDriverRide(data);
 }
 
-/** Atomically claim a `requested` ride for the current driver. */
-export const acceptRide = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => RideIdInput.parse(d))
-  .handler(async ({ data, context }) =>
-    callDriverRpc(context.supabase.rpc("driver_accept_ride", { p_ride_id: data.rideId })),
-  );
-
 /** Start pickup navigation for a previously accepted scheduled ride. */
 export const startScheduledPickup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
