@@ -42,6 +42,7 @@ import { Route as AppAdminDispatchRouteImport } from './routes/app.admin.dispatc
 import { Route as AppAdminBookingsRouteImport } from './routes/app.admin.bookings'
 import { Route as AppPassengerBookingsIndexRouteImport } from './routes/app.passenger.bookings.index'
 import { Route as AppPassengerBookIndexRouteImport } from './routes/app.passenger.book.index'
+import { Route as AppAdminOperationsIndexRouteImport } from './routes/app.admin.operations.index'
 import { Route as AppAdminBookingsIndexRouteImport } from './routes/app.admin.bookings.index'
 import { Route as AppPassengerBookTransportRouteImport } from './routes/app.passenger.book.transport'
 import { Route as AppPassengerBookExtendedRouteImport } from './routes/app.passenger.book.extended'
@@ -221,6 +222,11 @@ const AppPassengerBookIndexRoute = AppPassengerBookIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppPassengerBookRoute,
 } as any)
+const AppAdminOperationsIndexRoute = AppAdminOperationsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAdminOperationsRoute,
+} as any)
 const AppAdminBookingsIndexRoute = AppAdminBookingsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -326,6 +332,7 @@ export interface FileRoutesByFullPath {
   '/app/passenger/book/extended': typeof AppPassengerBookExtendedRoute
   '/app/passenger/book/transport': typeof AppPassengerBookTransportRoute
   '/app/admin/bookings/': typeof AppAdminBookingsIndexRoute
+  '/app/admin/operations/': typeof AppAdminOperationsIndexRoute
   '/app/passenger/book/': typeof AppPassengerBookIndexRoute
   '/app/passenger/bookings/': typeof AppPassengerBookingsIndexRoute
   '/app/admin/bookings/$bookingId/quote': typeof AppAdminBookingsBookingIdQuoteRoute
@@ -344,7 +351,6 @@ export interface FileRoutesByTo {
   '/app/admin/fleet': typeof AppAdminFleetRoute
   '/app/admin/live': typeof AppAdminLiveRoute
   '/app/admin/maintenance': typeof AppAdminMaintenanceRoute
-  '/app/admin/operations': typeof AppAdminOperationsRouteWithChildren
   '/app/admin/passengers': typeof AppAdminPassengersRouteWithChildren
   '/app/admin/pricing-services': typeof AppAdminPricingServicesRoute
   '/app/admin/reliability': typeof AppAdminReliabilityRoute
@@ -367,6 +373,7 @@ export interface FileRoutesByTo {
   '/app/passenger/book/extended': typeof AppPassengerBookExtendedRoute
   '/app/passenger/book/transport': typeof AppPassengerBookTransportRoute
   '/app/admin/bookings': typeof AppAdminBookingsIndexRoute
+  '/app/admin/operations': typeof AppAdminOperationsIndexRoute
   '/app/passenger/book': typeof AppPassengerBookIndexRoute
   '/app/passenger/bookings': typeof AppPassengerBookingsIndexRoute
   '/app/admin/bookings/$bookingId/quote': typeof AppAdminBookingsBookingIdQuoteRoute
@@ -414,6 +421,7 @@ export interface FileRoutesById {
   '/app/passenger/book/extended': typeof AppPassengerBookExtendedRoute
   '/app/passenger/book/transport': typeof AppPassengerBookTransportRoute
   '/app/admin/bookings/': typeof AppAdminBookingsIndexRoute
+  '/app/admin/operations/': typeof AppAdminOperationsIndexRoute
   '/app/passenger/book/': typeof AppPassengerBookIndexRoute
   '/app/passenger/bookings/': typeof AppPassengerBookingsIndexRoute
   '/app/admin/bookings/$bookingId/quote': typeof AppAdminBookingsBookingIdQuoteRoute
@@ -462,6 +470,7 @@ export interface FileRouteTypes {
     | '/app/passenger/book/extended'
     | '/app/passenger/book/transport'
     | '/app/admin/bookings/'
+    | '/app/admin/operations/'
     | '/app/passenger/book/'
     | '/app/passenger/bookings/'
     | '/app/admin/bookings/$bookingId/quote'
@@ -480,7 +489,6 @@ export interface FileRouteTypes {
     | '/app/admin/fleet'
     | '/app/admin/live'
     | '/app/admin/maintenance'
-    | '/app/admin/operations'
     | '/app/admin/passengers'
     | '/app/admin/pricing-services'
     | '/app/admin/reliability'
@@ -503,6 +511,7 @@ export interface FileRouteTypes {
     | '/app/passenger/book/extended'
     | '/app/passenger/book/transport'
     | '/app/admin/bookings'
+    | '/app/admin/operations'
     | '/app/passenger/book'
     | '/app/passenger/bookings'
     | '/app/admin/bookings/$bookingId/quote'
@@ -549,6 +558,7 @@ export interface FileRouteTypes {
     | '/app/passenger/book/extended'
     | '/app/passenger/book/transport'
     | '/app/admin/bookings/'
+    | '/app/admin/operations/'
     | '/app/passenger/book/'
     | '/app/passenger/bookings/'
     | '/app/admin/bookings/$bookingId/quote'
@@ -794,6 +804,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPassengerBookIndexRouteImport
       parentRoute: typeof AppPassengerBookRoute
     }
+    '/app/admin/operations/': {
+      id: '/app/admin/operations/'
+      path: '/'
+      fullPath: '/app/admin/operations/'
+      preLoaderRoute: typeof AppAdminOperationsIndexRouteImport
+      parentRoute: typeof AppAdminOperationsRoute
+    }
     '/app/admin/bookings/': {
       id: '/app/admin/bookings/'
       path: '/'
@@ -889,10 +906,12 @@ const AppAdminBookingsRouteWithChildren =
 
 interface AppAdminOperationsRouteChildren {
   AppAdminOperationsRunIdRoute: typeof AppAdminOperationsRunIdRoute
+  AppAdminOperationsIndexRoute: typeof AppAdminOperationsIndexRoute
 }
 
 const AppAdminOperationsRouteChildren: AppAdminOperationsRouteChildren = {
   AppAdminOperationsRunIdRoute: AppAdminOperationsRunIdRoute,
+  AppAdminOperationsIndexRoute: AppAdminOperationsIndexRoute,
 }
 
 const AppAdminOperationsRouteWithChildren =
@@ -1071,13 +1090,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

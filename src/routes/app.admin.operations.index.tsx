@@ -102,7 +102,7 @@ function OperationsIndexPage() {
   return (
     <AdminShell
       title="Operations"
-      description="Every planned, live and completed operation run."
+      subtitle="Every planned, live and completed operation run."
       actions={
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
           <RefreshCw className="mr-2 h-4 w-4" /> Refresh
