@@ -11,7 +11,7 @@ const RideIdInput = z.object({ rideId: z.string().uuid() });
  * sanitized again here so no financial field can ever reach a Driver client.
  */
 async function callDriverRpc(
-  call: Promise<{ data: unknown; error: { message: string } | null }>,
+  call: PromiseLike<{ data: unknown; error: { message: string } | null }>,
 ): Promise<DriverSafeRide> {
   const { data, error } = await call;
   if (error) throw new Error(error.message);
@@ -66,7 +66,7 @@ export const completeTrip = createServerFn({ method: "POST" })
     callDriverRpc(
       context.supabase.rpc("driver_complete_trip", {
         p_ride_id: data.rideId,
-        p_final_distance_km: data.finalDistanceKm ?? null,
+        p_final_distance_km: data.finalDistanceKm,
       }),
     ),
   );
