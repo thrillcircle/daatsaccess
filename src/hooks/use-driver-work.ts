@@ -11,63 +11,10 @@ import type { DriverSafeRide } from "@/lib/driver-ride-projection";
 import {
   DRIVER_TERMINAL_OPERATION_STATUSES,
   DRIVER_UPCOMING_ASSIGNMENT_STATUSES,
-  type Ride,
 } from "@/components/driver/driver-utils";
 
-/**
- * Explicit, non-financial column list. Driver views must never read any
- * pricing, fare or payment columns from the rides table.
- */
-export const DRIVER_RIDE_COLUMNS = [
-  "id",
-  "status",
-  "request_type",
-  "scheduled_at",
-  "pickup_address",
-  "destination_address",
-  "pickup_lat",
-  "pickup_lng",
-  "destination_lat",
-  "destination_lng",
-  "distance_km",
-  "actual_distance_km",
-  "actual_duration_seconds",
-  "started_at",
-  "completed_at",
-  "created_at",
-  "updated_at",
-  "passenger_id",
-  "vehicle_id",
-  "route_version",
-  "last_route_updated_at",
-  "service_booking_id",
-].join(", ");
-
-export type DriverRideLite = Pick<
-  Ride,
-  | "id"
-  | "status"
-  | "request_type"
-  | "scheduled_at"
-  | "pickup_address"
-  | "destination_address"
-  | "pickup_lat"
-  | "pickup_lng"
-  | "destination_lat"
-  | "destination_lng"
-  | "distance_km"
-  | "actual_distance_km"
-  | "actual_duration_seconds"
-  | "started_at"
-  | "completed_at"
-  | "created_at"
-  | "updated_at"
-  | "passenger_id"
-  | "vehicle_id"
-  | "route_version"
-  | "last_route_updated_at"
-  | "service_booking_id"
->;
+/** Driver work rides come from the protected projection only. */
+export type DriverRideLite = DriverSafeRide;
 
 export type DriverWorkItem = {
   key: string;
