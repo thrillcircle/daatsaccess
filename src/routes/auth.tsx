@@ -10,9 +10,24 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Sign in — Access" },
-      { name: "description", content: "Sign in or create an Access account." },
+      {
+        name: "description",
+        content:
+          "Sign in to Access or create an account to book rides, assisted travel and appointment transport across South Africa.",
+      },
+      { property: "og:title", content: "Sign in — Access" },
+      {
+        property: "og:description",
+        content:
+          "Sign in to Access or create an account to book rides, assisted travel and appointment transport across South Africa.",
+      },
+      { property: "og:url", content: "https://daats.app/auth" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://daats.app/auth" }],
   }),
+
   component: AuthPage,
 });
 

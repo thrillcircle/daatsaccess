@@ -144,7 +144,9 @@ function DrivePage() {
 
   return (
     <>
+      <h1 className="mb-3 text-xl font-semibold tracking-tight">Driver hub</h1>
       <OnlineToggle profile={profile} onChange={setProfile} />
+
       {profile.is_available && (live.status === "denied" || live.status === "unavailable") && (
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           <AlertTriangle className="h-4 w-4" />
