@@ -23,7 +23,13 @@ import { completeTrip, markArrived } from "@/lib/ride-driver.functions";
 import { getRidePassengerDetails, type PassengerDetails } from "@/lib/driver-trip.functions";
 import { useRideChanges } from "@/hooks/use-ride-changes";
 import { useRideLiveLocations } from "@/hooks/use-ride-live-locations";
-import { clockIn, haversineKm, openMapsNav, timeAgo, type Ride } from "@/components/driver/driver-utils";
+import {
+  clockIn,
+  haversineKm,
+  openMapsNav,
+  timeAgo,
+  type Ride,
+} from "@/components/driver/driver-utils";
 
 export function Stat({ label, value }: { label: string; value: string }) {
   return (

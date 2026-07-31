@@ -59,8 +59,7 @@ function DriverHistoryPage() {
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
-    const cutoff =
-      period === "all" ? null : Date.now() - Number(period) * 24 * 60 * 60 * 1000;
+    const cutoff = period === "all" ? null : Date.now() - Number(period) * 24 * 60 * 60 * 1000;
     const q = search.trim().toLowerCase();
     return items.filter((item) => {
       if (status !== "all" && item.status !== status) return false;

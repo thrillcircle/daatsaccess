@@ -62,11 +62,7 @@ export const DRIVER_TERMINAL_OPERATION_STATUSES = [
 ] as const;
 
 /** Operational statuses that represent future / not-yet-finished Driver work. */
-export const DRIVER_UPCOMING_OPERATION_STATUSES = [
-  "scheduled",
-  "ready",
-  "dispatched",
-] as const;
+export const DRIVER_UPCOMING_OPERATION_STATUSES = ["scheduled", "ready", "dispatched"] as const;
 
 /** Assignment statuses that are still live for the Driver. */
 export const DRIVER_UPCOMING_ASSIGNMENT_STATUSES = [

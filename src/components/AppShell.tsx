@@ -52,7 +52,6 @@ export const DRIVER_NAV: NavItem[] = [
   { to: "/app/profile", label: "Profile", icon: <UserCircle2 className="h-5 w-5" /> },
 ];
 
-
 const ADMIN_PROFILE_NAV: NavItem[] = [
   { to: "/app/admin", label: "Overview", icon: <LayoutDashboard className="h-5 w-5" /> },
   { to: "/app/profile", label: "Profile", icon: <UserCircle2 className="h-5 w-5" /> },
@@ -74,7 +73,6 @@ export function isNavActive(pathname: string, item: NavItem): boolean {
   }
   return pathname === item.to || pathname.startsWith(item.to + "/");
 }
-
 
 export function AppShell({
   children,

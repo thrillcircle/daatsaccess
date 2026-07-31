@@ -8,7 +8,6 @@ import {
 } from "@/lib/operations";
 import {
   DRIVER_TERMINAL_OPERATION_STATUSES,
-  
   DRIVER_UPCOMING_ASSIGNMENT_STATUSES,
   type Ride,
 } from "@/components/driver/driver-utils";
@@ -177,7 +176,9 @@ function runItem(
     vehicleLabel: vehicleId ? (vehicles.get(vehicleId) ?? "Assigned vehicle") : null,
     accessibility: accessibilityFlags(run),
     scheduleChanged:
-      !!run.planned_start_at && !!run.actual_start_at && run.actual_start_at !== run.planned_start_at,
+      !!run.planned_start_at &&
+      !!run.actual_start_at &&
+      run.actual_start_at !== run.planned_start_at,
     rideId: run.ride_id,
     runId: run.id,
     distanceKm: null,
@@ -229,9 +230,7 @@ export function useDriverUpcoming(driverId: string | undefined) {
     const merged = [
       ...openRuns.map((r) => runItem(r, assignmentByRun.get(r.id), vehicles)),
       ...rides.filter((r) => !rideIdsInRuns.has(r.id)).map((r) => rideItem(r, vehicles)),
-    ].sort(
-      (a, b) => new Date(a.startAt ?? 0).getTime() - new Date(b.startAt ?? 0).getTime(),
-    );
+    ].sort((a, b) => new Date(a.startAt ?? 0).getTime() - new Date(b.startAt ?? 0).getTime());
     setItems(merged);
     setLoading(false);
   }, [driverId]);
