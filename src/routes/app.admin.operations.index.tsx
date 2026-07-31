@@ -10,12 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
-import {
-  asRows,
-  formatOperationTime,
-  operationsDb,
-  type OperationRun,
-} from "@/lib/operations";
+import { asRows, formatOperationTime, operationsDb, type OperationRun } from "@/lib/operations";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/admin/operations/")({
@@ -71,9 +66,7 @@ function OperationsIndexPage() {
     if (error) toast.error(error.message);
     else {
       setRuns(asRows<OperationRun>(runRes.data));
-      setProfiles(
-        Object.fromEntries(asRows<Profile>(profileRes.data).map((p) => [p.user_id, p])),
-      );
+      setProfiles(Object.fromEntries(asRows<Profile>(profileRes.data).map((p) => [p.user_id, p])));
     }
     setLoading(false);
   }, [isAdmin]);
@@ -140,7 +133,8 @@ function OperationsIndexPage() {
                   </div>
                   <p className="truncate text-sm text-muted-foreground">
                     {profiles[run.passenger_id]?.full_name ?? "Passenger"} ·{" "}
-                    {run.pickup_address ?? "No pickup"} → {run.destination_address ?? "No destination"}
+                    {run.pickup_address ?? "No pickup"} →{" "}
+                    {run.destination_address ?? "No destination"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatOperationTime(run.planned_start_at)}
