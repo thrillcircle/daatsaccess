@@ -50,8 +50,8 @@ export function PassengerOperationsTimeline({ userId }: { userId?: string }) {
     if (!userId) return;
     setLoading(true);
     const { data, error } = await operationsDb.rpc("passenger_operation_timeline", {
-      p_service_booking_id: null,
-      p_ride_id: null,
+      p_service_booking_id: undefined,
+      p_ride_id: undefined,
     });
     if (error) {
       // Phase 5 may not be deployed yet while the branch is under review.

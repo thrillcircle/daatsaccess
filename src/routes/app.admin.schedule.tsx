@@ -234,7 +234,7 @@ function SchedulePage() {
       p_resource_id: resourceId,
       p_expected_run_version: assignRun.row_version,
       p_assignment_source: "administrator",
-      p_reason: assignmentReason || null,
+      p_reason: assignmentReason || undefined,
       p_idempotency_key: crypto.randomUUID(),
     });
     setBusy(null);
@@ -255,7 +255,7 @@ function SchedulePage() {
       p_plan_id: publishPlan.id,
       p_expected_row_version: publishPlan.row_version,
       p_confirmation: "PUBLISH",
-      p_warning_override_reason: publishReason || null,
+      p_warning_override_reason: publishReason || undefined,
       p_idempotency_key: crypto.randomUUID(),
     });
     setBusy(null);

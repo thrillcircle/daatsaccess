@@ -623,30 +623,39 @@ DROP POLICY IF EXISTS "Admins read operation reconciliation" ON public.operation
 CREATE POLICY "Admins read operation reconciliation" ON public.operation_reconciliation_issues
   FOR SELECT TO authenticated USING (private.has_role(auth.uid(), 'admin'::public.app_role));
 
+DROP TRIGGER IF EXISTS operation_plans_updated_at ON public.operation_plans;
 CREATE TRIGGER operation_plans_updated_at
   BEFORE UPDATE ON public.operation_plans
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS operation_runs_updated_at ON public.operation_runs;
 CREATE TRIGGER operation_runs_updated_at
   BEFORE UPDATE ON public.operation_runs
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS operation_assignments_updated_at ON public.operation_run_assignments;
 CREATE TRIGGER operation_assignments_updated_at
   BEFORE UPDATE ON public.operation_run_assignments
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS resource_availability_updated_at ON public.resource_availability_windows;
 CREATE TRIGGER resource_availability_updated_at
   BEFORE UPDATE ON public.resource_availability_windows
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS dispatch_offers_updated_at ON public.dispatch_offers;
 CREATE TRIGGER dispatch_offers_updated_at
   BEFORE UPDATE ON public.dispatch_offers
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS notification_outbox_updated_at ON public.notification_outbox;
 CREATE TRIGGER notification_outbox_updated_at
   BEFORE UPDATE ON public.notification_outbox
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS operational_alerts_updated_at ON public.operational_alerts;
 CREATE TRIGGER operational_alerts_updated_at
   BEFORE UPDATE ON public.operational_alerts
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS operational_incidents_updated_at ON public.operational_incidents;
 CREATE TRIGGER operational_incidents_updated_at
   BEFORE UPDATE ON public.operational_incidents
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS operation_reconciliation_updated_at ON public.operation_reconciliation_issues;
 CREATE TRIGGER operation_reconciliation_updated_at
   BEFORE UPDATE ON public.operation_reconciliation_issues
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
@@ -874,10 +883,30 @@ REVOKE ALL ON FUNCTION public.operations_require_admin()
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.operations_require_admin() TO service_role;
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.operation_runs;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.operation_run_assignments;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.dispatch_offers;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.operational_alerts;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notification_outbox;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'operation_runs') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.operation_runs;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'operation_run_assignments') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.operation_run_assignments;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'dispatch_offers') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.dispatch_offers;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'operational_alerts') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.operational_alerts;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'notification_outbox') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.notification_outbox;
+  END IF;
+END $$;
 
 NOTIFY pgrst, 'reload schema';

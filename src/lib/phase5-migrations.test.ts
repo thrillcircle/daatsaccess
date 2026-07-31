@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -9,6 +9,53 @@ const source = (name: string) => readFileSync(resolve(process.cwd(), name), "utf
 const foundation = migration("20260731130000_phase5_operations_foundation.sql");
 const dispatch = migration("20260731131000_phase5_planning_dispatch.sql");
 const reliability = migration("20260731132000_phase5_reliability_scheduler.sql");
+
+const migrationFiles = readdirSync(resolve(process.cwd(), "supabase/migrations"))
+  .filter((name) => name.endsWith(".sql"))
+  .sort();
+const closeoutName = migrationFiles.find((name) =>
+  name.includes("phase5_passenger_timeline_avatar_closeout"),
+);
+const closeout = closeoutName ? migration(closeoutName) : "";
+
+describe("Phase 5 passenger timeline closeout", () => {
+  it("ships a named closeout migration that is the final timeline definition", () => {
+    expect(closeoutName).toBeTruthy();
+    const timelineMigrations = migrationFiles.filter((name) =>
+      migration(name).includes("FUNCTION public.passenger_operation_timeline("),
+    );
+    expect(timelineMigrations.at(-1)).toBe(closeoutName);
+  });
+
+  it("reads profiles.avatar_url and never profile.profile_photo_url", () => {
+    expect(closeout).toContain("'profile_photo_url', profile.avatar_url");
+    expect(closeout).not.toContain("profile.profile_photo_url");
+  });
+
+  it("keeps ownership checks and excludes internal data", () => {
+    expect(closeout).toContain("Passenger role required");
+    expect(closeout).toContain("Booking not found for this passenger");
+    expect(closeout).toContain("Ride not found for this passenger");
+    expect(closeout).toContain("run.passenger_id = v_actor");
+    expect(closeout).toContain("passenger_visible_summary");
+    for (const internal of [
+      "internal_notes",
+      "quoted_total",
+      "margin_amount",
+      "operational_alerts",
+      "driver_location_history",
+    ]) {
+      expect(closeout).not.toContain(internal);
+    }
+  });
+
+  it("revokes anonymous execution and reloads PostgREST", () => {
+    expect(closeout).toContain(
+      "REVOKE ALL ON FUNCTION public.passenger_operation_timeline(uuid,uuid) FROM PUBLIC, anon",
+    );
+    expect(closeout).toContain("NOTIFY pgrst, 'reload schema'");
+  });
+});
 
 describe("Phase 5 database contracts", () => {
   it("creates one canonical run per active source and overlap-safe assignments", () => {
