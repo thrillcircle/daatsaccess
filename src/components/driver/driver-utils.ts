@@ -6,7 +6,10 @@ export type DriverProfile = Database["public"]["Tables"]["driver_profiles"]["Row
 
 export const PICKUP_WINDOW_MS = 30 * 60 * 1000;
 
-export const isFarFutureScheduled = (r: Pick<Ride, "request_type" | "scheduled_at">) =>
+export const isFarFutureScheduled = (r: {
+  request_type: string | null;
+  scheduled_at: string | null;
+}) =>
   r.request_type === "scheduled" &&
   r.scheduled_at != null &&
   new Date(r.scheduled_at).getTime() - Date.now() > PICKUP_WINDOW_MS;

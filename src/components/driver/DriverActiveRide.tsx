@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LiveTripMap } from "@/components/LiveTripMap";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
+import type { Database } from "@/integrations/supabase/types";
+
+type RideStatus = Database["public"]["Enums"]["ride_status"];
 import { StartTripPinDialog } from "@/components/StartTripPinDialog";
 import { toast } from "sonner";
 import { Bell, Clock, ExternalLink, MapPin, Navigation, Pencil, Phone } from "lucide-react";
@@ -97,7 +100,12 @@ function ChangeRow({
   );
 }
 
-function TripChangeAlerts({ ride, passengerName }: { ride: Ride; passengerName: string | null }) {
+function TripChangeAlerts({
+  ride,
+  passengerName,
+}: {
+  ride: DriverSafeRide; passengerName: string | null;
+}) {
   const changes = useRideChanges(ride.id);
   const ack = useServerFn(acknowledgeRideChange);
   const [busy, setBusy] = useState<string | null>(null);
@@ -301,7 +309,7 @@ export function ActiveRideCard({
               <Pencil className="h-3 w-3" /> Edited · v{ride.route_version}
             </Badge>
           )}
-          <RideStatusBadge status={ride.status} />
+          <RideStatusBadge status={ride.status as RideStatus} />
         </div>
       </div>
       <TripChangeAlerts ride={ride} passengerName={passenger?.fullName ?? null} />

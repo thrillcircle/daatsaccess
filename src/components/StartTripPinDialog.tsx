@@ -18,7 +18,7 @@ import {
 } from "@/lib/ride-pin.functions";
 import type { Database } from "@/integrations/supabase/types";
 
-type Ride = Database["public"]["Tables"]["rides"]["Row"];
+type Ride = Pick<Database["public"]["Tables"]["rides"]["Row"], "id">;
 
 export function StartTripPinDialog({
   ride,
