@@ -29,9 +29,11 @@ export const Route = createFileRoute("/app/driver/")({
         property: "og:description",
         content: "Today's operational hub: dispatch offers, active service and today's work.",
       },
+      { property: "og:url", content: "https://daats.app/app/driver" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://daats.app/app/driver" }],
   }),
   component: DrivePage,
 });
