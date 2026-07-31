@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_controls: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          reason: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          reason?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          reason?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_trip_notes: {
         Row: {
           admin_id: string
@@ -48,6 +72,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      app_settings: {
+        Row: {
+          category: string
+          description: string | null
+          is_sensitive: boolean
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          category: string
+          description?: string | null
+          is_sensitive?: boolean
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          category?: string
+          description?: string | null
+          is_sensitive?: boolean
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
       }
       booking_assistance_requirements: {
         Row: {
@@ -625,6 +679,65 @@ export type Database = {
           vehicle_type?: string | null
         }
         Relationships: []
+      }
+      driver_vehicle_shifts: {
+        Row: {
+          created_at: string
+          driver_user_id: string
+          end_checklist: Json | null
+          end_notes: string | null
+          end_odometer_km: number | null
+          ended_at: string | null
+          handover_notes: string | null
+          id: string
+          start_checklist: Json
+          start_notes: string | null
+          start_odometer_km: number
+          started_at: string
+          status: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          driver_user_id: string
+          end_checklist?: Json | null
+          end_notes?: string | null
+          end_odometer_km?: number | null
+          ended_at?: string | null
+          handover_notes?: string | null
+          id?: string
+          start_checklist: Json
+          start_notes?: string | null
+          start_odometer_km: number
+          started_at?: string
+          status?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          driver_user_id?: string
+          end_checklist?: Json | null
+          end_notes?: string | null
+          end_odometer_km?: number | null
+          ended_at?: string | null
+          handover_notes?: string | null
+          id?: string
+          start_checklist?: Json
+          start_notes?: string | null
+          start_odometer_km?: number
+          started_at?: string
+          status?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_vehicle_shifts_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fleet_consolidation_issues: {
         Row: {
@@ -3130,6 +3243,48 @@ export type Database = {
           },
         ]
       }
+      system_audit_events: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          context: Json
+          created_at: string
+          id: string
+          module: string
+          outcome: string
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          context?: Json
+          created_at?: string
+          id?: string
+          module: string
+          outcome?: string
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          context?: Json
+          created_at?: string
+          id?: string
+          module?: string
+          outcome?: string
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -3845,6 +4000,21 @@ export type Database = {
         Args: { p_reason: string; p_ticket_id: string; p_vehicle_id: string }
         Returns: Json
       }
+      admin_list_audit_events: { Args: { p_limit?: number }; Returns: Json }
+      admin_list_settings: { Args: never; Returns: Json }
+      admin_list_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          phone: string
+          roles: Database["public"]["Enums"]["app_role"][]
+          status: string
+          user_id: string
+        }[]
+      }
+      admin_list_vehicle_shifts: { Args: never; Returns: Json }
       admin_open_maintenance_work_order: {
         Args: {
           p_description: string
@@ -4008,6 +4178,17 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_set_user_roles: {
+        Args: {
+          p_roles: Database["public"]["Enums"]["app_role"][]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_user_status: {
+        Args: { p_reason?: string; p_status: string; p_user_id: string }
+        Returns: undefined
+      }
       admin_transition_maintenance_work_order: {
         Args: {
           p_actual_cost?: number
@@ -4022,6 +4203,10 @@ export type Database = {
           p_work_performed?: string
         }
         Returns: Json
+      }
+      admin_update_setting: {
+        Args: { p_key: string; p_value: Json }
+        Returns: undefined
       }
       admin_update_vehicle: {
         Args: {
@@ -4053,6 +4238,7 @@ export type Database = {
         Returns: Json
       }
       admin_view_ride_pin: { Args: { _ride_id: string }; Returns: Json }
+      current_account_status: { Args: never; Returns: string }
       driver_accept_dispatch_offer: {
         Args: {
           p_expected_offer_version: number
@@ -4099,6 +4285,16 @@ export type Database = {
         }
         Returns: Json
       }
+      driver_end_vehicle_shift: {
+        Args: {
+          p_checklist: Json
+          p_handover?: string
+          p_notes?: string
+          p_odometer: number
+          p_shift_id: string
+        }
+        Returns: undefined
+      }
       driver_mark_arrived: { Args: { p_ride_id: string }; Returns: Json }
       driver_operation_incidents: {
         Args: { p_run_id: string }
@@ -4139,11 +4335,21 @@ export type Database = {
         Args: { p_limit?: number; p_scope?: string }
         Returns: Json[]
       }
+      driver_shift_dashboard: { Args: never; Returns: Json }
       driver_start_scheduled_pickup: {
         Args: { p_ride_id: string }
         Returns: Json
       }
       driver_start_trip: { Args: { p_ride_id: string }; Returns: Json }
+      driver_start_vehicle_shift: {
+        Args: {
+          p_checklist: Json
+          p_notes?: string
+          p_odometer: number
+          p_vehicle_id: string
+        }
+        Returns: string
+      }
       driver_transition_operation: {
         Args: {
           p_expected_run_version: number
@@ -4168,6 +4374,13 @@ export type Database = {
       }
       fleet_require_admin: { Args: never; Returns: string }
       generate_ride_pin: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       my_booking_companions: {
         Args: never
         Returns: {
@@ -4505,6 +4718,18 @@ export type Database = {
       verify_ride_start_pin: {
         Args: { _pin: string; _ride_id: string }
         Returns: Json
+      }
+      write_system_audit: {
+        Args: {
+          p_action: string
+          p_after?: Json
+          p_before?: Json
+          p_context?: Json
+          p_module: string
+          p_target_id?: string
+          p_target_type?: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
