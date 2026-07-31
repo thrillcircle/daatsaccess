@@ -1,6 +1,6 @@
 /**
  * Server-only Google Maps helpers. Every call goes through the Lovable
- * connector gateway using GOOGLE_MAPS_API_KEY (server key) — this module is
+ * connector gateway using GOOGLE_MAPS_API_KEY_1 (server key) — this module is
  * never bundled into the browser, so the server key is never exposed.
  */
 
@@ -8,7 +8,7 @@ const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_maps";
 
 function gatewayHeaders(extra: Record<string, string> = {}) {
   const lovableKey = process.env.LOVABLE_API_KEY;
-  const mapsKey = process.env.GOOGLE_MAPS_API_KEY;
+  const mapsKey = process.env.GOOGLE_MAPS_API_KEY_1;
   if (!lovableKey || !mapsKey) throw new Error("Google Maps connector not configured");
   return {
     Authorization: `Bearer ${lovableKey}`,
