@@ -7,4 +7,3 @@ Pricing is transparent: an R20 base fare plus R13.50 per kilometre. Passengers c
 ## Pages
 
 - [Home](/): What Access is, who it serves and how pricing works.
-- [Sign in](/auth): Create an Access account or sign in to book a ride.
