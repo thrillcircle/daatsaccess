@@ -6,6 +6,8 @@ import {
   type OperationRun,
   type OperationStatus,
 } from "@/lib/operations";
+import { fetchDriverRides } from "@/lib/driver-rides";
+import type { DriverSafeRide } from "@/lib/driver-ride-projection";
 import {
   DRIVER_TERMINAL_OPERATION_STATUSES,
   DRIVER_UPCOMING_ASSIGNMENT_STATUSES,
@@ -208,12 +210,9 @@ export function useDriverUpcoming(driverId: string | undefined) {
     if (!driverId) return;
     setLoading(true);
     const [{ data: rideRows }, { assignments, runs }] = await Promise.all([
-      supabase
-        .from("rides")
-        .select(DRIVER_RIDE_COLUMNS)
-        .eq("driver_id", driverId)
-        .eq("status", "accepted")
-        .order("scheduled_at", { ascending: true, nullsFirst: false }),
+      fetchDriverRides("upcoming", 200)
+        .then((rows) => ({ data: rows }))
+        .catch(() => ({ data: [] as DriverRideLite[] })),
       fetchAssignedRuns(driverId, DRIVER_UPCOMING_ASSIGNMENT_STATUSES),
     ]);
     const rides = (rideRows ?? []) as unknown as DriverRideLite[];
@@ -242,11 +241,6 @@ export function useDriverUpcoming(driverId: string | undefined) {
       .channel(`driver-upcoming-work-${driverId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "rides", filter: `driver_id=eq.${driverId}` },
-        () => void load(),
-      )
-      .on(
-        "postgres_changes",
         {
           event: "*",
           schema: "public",
@@ -273,13 +267,9 @@ export function useDriverHistory(driverId: string | undefined) {
     if (!driverId) return;
     setLoading(true);
     const [{ data: rideRows }, { assignments, runs }] = await Promise.all([
-      supabase
-        .from("rides")
-        .select(DRIVER_RIDE_COLUMNS)
-        .eq("driver_id", driverId)
-        .in("status", ["completed", "cancelled"])
-        .order("completed_at", { ascending: false, nullsFirst: false })
-        .limit(200),
+      fetchDriverRides("history", 200)
+        .then((rows) => ({ data: rows }))
+        .catch(() => ({ data: [] as DriverRideLite[] })),
       fetchAssignedRuns(driverId, [
         "assigned",
         "acknowledged",
