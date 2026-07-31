@@ -559,6 +559,7 @@ export type Database = {
           id: string
           read_at: string | null
           ride_id: string | null
+          service_booking_id: string | null
           support_ticket_id: string | null
           title: string
           type: string
@@ -570,6 +571,7 @@ export type Database = {
           id?: string
           read_at?: string | null
           ride_id?: string | null
+          service_booking_id?: string | null
           support_ticket_id?: string | null
           title: string
           type: string
@@ -581,6 +583,7 @@ export type Database = {
           id?: string
           read_at?: string | null
           ride_id?: string | null
+          service_booking_id?: string | null
           support_ticket_id?: string | null
           title?: string
           type?: string
@@ -592,6 +595,13 @@ export type Database = {
             columns: ["ride_id"]
             isOneToOne: false
             referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_service_booking_id_fkey"
+            columns: ["service_booking_id"]
+            isOneToOne: false
+            referencedRelation: "service_bookings"
             referencedColumns: ["id"]
           },
           {
@@ -2644,6 +2654,7 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_expire_service_quotes: { Args: never; Returns: number }
       admin_fleet_consolidation_report: {
         Args: never
         Returns: {
@@ -2676,6 +2687,15 @@ export type Database = {
           p_severity: string
           p_support_ticket_id?: string
           p_vehicle_id: string
+        }
+        Returns: Json
+      }
+      admin_pricing_calculate: {
+        Args: {
+          p_effective_at?: string
+          p_inputs?: Json
+          p_pricing_version_id?: string
+          p_service_code: string
         }
         Returns: Json
       }
@@ -2722,6 +2742,7 @@ export type Database = {
           p_components: Json
           p_description: string
           p_effective_from: string
+          p_effective_to: string
           p_expected_row_version: number
           p_is_mock: boolean
           p_name: string
@@ -2747,6 +2768,16 @@ export type Database = {
           p_idempotency_key?: string
           p_quote_id: string
           p_valid_until: string
+        }
+        Returns: Json
+      }
+      admin_set_quote_deposit: {
+        Args: {
+          p_amount: number
+          p_expected_row_version: number
+          p_quote_id: string
+          p_reason: string
+          p_required: boolean
         }
         Returns: Json
       }
@@ -2933,6 +2964,10 @@ export type Database = {
           p_service_code: string
         }
         Returns: Json
+      }
+      pricing_expire_due_quotes: {
+        Args: { p_booking_id?: string }
+        Returns: number
       }
       pricing_require_admin: { Args: never; Returns: string }
       pricing_resolve_version: {
