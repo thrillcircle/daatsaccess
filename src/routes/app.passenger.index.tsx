@@ -9,8 +9,8 @@ import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { ActiveTripCard } from "@/components/ActiveTripCard";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { toast } from "sonner";
-import { useServerFn } from "@tanstack/react-start";
-import { computeRoute } from "@/lib/maps.functions";
+import { useRouteEstimate } from "@/hooks/use-route-estimate";
+
 import { formatZAR } from "@/lib/pricing";
 import { pricingDb, rpcNullable } from "@/lib/pricing-api";
 import { usePassengerPricingEstimate } from "@/hooks/use-passenger-pricing-estimate";
