@@ -12,6 +12,7 @@ import {
   MapPin,
   PanelsTopLeft,
   ShieldCheck,
+  ClipboardCheck,
   UserCircle2,
   UserCog,
 } from "lucide-react";
@@ -49,6 +50,11 @@ export const DRIVER_NAV: NavItem[] = [
     icon: <CalendarRange className="h-5 w-5" />,
   },
   { to: "/app/driver/history", label: "History", icon: <History className="h-5 w-5" /> },
+  {
+    to: "/app/driver/vehicle-shift",
+    label: "Vehicle Shift",
+    icon: <ClipboardCheck className="h-5 w-5" />,
+  },
   { to: "/app/profile", label: "Profile", icon: <UserCircle2 className="h-5 w-5" /> },
 ];
 

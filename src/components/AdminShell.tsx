@@ -18,6 +18,7 @@ import {
   Settings,
   ShieldAlert,
   ShieldCheck,
+  ScrollText,
   UserCircle2,
   UserRoundCheck,
   UserRoundCog,
@@ -26,7 +27,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { NotificationBell } from "@/components/NotificationBell";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,6 @@ type NavLink = {
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
-  soon?: boolean;
 };
 
 type NavSection = { heading: string; items: NavLink[] };
@@ -74,14 +73,16 @@ const SECTIONS: NavSection[] = [
         label: "Driver Assignments",
         icon: UserRoundCheck,
       },
+      { to: "/app/admin/vehicle-shifts", label: "Vehicle Shifts", icon: CalendarDays },
     ],
   },
   {
     heading: "System",
     items: [
-      { to: "/app/admin/users", label: "Users & Roles", icon: ShieldCheck, soon: true },
+      { to: "/app/admin/users", label: "Users & Roles", icon: ShieldCheck },
       { to: "/app/admin/pricing-services", label: "Pricing & Services", icon: CircleDollarSign },
-      { to: "/app/admin/settings", label: "Settings", icon: Settings, soon: true },
+      { to: "/app/admin/settings", label: "Settings", icon: Settings },
+      { to: "/app/admin/audit-logs", label: "Audit Logs", icon: ScrollText },
       { to: "/app/profile", label: "Admin Profile", icon: UserRoundCog },
     ],
   },
@@ -98,29 +99,9 @@ function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: () =
           <ul className="space-y-0.5">
             {section.items.map((item) => {
               const Icon = item.icon;
-              const active = item.soon
-                ? false
-                : item.exact
-                  ? pathname === item.to
-                  : pathname === item.to || pathname.startsWith(item.to + "/");
-              if (item.soon) {
-                return (
-                  <li key={item.to}>
-                    <span className="flex cursor-not-allowed items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-white/40">
-                      <span className="flex items-center gap-3">
-                        <Icon className="h-4 w-4" />
-                        {item.label}
-                      </span>
-                      <Badge
-                        variant="outline"
-                        className="border-white/15 bg-transparent text-[9px] uppercase text-white/40"
-                      >
-                        Soon
-                      </Badge>
-                    </span>
-                  </li>
-                );
-              }
+              const active = item.exact
+                ? pathname === item.to
+                : pathname === item.to || pathname.startsWith(item.to + "/");
               return (
                 <li key={item.to}>
                   <Link

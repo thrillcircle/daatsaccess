@@ -11,15 +11,16 @@ import { DRIVER_SAFE_RIDE_FIELDS } from "@/lib/driver-ride-projection";
 const read = (p: string) => readFileSync(p, "utf8");
 
 describe("Phase 5 driver hub navigation closeout", () => {
-  it("exposes three distinct driver routes plus profile", () => {
+  it("exposes the driver work routes, vehicle shift and profile", () => {
     const targets = DRIVER_NAV.map((n) => n.to);
     expect(targets).toEqual([
       "/app/driver",
       "/app/driver/upcoming",
       "/app/driver/history",
+      "/app/driver/vehicle-shift",
       "/app/profile",
     ]);
-    expect(new Set(targets).size).toBe(4);
+    expect(new Set(targets).size).toBe(5);
   });
 
   it("has no driver hash navigation left", () => {

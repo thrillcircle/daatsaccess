@@ -19,6 +19,7 @@ import { Route as AppPassengerRouteImport } from './routes/app.passenger'
 import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppSupportRouteImport } from './routes/app.support'
 import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
+import { Route as AppAdminAuditLogsRouteImport } from './routes/app.admin.audit-logs'
 import { Route as AppAdminBookingsRouteImport } from './routes/app.admin.bookings'
 import { Route as AppAdminDispatchRouteImport } from './routes/app.admin.dispatch'
 import { Route as AppAdminDriverAssignmentsRouteImport } from './routes/app.admin.driver-assignments'
@@ -31,14 +32,18 @@ import { Route as AppAdminPassengersRouteImport } from './routes/app.admin.passe
 import { Route as AppAdminPricingServicesRouteImport } from './routes/app.admin.pricing-services'
 import { Route as AppAdminReliabilityRouteImport } from './routes/app.admin.reliability'
 import { Route as AppAdminScheduleRouteImport } from './routes/app.admin.schedule'
+import { Route as AppAdminSettingsRouteImport } from './routes/app.admin.settings'
 import { Route as AppAdminSupportRouteImport } from './routes/app.admin.support'
 import { Route as AppAdminTripHistoryRouteImport } from './routes/app.admin.trip-history'
 import { Route as AppAdminTripsRouteImport } from './routes/app.admin.trips'
+import { Route as AppAdminUsersRouteImport } from './routes/app.admin.users'
 import { Route as AppAdminVehicleProfilesRouteImport } from './routes/app.admin.vehicle-profiles'
+import { Route as AppAdminVehicleShiftsRouteImport } from './routes/app.admin.vehicle-shifts'
 import { Route as AppAdminVehiclesRouteImport } from './routes/app.admin.vehicles'
 import { Route as AppDriverIndexRouteImport } from './routes/app.driver.index'
 import { Route as AppDriverHistoryRouteImport } from './routes/app.driver.history'
 import { Route as AppDriverUpcomingRouteImport } from './routes/app.driver.upcoming'
+import { Route as AppDriverVehicleShiftRouteImport } from './routes/app.driver.vehicle-shift'
 import { Route as AppPassengerIndexRouteImport } from './routes/app.passenger.index'
 import { Route as AppPassengerBookRouteImport } from './routes/app.passenger.book'
 import { Route as AppPassengerBookingsRouteImport } from './routes/app.passenger.bookings'
@@ -109,6 +114,11 @@ const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AppAdminAuditLogsRoute = AppAdminAuditLogsRouteImport.update({
+  id: '/audit-logs',
+  path: '/audit-logs',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppAdminBookingsRoute = AppAdminBookingsRouteImport.update({
   id: '/bookings',
   path: '/bookings',
@@ -170,6 +180,11 @@ const AppAdminScheduleRoute = AppAdminScheduleRouteImport.update({
   path: '/schedule',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AppAdminSettingsRoute = AppAdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppAdminSupportRoute = AppAdminSupportRouteImport.update({
   id: '/support',
   path: '/support',
@@ -185,9 +200,19 @@ const AppAdminTripsRoute = AppAdminTripsRouteImport.update({
   path: '/trips',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppAdminVehicleProfilesRoute = AppAdminVehicleProfilesRouteImport.update({
   id: '/vehicle-profiles',
   path: '/vehicle-profiles',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminVehicleShiftsRoute = AppAdminVehicleShiftsRouteImport.update({
+  id: '/vehicle-shifts',
+  path: '/vehicle-shifts',
   getParentRoute: () => AppAdminRoute,
 } as any)
 const AppAdminVehiclesRoute = AppAdminVehiclesRouteImport.update({
@@ -208,6 +233,11 @@ const AppDriverHistoryRoute = AppDriverHistoryRouteImport.update({
 const AppDriverUpcomingRoute = AppDriverUpcomingRouteImport.update({
   id: '/upcoming',
   path: '/upcoming',
+  getParentRoute: () => AppDriverRoute,
+} as any)
+const AppDriverVehicleShiftRoute = AppDriverVehicleShiftRouteImport.update({
+  id: '/vehicle-shift',
+  path: '/vehicle-shift',
   getParentRoute: () => AppDriverRoute,
 } as any)
 const AppPassengerIndexRoute = AppPassengerIndexRouteImport.update({
@@ -325,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/app/passenger': typeof AppPassengerRouteWithChildren
   '/app/profile': typeof AppProfileRoute
   '/app/support': typeof AppSupportRouteWithChildren
+  '/app/admin/audit-logs': typeof AppAdminAuditLogsRoute
   '/app/admin/bookings': typeof AppAdminBookingsRouteWithChildren
   '/app/admin/dispatch': typeof AppAdminDispatchRoute
   '/app/admin/driver-assignments': typeof AppAdminDriverAssignmentsRoute
@@ -337,13 +368,17 @@ export interface FileRoutesByFullPath {
   '/app/admin/pricing-services': typeof AppAdminPricingServicesRoute
   '/app/admin/reliability': typeof AppAdminReliabilityRoute
   '/app/admin/schedule': typeof AppAdminScheduleRoute
+  '/app/admin/settings': typeof AppAdminSettingsRoute
   '/app/admin/support': typeof AppAdminSupportRouteWithChildren
   '/app/admin/trip-history': typeof AppAdminTripHistoryRoute
   '/app/admin/trips': typeof AppAdminTripsRoute
+  '/app/admin/users': typeof AppAdminUsersRoute
   '/app/admin/vehicle-profiles': typeof AppAdminVehicleProfilesRouteWithChildren
+  '/app/admin/vehicle-shifts': typeof AppAdminVehicleShiftsRoute
   '/app/admin/vehicles': typeof AppAdminVehiclesRoute
   '/app/driver/history': typeof AppDriverHistoryRoute
   '/app/driver/upcoming': typeof AppDriverUpcomingRoute
+  '/app/driver/vehicle-shift': typeof AppDriverVehicleShiftRoute
   '/app/passenger/book': typeof AppPassengerBookRouteWithChildren
   '/app/passenger/bookings': typeof AppPassengerBookingsRouteWithChildren
   '/app/support/$ticketId': typeof AppSupportTicketIdRoute
@@ -373,6 +408,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/app/profile': typeof AppProfileRoute
   '/app/support': typeof AppSupportRouteWithChildren
+  '/app/admin/audit-logs': typeof AppAdminAuditLogsRoute
   '/app/admin/dispatch': typeof AppAdminDispatchRoute
   '/app/admin/driver-assignments': typeof AppAdminDriverAssignmentsRoute
   '/app/admin/drivers': typeof AppAdminDriversRoute
@@ -383,13 +419,17 @@ export interface FileRoutesByTo {
   '/app/admin/pricing-services': typeof AppAdminPricingServicesRoute
   '/app/admin/reliability': typeof AppAdminReliabilityRoute
   '/app/admin/schedule': typeof AppAdminScheduleRoute
+  '/app/admin/settings': typeof AppAdminSettingsRoute
   '/app/admin/support': typeof AppAdminSupportRouteWithChildren
   '/app/admin/trip-history': typeof AppAdminTripHistoryRoute
   '/app/admin/trips': typeof AppAdminTripsRoute
+  '/app/admin/users': typeof AppAdminUsersRoute
   '/app/admin/vehicle-profiles': typeof AppAdminVehicleProfilesRouteWithChildren
+  '/app/admin/vehicle-shifts': typeof AppAdminVehicleShiftsRoute
   '/app/admin/vehicles': typeof AppAdminVehiclesRoute
   '/app/driver/history': typeof AppDriverHistoryRoute
   '/app/driver/upcoming': typeof AppDriverUpcomingRoute
+  '/app/driver/vehicle-shift': typeof AppDriverVehicleShiftRoute
   '/app/support/$ticketId': typeof AppSupportTicketIdRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
   '/app/admin': typeof AppAdminIndexRoute
@@ -421,6 +461,7 @@ export interface FileRoutesById {
   '/app/passenger': typeof AppPassengerRouteWithChildren
   '/app/profile': typeof AppProfileRoute
   '/app/support': typeof AppSupportRouteWithChildren
+  '/app/admin/audit-logs': typeof AppAdminAuditLogsRoute
   '/app/admin/bookings': typeof AppAdminBookingsRouteWithChildren
   '/app/admin/dispatch': typeof AppAdminDispatchRoute
   '/app/admin/driver-assignments': typeof AppAdminDriverAssignmentsRoute
@@ -433,13 +474,17 @@ export interface FileRoutesById {
   '/app/admin/pricing-services': typeof AppAdminPricingServicesRoute
   '/app/admin/reliability': typeof AppAdminReliabilityRoute
   '/app/admin/schedule': typeof AppAdminScheduleRoute
+  '/app/admin/settings': typeof AppAdminSettingsRoute
   '/app/admin/support': typeof AppAdminSupportRouteWithChildren
   '/app/admin/trip-history': typeof AppAdminTripHistoryRoute
   '/app/admin/trips': typeof AppAdminTripsRoute
+  '/app/admin/users': typeof AppAdminUsersRoute
   '/app/admin/vehicle-profiles': typeof AppAdminVehicleProfilesRouteWithChildren
+  '/app/admin/vehicle-shifts': typeof AppAdminVehicleShiftsRoute
   '/app/admin/vehicles': typeof AppAdminVehiclesRoute
   '/app/driver/history': typeof AppDriverHistoryRoute
   '/app/driver/upcoming': typeof AppDriverUpcomingRoute
+  '/app/driver/vehicle-shift': typeof AppDriverVehicleShiftRoute
   '/app/passenger/book': typeof AppPassengerBookRouteWithChildren
   '/app/passenger/bookings': typeof AppPassengerBookingsRouteWithChildren
   '/app/support/$ticketId': typeof AppSupportTicketIdRoute
@@ -474,6 +519,7 @@ export interface FileRouteTypes {
     | '/app/passenger'
     | '/app/profile'
     | '/app/support'
+    | '/app/admin/audit-logs'
     | '/app/admin/bookings'
     | '/app/admin/dispatch'
     | '/app/admin/driver-assignments'
@@ -486,13 +532,17 @@ export interface FileRouteTypes {
     | '/app/admin/pricing-services'
     | '/app/admin/reliability'
     | '/app/admin/schedule'
+    | '/app/admin/settings'
     | '/app/admin/support'
     | '/app/admin/trip-history'
     | '/app/admin/trips'
+    | '/app/admin/users'
     | '/app/admin/vehicle-profiles'
+    | '/app/admin/vehicle-shifts'
     | '/app/admin/vehicles'
     | '/app/driver/history'
     | '/app/driver/upcoming'
+    | '/app/driver/vehicle-shift'
     | '/app/passenger/book'
     | '/app/passenger/bookings'
     | '/app/support/$ticketId'
@@ -522,6 +572,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/app/profile'
     | '/app/support'
+    | '/app/admin/audit-logs'
     | '/app/admin/dispatch'
     | '/app/admin/driver-assignments'
     | '/app/admin/drivers'
@@ -532,13 +583,17 @@ export interface FileRouteTypes {
     | '/app/admin/pricing-services'
     | '/app/admin/reliability'
     | '/app/admin/schedule'
+    | '/app/admin/settings'
     | '/app/admin/support'
     | '/app/admin/trip-history'
     | '/app/admin/trips'
+    | '/app/admin/users'
     | '/app/admin/vehicle-profiles'
+    | '/app/admin/vehicle-shifts'
     | '/app/admin/vehicles'
     | '/app/driver/history'
     | '/app/driver/upcoming'
+    | '/app/driver/vehicle-shift'
     | '/app/support/$ticketId'
     | '/app/trip/$rideId'
     | '/app/admin'
@@ -569,6 +624,7 @@ export interface FileRouteTypes {
     | '/app/passenger'
     | '/app/profile'
     | '/app/support'
+    | '/app/admin/audit-logs'
     | '/app/admin/bookings'
     | '/app/admin/dispatch'
     | '/app/admin/driver-assignments'
@@ -581,13 +637,17 @@ export interface FileRouteTypes {
     | '/app/admin/pricing-services'
     | '/app/admin/reliability'
     | '/app/admin/schedule'
+    | '/app/admin/settings'
     | '/app/admin/support'
     | '/app/admin/trip-history'
     | '/app/admin/trips'
+    | '/app/admin/users'
     | '/app/admin/vehicle-profiles'
+    | '/app/admin/vehicle-shifts'
     | '/app/admin/vehicles'
     | '/app/driver/history'
     | '/app/driver/upcoming'
+    | '/app/driver/vehicle-shift'
     | '/app/passenger/book'
     | '/app/passenger/bookings'
     | '/app/support/$ticketId'
@@ -690,6 +750,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminIndexRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/app/admin/audit-logs': {
+      id: '/app/admin/audit-logs'
+      path: '/audit-logs'
+      fullPath: '/app/admin/audit-logs'
+      preLoaderRoute: typeof AppAdminAuditLogsRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
     '/app/admin/bookings': {
       id: '/app/admin/bookings'
       path: '/bookings'
@@ -774,6 +841,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminScheduleRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/app/admin/settings': {
+      id: '/app/admin/settings'
+      path: '/settings'
+      fullPath: '/app/admin/settings'
+      preLoaderRoute: typeof AppAdminSettingsRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
     '/app/admin/support': {
       id: '/app/admin/support'
       path: '/support'
@@ -795,11 +869,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminTripsRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/app/admin/users': {
+      id: '/app/admin/users'
+      path: '/users'
+      fullPath: '/app/admin/users'
+      preLoaderRoute: typeof AppAdminUsersRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
     '/app/admin/vehicle-profiles': {
       id: '/app/admin/vehicle-profiles'
       path: '/vehicle-profiles'
       fullPath: '/app/admin/vehicle-profiles'
       preLoaderRoute: typeof AppAdminVehicleProfilesRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/vehicle-shifts': {
+      id: '/app/admin/vehicle-shifts'
+      path: '/vehicle-shifts'
+      fullPath: '/app/admin/vehicle-shifts'
+      preLoaderRoute: typeof AppAdminVehicleShiftsRouteImport
       parentRoute: typeof AppAdminRoute
     }
     '/app/admin/vehicles': {
@@ -828,6 +916,13 @@ declare module '@tanstack/react-router' {
       path: '/upcoming'
       fullPath: '/app/driver/upcoming'
       preLoaderRoute: typeof AppDriverUpcomingRouteImport
+      parentRoute: typeof AppDriverRoute
+    }
+    '/app/driver/vehicle-shift': {
+      id: '/app/driver/vehicle-shift'
+      path: '/vehicle-shift'
+      fullPath: '/app/driver/vehicle-shift'
+      preLoaderRoute: typeof AppDriverVehicleShiftRouteImport
       parentRoute: typeof AppDriverRoute
     }
     '/app/passenger/': {
@@ -1031,6 +1126,7 @@ const AppAdminVehicleProfilesRouteWithChildren =
   )
 
 interface AppAdminRouteChildren {
+  AppAdminAuditLogsRoute: typeof AppAdminAuditLogsRoute
   AppAdminBookingsRoute: typeof AppAdminBookingsRouteWithChildren
   AppAdminDispatchRoute: typeof AppAdminDispatchRoute
   AppAdminDriverAssignmentsRoute: typeof AppAdminDriverAssignmentsRoute
@@ -1043,15 +1139,19 @@ interface AppAdminRouteChildren {
   AppAdminPricingServicesRoute: typeof AppAdminPricingServicesRoute
   AppAdminReliabilityRoute: typeof AppAdminReliabilityRoute
   AppAdminScheduleRoute: typeof AppAdminScheduleRoute
+  AppAdminSettingsRoute: typeof AppAdminSettingsRoute
   AppAdminSupportRoute: typeof AppAdminSupportRouteWithChildren
   AppAdminTripHistoryRoute: typeof AppAdminTripHistoryRoute
   AppAdminTripsRoute: typeof AppAdminTripsRoute
+  AppAdminUsersRoute: typeof AppAdminUsersRoute
   AppAdminVehicleProfilesRoute: typeof AppAdminVehicleProfilesRouteWithChildren
+  AppAdminVehicleShiftsRoute: typeof AppAdminVehicleShiftsRoute
   AppAdminVehiclesRoute: typeof AppAdminVehiclesRoute
   AppAdminIndexRoute: typeof AppAdminIndexRoute
 }
 
 const AppAdminRouteChildren: AppAdminRouteChildren = {
+  AppAdminAuditLogsRoute: AppAdminAuditLogsRoute,
   AppAdminBookingsRoute: AppAdminBookingsRouteWithChildren,
   AppAdminDispatchRoute: AppAdminDispatchRoute,
   AppAdminDriverAssignmentsRoute: AppAdminDriverAssignmentsRoute,
@@ -1064,10 +1164,13 @@ const AppAdminRouteChildren: AppAdminRouteChildren = {
   AppAdminPricingServicesRoute: AppAdminPricingServicesRoute,
   AppAdminReliabilityRoute: AppAdminReliabilityRoute,
   AppAdminScheduleRoute: AppAdminScheduleRoute,
+  AppAdminSettingsRoute: AppAdminSettingsRoute,
   AppAdminSupportRoute: AppAdminSupportRouteWithChildren,
   AppAdminTripHistoryRoute: AppAdminTripHistoryRoute,
   AppAdminTripsRoute: AppAdminTripsRoute,
+  AppAdminUsersRoute: AppAdminUsersRoute,
   AppAdminVehicleProfilesRoute: AppAdminVehicleProfilesRouteWithChildren,
+  AppAdminVehicleShiftsRoute: AppAdminVehicleShiftsRoute,
   AppAdminVehiclesRoute: AppAdminVehiclesRoute,
   AppAdminIndexRoute: AppAdminIndexRoute,
 }
@@ -1079,12 +1182,14 @@ const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
 interface AppDriverRouteChildren {
   AppDriverHistoryRoute: typeof AppDriverHistoryRoute
   AppDriverUpcomingRoute: typeof AppDriverUpcomingRoute
+  AppDriverVehicleShiftRoute: typeof AppDriverVehicleShiftRoute
   AppDriverIndexRoute: typeof AppDriverIndexRoute
 }
 
 const AppDriverRouteChildren: AppDriverRouteChildren = {
   AppDriverHistoryRoute: AppDriverHistoryRoute,
   AppDriverUpcomingRoute: AppDriverUpcomingRoute,
+  AppDriverVehicleShiftRoute: AppDriverVehicleShiftRoute,
   AppDriverIndexRoute: AppDriverIndexRoute,
 }
 

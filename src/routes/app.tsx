@@ -7,12 +7,17 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentAccountStatus } from "@/lib/architecture-closeout";
 
 export const Route = createFileRoute("/app")({
   ssr: false,
   beforeLoad: async () => {
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw redirect({ to: "/auth" });
+    if ((await getCurrentAccountStatus()) === "suspended") {
+      await supabase.auth.signOut();
+      throw redirect({ to: "/auth", search: { mode: "signin" } });
+    }
     return { user: data.user };
   },
   component: AppLayout,

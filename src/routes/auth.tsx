@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown> & SearchSchemaInput) => ({
+    mode: search.mode === "signin" ? ("signin" as const) : ("signup" as const),
+  }),
   head: () => ({
     meta: [
       { title: "Sign in — Access" },
@@ -33,7 +36,8 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signup");
+  const search = Route.useSearch();
+  const [mode, setMode] = useState<"signin" | "signup">(search.mode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -45,6 +49,25 @@ function AuthPage() {
       if (data.session) navigate({ to: "/app" });
     });
   }, [navigate]);
+
+  useEffect(() => setMode(search.mode), [search.mode]);
+
+  function changeMode(next: "signin" | "signup") {
+    setMode(next);
+    navigate({ to: "/auth", search: { mode: next }, replace: true });
+  }
+
+  async function signInWithProvider(provider: "google" | "apple") {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/app` },
+    });
+    if (error) {
+      toast.error(`${provider === "google" ? "Google" : "Apple"} sign-in failed: ${error.message}`);
+      setLoading(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -95,6 +118,31 @@ function AuthPage() {
           </div>
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading}
+                onClick={() => signInWithProvider("google")}
+              >
+                Google
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading}
+                onClick={() => signInWithProvider("apple")}
+              >
+                Apple
+              </Button>
+            </div>
+            <div
+              className="flex items-center gap-3 text-xs text-muted-foreground"
+              aria-hidden="true"
+            >
+              <span className="h-px flex-1 bg-border" /> or use email{" "}
+              <span className="h-px flex-1 bg-border" />
+            </div>
             {mode === "signup" && (
               <>
                 <div className="space-y-1.5">
@@ -150,7 +198,7 @@ function AuthPage() {
           </form>
 
           <button
-            onClick={() => setMode((m) => (m === "signup" ? "signin" : "signup"))}
+            onClick={() => changeMode(mode === "signup" ? "signin" : "signup")}
             className="mt-6 text-center text-sm text-muted-foreground hover:text-foreground"
           >
             {mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account"}
