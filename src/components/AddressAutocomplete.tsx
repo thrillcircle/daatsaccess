@@ -30,8 +30,10 @@ type Suggestion = {
   placeId: string;
   primary: string;
   secondary: string;
-  raw: google.maps.places.AutocompleteSuggestion;
+  /** Present only for browser-side (Maps JS) suggestions; server suggestions resolve via placeId. */
+  raw?: google.maps.places.AutocompleteSuggestion;
 };
+
 
 type SavedAddress = {
   id: string;
