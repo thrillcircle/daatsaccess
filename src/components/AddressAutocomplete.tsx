@@ -110,9 +110,10 @@ export function AddressAutocomplete({
         setMapsReady(true);
       })
       .catch((loadError) => {
-        console.warn("Maps load failed", loadError);
-        setError("Address search unavailable — type a full address.");
+        console.warn("Maps load failed — using server-side address search", loadError);
+        if (!cancelled) setServerOnly(true);
       });
+
     return () => {
       cancelled = true;
     };
