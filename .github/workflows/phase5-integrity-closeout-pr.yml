@@ -36,15 +36,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Format closeout files
+      - name: Format closeout TypeScript
         run: |
           bunx prettier --write \
             src/lib/ride-driver.functions.ts \
             src/lib/driver-rides.ts \
             src/components/driver/DriverActiveRide.tsx \
             src/integrations/supabase/types.ts \
-            src/lib/phase5-dispatch-cancellation-integrity.test.ts \
-            supabase/migrations/20260731184500_phase5_dispatch_cancellation_integrity.sql
+            src/lib/phase5-dispatch-cancellation-integrity.test.ts
 
       - name: Verify legacy paths are absent
         shell: bash
