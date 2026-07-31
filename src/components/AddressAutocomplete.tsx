@@ -127,7 +127,7 @@ export function AddressAutocomplete({
   );
 
   useEffect(() => {
-    if (!mapsReady) return;
+    if (!mapsReady && !serverOnly) return;
     if (text.trim().length < 3) {
       setSuggestions([]);
       setLoading(false);
@@ -140,9 +140,24 @@ export function AddressAutocomplete({
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(async () => {
       const library = placesLibRef.current;
-      if (!library) return;
       setLoading(true);
       setError(null);
+      if (!library) {
+        try {
+          const serverSuggestions = await searchAddresses({
+            data: { query: text.trim(), lat: bias?.lat, lng: bias?.lng },
+          });
+          setSuggestions(serverSuggestions);
+          setOpen(serverSuggestions.length > 0);
+        } catch (fallbackError) {
+          console.warn("Server autocomplete failed", fallbackError);
+          setError("Couldn't load suggestions. Type a full address.");
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
         const request: google.maps.places.AutocompleteRequest = {
           input: text.trim(),
