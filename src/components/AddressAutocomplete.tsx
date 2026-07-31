@@ -6,6 +6,7 @@ import { Loader2, LocateFixed, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { resolvePlace, searchAddresses } from "@/lib/maps.functions";
 
 export type AddressPick = {
   address: string;
@@ -28,7 +29,8 @@ type Suggestion = {
   placeId: string;
   primary: string;
   secondary: string;
-  raw: google.maps.places.AutocompleteSuggestion;
+  /** Present only for browser-side (Maps JS) suggestions; server suggestions resolve via placeId. */
+  raw?: google.maps.places.AutocompleteSuggestion;
 };
 
 type SavedAddress = {
@@ -60,6 +62,8 @@ export function AddressAutocomplete({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mapsReady, setMapsReady] = useState(false);
+  const [serverOnly, setServerOnly] = useState(false);
+
   const [dirty, setDirty] = useState(false);
   const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
   const placesLibRef = useRef<google.maps.PlacesLibrary | null>(null);
@@ -106,9 +110,10 @@ export function AddressAutocomplete({
         setMapsReady(true);
       })
       .catch((loadError) => {
-        console.warn("Maps load failed", loadError);
-        setError("Address search unavailable — type a full address.");
+        console.warn("Maps load failed — using server-side address search", loadError);
+        if (!cancelled) setServerOnly(true);
       });
+
     return () => {
       cancelled = true;
     };
@@ -120,7 +125,7 @@ export function AddressAutocomplete({
   );
 
   useEffect(() => {
-    if (!mapsReady) return;
+    if (!mapsReady && !serverOnly) return;
     if (text.trim().length < 3) {
       setSuggestions([]);
       setLoading(false);
@@ -133,9 +138,24 @@ export function AddressAutocomplete({
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(async () => {
       const library = placesLibRef.current;
-      if (!library) return;
       setLoading(true);
       setError(null);
+      if (!library) {
+        try {
+          const serverSuggestions = await searchAddresses({
+            data: { query: text.trim(), lat: bias?.lat, lng: bias?.lng },
+          });
+          setSuggestions(serverSuggestions);
+          setOpen(serverSuggestions.length > 0);
+        } catch (fallbackError) {
+          console.warn("Server autocomplete failed", fallbackError);
+          setError("Couldn't load suggestions. Type a full address.");
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
         const request: google.maps.places.AutocompleteRequest = {
           input: text.trim(),
@@ -166,14 +186,16 @@ export function AddressAutocomplete({
         setSuggestions(mapped);
         setOpen(true);
       } catch (suggestionError) {
-        console.warn("Autocomplete failed", suggestionError);
-        const message =
-          suggestionError instanceof Error ? suggestionError.message : String(suggestionError);
-        if (/referer .* blocked/i.test(message)) {
-          setError(
-            "Address search isn't available on this domain — open the published preview link to test it.",
-          );
-        } else {
+        console.warn("Browser autocomplete failed, falling back to server", suggestionError);
+        try {
+          const serverSuggestions = await searchAddresses({
+            data: { query: text.trim(), lat: bias?.lat, lng: bias?.lng },
+          });
+          setSuggestions(serverSuggestions);
+          setOpen(serverSuggestions.length > 0);
+          setError(serverSuggestions.length ? null : "No matching addresses found.");
+        } catch (fallbackError) {
+          console.warn("Server autocomplete failed", fallbackError);
           setError("Couldn't load suggestions. Type a full address.");
         }
       } finally {
@@ -184,29 +206,42 @@ export function AddressAutocomplete({
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryKey, mapsReady]);
+  }, [queryKey, mapsReady, serverOnly]);
 
   async function selectSuggestion(suggestion: Suggestion) {
-    const library = placesLibRef.current;
-    if (!library) return;
     setOpen(false);
     setLoading(true);
     try {
-      const place = suggestion.raw.placePrediction!.toPlace();
-      await place.fetchFields({ fields: ["formattedAddress", "location", "id"] });
-      const location = place.location;
-      if (!location) throw new Error("Place has no coordinates");
-      const pick: AddressPick = {
-        address: place.formattedAddress ?? `${suggestion.primary}, ${suggestion.secondary}`,
-        placeId: place.id ?? suggestion.placeId,
-        lat: location.lat(),
-        lng: location.lng(),
-      };
+      let pick: AddressPick;
+      const library = placesLibRef.current;
+      if (suggestion.raw?.placePrediction && library) {
+        const place = suggestion.raw.placePrediction.toPlace();
+        await place.fetchFields({ fields: ["formattedAddress", "location", "id"] });
+        const location = place.location;
+        if (!location) throw new Error("Place has no coordinates");
+        pick = {
+          address: place.formattedAddress ?? `${suggestion.primary}, ${suggestion.secondary}`,
+          placeId: place.id ?? suggestion.placeId,
+          lat: location.lat(),
+          lng: location.lng(),
+        };
+        const { AutocompleteSessionToken } = library;
+        sessionTokenRef.current = new AutocompleteSessionToken();
+      } else {
+        // Server-side resolution (Places API New via the connector gateway).
+        const detail = await resolvePlace({ data: { placeId: suggestion.placeId } });
+        pick = {
+          address:
+            detail.address || [suggestion.primary, suggestion.secondary].filter(Boolean).join(", "),
+          placeId: detail.placeId,
+          lat: detail.lat,
+          lng: detail.lng,
+        };
+      }
       setText(pick.address);
       setDirty(false);
+      setError(null);
       onChange(pick);
-      const { AutocompleteSessionToken } = library;
-      sessionTokenRef.current = new AutocompleteSessionToken();
     } catch (selectionError) {
       console.warn(selectionError);
       setError("Could not load that place. Try another.");
