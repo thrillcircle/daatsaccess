@@ -2,8 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = (path: string) =>
-  readFileSync(resolve(process.cwd(), path), "utf8");
+const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const migration = source(
   "supabase/migrations/20260731184500_phase5_dispatch_cancellation_integrity.sql",
 );
