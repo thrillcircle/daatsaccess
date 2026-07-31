@@ -918,6 +918,12 @@ SELECT
   legacy.is_mock,
   legacy.id
 FROM public.service_pricing_rules legacy
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.pricing_versions existing
+  WHERE existing.service_code = legacy.service_type
+    AND existing.currency = legacy.currency
+    AND existing.version_number = 1
+)
 ON CONFLICT (service_code, currency, version_number) DO NOTHING;
 
 INSERT INTO public.pricing_components (
@@ -944,6 +950,11 @@ CROSS JOIN LATERAL (
     ('companion_days', 'Companion days', 'per_day', legacy.companion_daily_rate, 0::numeric, 100, true),
     ('platform_margin', 'Platform margin', 'percentage', legacy.platform_margin_percent, 0::numeric, 110, false)
 ) AS component(component_code, customer_label, calculation_type, amount, minimum_quantity, calculation_order, customer_visible)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.pricing_components existing
+  WHERE existing.pricing_version_id = version.id
+    AND existing.component_code = component.component_code
+)
 ON CONFLICT (pricing_version_id, component_code) DO NOTHING;
 
 UPDATE public.pricing_versions
