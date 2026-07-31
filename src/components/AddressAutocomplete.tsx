@@ -209,7 +209,7 @@ export function AddressAutocomplete({
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryKey, mapsReady]);
+  }, [queryKey, mapsReady, serverOnly]);
 
   async function selectSuggestion(suggestion: Suggestion) {
     setOpen(false);
