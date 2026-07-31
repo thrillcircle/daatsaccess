@@ -121,6 +121,13 @@ export type Database = {
             foreignKeyName: "booking_companion_assignments_companion_id_fkey"
             columns: ["companion_id"]
             isOneToOne: false
+            referencedRelation: "booking_companion_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_companion_assignments_companion_id_fkey"
+            columns: ["companion_id"]
+            isOneToOne: false
             referencedRelation: "companion_profiles"
             referencedColumns: ["id"]
           },
@@ -2155,7 +2162,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      booking_companion_directory: {
+        Row: {
+          full_name: string | null
+          id: string | null
+          is_available: boolean | null
+          photo_url: string | null
+        }
+        Insert: {
+          full_name?: string | null
+          id?: string | null
+          is_available?: boolean | null
+          photo_url?: string | null
+        }
+        Update: {
+          full_name?: string | null
+          id?: string | null
+          is_available?: boolean | null
+          photo_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_acknowledge_pin_alert: { Args: { _ride_id: string }; Returns: Json }
