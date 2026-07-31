@@ -334,21 +334,20 @@ function RideRequest({ userId }: { userId?: string }) {
   async function performCancel() {
     if (!activeRide) return;
     setCancelling(true);
-    const { error } = await supabase
-      .from("rides")
-      .update({ status: "cancelled" })
-      .eq("id", activeRide.id);
-    setCancelling(false);
-    if (error) {
-      toast.error(error.message, {
+    try {
+      await cancelPassengerRide(activeRide.id);
+      setConfirmCancel(false);
+      setActiveRide(null);
+      toast.success("Ride cancelled");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel ride", {
         action: { label: "Retry", onClick: () => void performCancel() },
       });
-      return;
+    } finally {
+      setCancelling(false);
     }
-    setConfirmCancel(false);
-    setActiveRide(null);
-    toast.success("Ride cancelled");
   }
+
 
   // Share pickup position only while driver is en route (before pickup).
   const sharePickup =
