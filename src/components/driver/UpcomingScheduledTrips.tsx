@@ -6,7 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { startScheduledPickup } from "@/lib/ride-driver.functions";
-import { formatJoburg, openMapsNav, type Ride } from "@/components/driver/driver-utils";
+import { formatJoburg, openMapsNav, type DriverSafeRide } from "@/components/driver/driver-utils";
+import { fetchDriverRides } from "@/lib/driver-rides";
 
 type PassengerLite = { user_id: string; full_name: string | null };
 
@@ -22,26 +23,30 @@ export function UpcomingScheduledTrips({
   showViewAll = false,
 }: {
   driverId: string;
-  onActivate?: (r: Ride) => void;
+  onActivate?: (r: DriverSafeRide) => void;
   limit?: number;
   title?: string;
   showViewAll?: boolean;
 }) {
-  const [rides, setRides] = useState<Ride[]>([]);
+  const [rides, setRides] = useState<DriverSafeRide[]>([]);
   const [passengers, setPassengers] = useState<Map<string, PassengerLite>>(new Map());
   const [busyId, setBusyId] = useState<string | null>(null);
   const [, force] = useState(0);
   const start = useServerFn(startScheduledPickup);
 
   const load = useCallback(async () => {
-    const { data } = await supabase
-      .from("rides")
-      .select("*")
-      .eq("driver_id", driverId)
-      .eq("status", "accepted")
-      .eq("request_type", "scheduled")
-      .order("scheduled_at", { ascending: true });
-    const list = (data ?? []) as Ride[];
+    // Protected Driver projection — never a direct `rides` read.
+    let list: DriverSafeRide[] = [];
+    try {
+      list = (await fetchDriverRides("upcoming", 200)).filter(
+        (r) => r.request_type === "scheduled",
+      );
+    } catch {
+      list = [];
+    }
+    list.sort(
+      (a, b) => new Date(a.scheduled_at ?? 0).getTime() - new Date(b.scheduled_at ?? 0).getTime(),
+    );
     setRides(list);
     const ids = Array.from(new Set(list.map((r) => r.passenger_id)));
     if (ids.length) {
@@ -51,34 +56,42 @@ export function UpcomingScheduledTrips({
         .in("user_id", ids);
       setPassengers(new Map(((profs ?? []) as PassengerLite[]).map((p) => [p.user_id, p])));
     }
-  }, [driverId]);
+  }, []);
 
   useEffect(() => {
-    load();
-    const ch = supabase
-      .channel("driver-upcoming-" + driverId)
+    void load();
+    const channel = supabase
+      .channel("driver-upcoming-signal-" + driverId)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "rides", filter: `driver_id=eq.${driverId}` },
-        () => load(),
+        {
+          event: "*",
+          schema: "public",
+          table: "operation_run_assignments",
+          filter: `driver_user_id=eq.${driverId}`,
+        },
+        () => void load(),
       )
       .subscribe();
-    // Re-evaluate the 30-min pickup window every minute so the start button
-    // becomes enabled without a manual reload.
-    const tick = setInterval(() => force((n) => n + 1), 60_000);
+    // Re-evaluate the 30-min pickup window (and reload the safe projection)
+    // every minute so the start button enables without a manual reload.
+    const tick = setInterval(() => {
+      force((n) => n + 1);
+      void load();
+    }, 60_000);
     return () => {
-      supabase.removeChannel(ch);
+      void supabase.removeChannel(channel);
       clearInterval(tick);
     };
   }, [driverId, load]);
 
-  async function onStart(r: Ride) {
+  async function onStart(r: DriverSafeRide) {
     setBusyId(r.id);
     // Open Maps synchronously to satisfy popup blockers.
     const win = openMapsNav(r.pickup_lat, r.pickup_lng);
     try {
       const updated = await start({ data: { rideId: r.id } });
-      onActivate?.(updated as Ride);
+      onActivate?.(updated as DriverSafeRide);
       toast.success("Pickup navigation started");
     } catch (e) {
       win?.close();

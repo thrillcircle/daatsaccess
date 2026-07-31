@@ -12,6 +12,7 @@ import {
   Star,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchDriverRides } from "@/lib/driver-rides";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Database } from "@/integrations/supabase/types";
@@ -63,7 +64,12 @@ export function DriverProfileSections({ userId }: { userId: string }) {
           .in("status", ["scheduled", "active"])
           .lte("start_at", new Date().toISOString())
           .order("start_at", { ascending: false }),
-        supabase.from("rides").select("*").eq("driver_id", userId),
+        fetchDriverRides("all", 500)
+          .then((rows) => ({ data: rows, error: null }))
+          .catch((e: unknown) => ({
+            data: [] as unknown[],
+            error: { message: e instanceof Error ? e.message : "Could not load trips" },
+          })),
         supabase.from("ride_reviews").select("rating").eq("driver_id", userId),
       ]);
       if (cancelled) return;

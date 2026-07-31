@@ -6,7 +6,7 @@ import {
   DRIVER_UPCOMING_ASSIGNMENT_STATUSES,
   dayBucket,
 } from "@/components/driver/driver-utils";
-import { DRIVER_RIDE_COLUMNS } from "@/hooks/use-driver-work";
+import { DRIVER_SAFE_RIDE_FIELDS } from "@/lib/driver-ride-projection";
 
 const read = (p: string) => readFileSync(p, "utf8");
 
@@ -80,13 +80,14 @@ describe("Phase 5 driver hub navigation closeout", () => {
     expect(history).toContain("useDriverHistory");
     expect(history).not.toContain("useDriverUpcoming");
     const hook = read("src/hooks/use-driver-work.ts");
-    expect(hook).toContain('.in("status", ["completed", "cancelled"])');
+    expect(hook).toContain('fetchDriverRides("history"');
+    expect(hook).not.toContain('from("rides")');
   });
 
   it("keeps financial fields out of driver views", () => {
     const financial = ["estimated_price", "estimate_snapshot", "pricing_version_id", "deposit"];
     for (const field of financial) {
-      expect(DRIVER_RIDE_COLUMNS).not.toContain(field);
+      expect(DRIVER_SAFE_RIDE_FIELDS as readonly string[]).not.toContain(field);
     }
     for (const file of [
       "src/routes/app.driver.tsx",

@@ -12,8 +12,9 @@ import { UpcomingScheduledTrips } from "@/components/driver/UpcomingScheduledTri
 import {
   isFarFutureScheduled,
   type DriverProfile,
-  type Ride,
+  type DriverSafeRide,
 } from "@/components/driver/driver-utils";
+import { fetchDriverRides } from "@/lib/driver-rides";
 
 export const Route = createFileRoute("/app/driver/")({
   head: () => ({
@@ -47,7 +48,7 @@ function DrivePage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<DriverProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [activeRide, setActiveRide] = useState<Ride | null>(null);
+  const [activeRide, setActiveRide] = useState<DriverSafeRide | null>(null);
   const [trackingOperationRunId, setTrackingOperationRunId] = useState<string | null>(null);
   const [trackingOperationRideId, setTrackingOperationRideId] = useState<string | null>(null);
 
@@ -64,43 +65,58 @@ function DrivePage() {
       });
   }, [user]);
 
-  // Active ride for this driver. Far-future scheduled rides that the driver
-  // has accepted remain "accepted" until pickup nears — they are surfaced
-  // on the Upcoming page, not as the active ride.
+  // Active ride for this driver, read through the protected Driver
+  // projection — Drivers never query `rides` directly. Realtime is a signal
+  // only: dispatch/assignment events and a slow poll trigger a safe reload.
   useEffect(() => {
     if (!user) return;
-    let unsub: (() => void) | undefined;
-    const pickActive = (r: Ride | null | undefined): Ride | null => {
+    let cancelled = false;
+    const pickActive = (r: DriverSafeRide | null | undefined): DriverSafeRide | null => {
       if (!r) return null;
       if (!["accepted", "driver_arriving", "arrived", "in_progress"].includes(r.status))
         return null;
       if (r.status === "accepted" && isFarFutureScheduled(r)) return null;
       return r;
     };
-    (async () => {
-      const { data } = await supabase
-        .from("rides")
-        .select("*")
-        .eq("driver_id", user.id)
-        .in("status", ["accepted", "driver_arriving", "arrived", "in_progress"])
-        .order("created_at", { ascending: false });
-      const list = (data ?? []) as Ride[];
-      setActiveRide(list.map(pickActive).find((r): r is Ride => r != null) ?? null);
-
-      const ch = supabase
-        .channel("driver-active-" + user.id)
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "rides", filter: `driver_id=eq.${user.id}` },
-          (payload) => {
-            const r = payload.new as Ride;
-            setActiveRide(pickActive(r));
-          },
-        )
-        .subscribe();
-      unsub = () => supabase.removeChannel(ch);
-    })();
-    return () => unsub?.();
+    const load = async () => {
+      try {
+        const list = await fetchDriverRides("active", 20);
+        if (cancelled) return;
+        setActiveRide(list.map(pickActive).find((r): r is DriverSafeRide => r != null) ?? null);
+      } catch {
+        if (!cancelled) setActiveRide(null);
+      }
+    };
+    void load();
+    const channel = supabase
+      .channel("driver-active-signal-" + user.id)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "dispatch_offers",
+          filter: `driver_user_id=eq.${user.id}`,
+        },
+        () => void load(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "operation_run_assignments",
+          filter: `driver_user_id=eq.${user.id}`,
+        },
+        () => void load(),
+      )
+      .subscribe();
+    const poll = setInterval(() => void load(), 20_000);
+    return () => {
+      cancelled = true;
+      clearInterval(poll);
+      void supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const trackingRideId =

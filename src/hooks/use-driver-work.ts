@@ -6,66 +6,15 @@ import {
   type OperationRun,
   type OperationStatus,
 } from "@/lib/operations";
+import { fetchDriverRides } from "@/lib/driver-rides";
+import type { DriverSafeRide } from "@/lib/driver-ride-projection";
 import {
   DRIVER_TERMINAL_OPERATION_STATUSES,
   DRIVER_UPCOMING_ASSIGNMENT_STATUSES,
-  type Ride,
 } from "@/components/driver/driver-utils";
 
-/**
- * Explicit, non-financial column list. Driver views must never read any
- * pricing, fare or payment columns from the rides table.
- */
-export const DRIVER_RIDE_COLUMNS = [
-  "id",
-  "status",
-  "request_type",
-  "scheduled_at",
-  "pickup_address",
-  "destination_address",
-  "pickup_lat",
-  "pickup_lng",
-  "destination_lat",
-  "destination_lng",
-  "distance_km",
-  "actual_distance_km",
-  "actual_duration_seconds",
-  "started_at",
-  "completed_at",
-  "created_at",
-  "updated_at",
-  "passenger_id",
-  "vehicle_id",
-  "route_version",
-  "last_route_updated_at",
-  "service_booking_id",
-].join(", ");
-
-export type DriverRideLite = Pick<
-  Ride,
-  | "id"
-  | "status"
-  | "request_type"
-  | "scheduled_at"
-  | "pickup_address"
-  | "destination_address"
-  | "pickup_lat"
-  | "pickup_lng"
-  | "destination_lat"
-  | "destination_lng"
-  | "distance_km"
-  | "actual_distance_km"
-  | "actual_duration_seconds"
-  | "started_at"
-  | "completed_at"
-  | "created_at"
-  | "updated_at"
-  | "passenger_id"
-  | "vehicle_id"
-  | "route_version"
-  | "last_route_updated_at"
-  | "service_booking_id"
->;
+/** Driver work rides come from the protected projection only. */
+export type DriverRideLite = DriverSafeRide;
 
 export type DriverWorkItem = {
   key: string;
@@ -208,12 +157,9 @@ export function useDriverUpcoming(driverId: string | undefined) {
     if (!driverId) return;
     setLoading(true);
     const [{ data: rideRows }, { assignments, runs }] = await Promise.all([
-      supabase
-        .from("rides")
-        .select(DRIVER_RIDE_COLUMNS)
-        .eq("driver_id", driverId)
-        .eq("status", "accepted")
-        .order("scheduled_at", { ascending: true, nullsFirst: false }),
+      fetchDriverRides("upcoming", 200)
+        .then((rows) => ({ data: rows }))
+        .catch(() => ({ data: [] as DriverRideLite[] })),
       fetchAssignedRuns(driverId, DRIVER_UPCOMING_ASSIGNMENT_STATUSES),
     ]);
     const rides = (rideRows ?? []) as unknown as DriverRideLite[];
@@ -242,11 +188,6 @@ export function useDriverUpcoming(driverId: string | undefined) {
       .channel(`driver-upcoming-work-${driverId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "rides", filter: `driver_id=eq.${driverId}` },
-        () => void load(),
-      )
-      .on(
-        "postgres_changes",
         {
           event: "*",
           schema: "public",
@@ -273,13 +214,9 @@ export function useDriverHistory(driverId: string | undefined) {
     if (!driverId) return;
     setLoading(true);
     const [{ data: rideRows }, { assignments, runs }] = await Promise.all([
-      supabase
-        .from("rides")
-        .select(DRIVER_RIDE_COLUMNS)
-        .eq("driver_id", driverId)
-        .in("status", ["completed", "cancelled"])
-        .order("completed_at", { ascending: false, nullsFirst: false })
-        .limit(200),
+      fetchDriverRides("history", 200)
+        .then((rows) => ({ data: rows }))
+        .catch(() => ({ data: [] as DriverRideLite[] })),
       fetchAssignedRuns(driverId, [
         "assigned",
         "acknowledged",

@@ -12,13 +12,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import {
-  verifyStartTripPin,
-  type VerifyPinResult,
-} from "@/lib/ride-pin.functions";
+import { verifyStartTripPin, type VerifyPinResult } from "@/lib/ride-pin.functions";
 import type { Database } from "@/integrations/supabase/types";
 
-type Ride = Database["public"]["Tables"]["rides"]["Row"];
+type Ride = Pick<Database["public"]["Tables"]["rides"]["Row"], "id">;
 
 export function StartTripPinDialog({
   ride,
@@ -78,8 +75,8 @@ export function StartTripPinDialog({
             <KeyRound className="h-5 w-5 text-primary" /> Enter passenger PIN
           </DialogTitle>
           <DialogDescription>
-            Ask the passenger for the 4-digit PIN shown in their app, then enter
-            it here to start the trip.
+            Ask the passenger for the 4-digit PIN shown in their app, then enter it here to start
+            the trip.
           </DialogDescription>
         </DialogHeader>
 
@@ -113,17 +110,10 @@ export function StartTripPinDialog({
         )}
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={busy}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancel
           </Button>
-          <Button
-            onClick={submit}
-            disabled={busy || pin.length !== 4 || locked !== null}
-          >
+          <Button onClick={submit} disabled={busy || pin.length !== 4 || locked !== null}>
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Start trip
           </Button>
