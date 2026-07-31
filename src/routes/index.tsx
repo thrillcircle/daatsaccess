@@ -11,15 +11,18 @@ export const Route = createFileRoute("/")({
       { title: "Access — Rides for South Africa" },
       {
         name: "description",
-        content: "Request rides and drive with Access. A simple, mobile-first ride-hailing app for South Africa.",
+        content: "Request rides and drive with Access. A simple, mobile-first ride-hailing app for South Africa, with an R20 base fare and R13.50 per km.",
       },
       { property: "og:title", content: "Access — Rides for South Africa" },
       {
         property: "og:description",
         content: "Request rides and drive with Access. Built for South Africa.",
       },
+      { property: "og:url", content: "https://daats.app/" },
     ],
+    links: [{ rel: "canonical", href: "https://daats.app/" }],
   }),
+
   component: Landing,
 });
 
