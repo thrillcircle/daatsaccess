@@ -26,9 +26,7 @@ describe("Phase 5 passenger operation workflows", () => {
 
   it("forces passengers through the workflows instead of direct ride writes", () => {
     expect(migration).toContain("Use the protected cancellation workflow to cancel this trip");
-    expect(migration).toContain(
-      "Use the protected rescheduling workflow to change this trip time",
-    );
+    expect(migration).toContain("Use the protected rescheduling workflow to change this trip time");
     expect(migration).toContain("access.ride_workflow");
   });
 

@@ -18,10 +18,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { Car, Radio } from "lucide-react";
 import { useLiveLocation } from "@/hooks/use-live-location";
 import { PassengerOperationsTimeline } from "@/components/operations/PassengerOperationsTimeline";
-import {
-  cancelPassengerRide,
-  reschedulePassengerRide,
-} from "@/lib/passenger-ride-workflows";
+import { cancelPassengerRide, reschedulePassengerRide } from "@/lib/passenger-ride-workflows";
 
 import {
   AlertDialog,
@@ -353,7 +350,6 @@ function RideRequest({ userId }: { userId?: string }) {
     }
   }
 
-
   // Share pickup position only while driver is en route (before pickup).
   const sharePickup =
     !!activeRide &&
@@ -633,7 +629,6 @@ function ScheduledTrips({ userId }: { userId?: string }) {
       toast.error(err instanceof Error ? err.message : "Failed to reschedule trip");
     }
   }
-
 
   if (loading) return null;
   if (!rides.length) return null;
