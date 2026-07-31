@@ -3960,6 +3960,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_run_operations_scheduler: {
+        Args: { p_idempotency_key?: string }
+        Returns: Json
+      }
       admin_save_pricing_draft: {
         Args: {
           p_components: Json
@@ -4148,7 +4152,19 @@ export type Database = {
         Returns: string
       }
       notify_approaching_scheduled_rides: { Args: never; Returns: undefined }
+      operations_create_due_notifications: { Args: never; Returns: Json }
+      operations_deliver_notification_outbox: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      operations_detect_conflicts: { Args: never; Returns: Json }
+      operations_detect_reliability_alerts: { Args: never; Returns: Json }
+      operations_expire_dispatch_offers: { Args: never; Returns: Json }
       operations_require_admin: { Args: never; Returns: string }
+      operations_scheduler_tick: {
+        Args: { p_scheduler_key?: string; p_trigger_source?: string }
+        Returns: Json
+      }
       passenger_accept_service_quote: {
         Args: {
           p_expected_row_version: number
