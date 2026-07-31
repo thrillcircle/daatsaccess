@@ -608,11 +608,12 @@ function ScheduledTrips({ userId }: { userId?: string }) {
   }, [userId]);
 
   async function cancel(id: string) {
-    const { error } = await supabase.from("rides").update({ status: "cancelled" }).eq("id", id);
-    if (error) toast.error(error.message);
-    else {
+    try {
+      await cancelPassengerRide(id);
       toast.success("Scheduled trip cancelled");
       load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel trip");
     }
   }
 
@@ -623,17 +624,16 @@ function ScheduledTrips({ userId }: { userId?: string }) {
       toast.error("Pick a future date and time");
       return;
     }
-    const { error } = await supabase
-      .from("rides")
-      .update({ scheduled_at: d.toISOString() })
-      .eq("id", id);
-    if (error) toast.error(error.message);
-    else {
+    try {
+      await reschedulePassengerRide(id, d.toISOString());
       toast.success("Scheduled time updated");
       setEditingId(null);
       load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reschedule trip");
     }
   }
+
 
   if (loading) return null;
   if (!rides.length) return null;
