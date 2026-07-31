@@ -69,7 +69,8 @@ function Landing() {
               I already have an account
             </Button>
           </div>
-        </div>
+        </main>
+
 
         <footer className="pt-8 text-center text-xs text-muted-foreground">© {new Date().getFullYear()} Access</footer>
       </div>
