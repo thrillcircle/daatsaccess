@@ -18,6 +18,8 @@ import type { Database } from "@/integrations/supabase/types";
 import { Car, Radio } from "lucide-react";
 import { useLiveLocation } from "@/hooks/use-live-location";
 import { PassengerOperationsTimeline } from "@/components/operations/PassengerOperationsTimeline";
+import { cancelPassengerRide, reschedulePassengerRide } from "@/lib/passenger-ride-workflows";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -334,20 +336,18 @@ function RideRequest({ userId }: { userId?: string }) {
   async function performCancel() {
     if (!activeRide) return;
     setCancelling(true);
-    const { error } = await supabase
-      .from("rides")
-      .update({ status: "cancelled" })
-      .eq("id", activeRide.id);
-    setCancelling(false);
-    if (error) {
-      toast.error(error.message, {
+    try {
+      await cancelPassengerRide(activeRide.id);
+      setConfirmCancel(false);
+      setActiveRide(null);
+      toast.success("Ride cancelled");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel ride", {
         action: { label: "Retry", onClick: () => void performCancel() },
       });
-      return;
+    } finally {
+      setCancelling(false);
     }
-    setConfirmCancel(false);
-    setActiveRide(null);
-    toast.success("Ride cancelled");
   }
 
   // Share pickup position only while driver is en route (before pickup).
@@ -604,11 +604,12 @@ function ScheduledTrips({ userId }: { userId?: string }) {
   }, [userId]);
 
   async function cancel(id: string) {
-    const { error } = await supabase.from("rides").update({ status: "cancelled" }).eq("id", id);
-    if (error) toast.error(error.message);
-    else {
+    try {
+      await cancelPassengerRide(id);
       toast.success("Scheduled trip cancelled");
       load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel trip");
     }
   }
 
@@ -619,15 +620,13 @@ function ScheduledTrips({ userId }: { userId?: string }) {
       toast.error("Pick a future date and time");
       return;
     }
-    const { error } = await supabase
-      .from("rides")
-      .update({ scheduled_at: d.toISOString() })
-      .eq("id", id);
-    if (error) toast.error(error.message);
-    else {
+    try {
+      await reschedulePassengerRide(id, d.toISOString());
       toast.success("Scheduled time updated");
       setEditingId(null);
       load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reschedule trip");
     }
   }
 
