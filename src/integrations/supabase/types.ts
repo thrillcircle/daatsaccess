@@ -4061,7 +4061,6 @@ export type Database = {
         }
         Returns: Json
       }
-      driver_accept_ride: { Args: { p_ride_id: string }; Returns: Json }
       driver_acknowledge_operation: {
         Args: {
           p_assignment_id: string
@@ -4070,7 +4069,6 @@ export type Database = {
         }
         Returns: Json
       }
-      driver_cancel_ride: { Args: { p_ride_id: string }; Returns: Json }
       driver_complete_trip: {
         Args: { p_final_distance_km?: number; p_ride_id: string }
         Returns: Json
@@ -4194,6 +4192,14 @@ export type Database = {
         Args: { p_operation_run_id: string }
         Returns: Json
       }
+      passenger_cancel_ride: {
+        Args: {
+          p_idempotency_key?: string
+          p_reason?: string
+          p_ride_id: string
+        }
+        Returns: Json
+      }
       passenger_create_priced_ride: {
         Args: {
           p_destination_address: string
@@ -4268,6 +4274,15 @@ export type Database = {
           p_operation_run_id: string
           p_priority?: string
           p_subject: string
+        }
+        Returns: Json
+      }
+      passenger_reschedule_ride: {
+        Args: {
+          p_idempotency_key?: string
+          p_reason?: string
+          p_ride_id: string
+          p_scheduled_at: string
         }
         Returns: Json
       }
