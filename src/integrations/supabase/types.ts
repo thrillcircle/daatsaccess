@@ -4061,12 +4061,18 @@ export type Database = {
         }
         Returns: Json
       }
+      driver_accept_ride: { Args: { p_ride_id: string }; Returns: Json }
       driver_acknowledge_operation: {
         Args: {
           p_assignment_id: string
           p_expected_assignment_version: number
           p_idempotency_key?: string
         }
+        Returns: Json
+      }
+      driver_cancel_ride: { Args: { p_ride_id: string }; Returns: Json }
+      driver_complete_trip: {
+        Args: { p_final_distance_km?: number; p_ride_id: string }
         Returns: Json
       }
       driver_current_vehicle_document_status: {
@@ -4095,6 +4101,7 @@ export type Database = {
         }
         Returns: Json
       }
+      driver_mark_arrived: { Args: { p_ride_id: string }; Returns: Json }
       driver_report_incident: {
         Args: {
           p_incident_type: string
@@ -4114,6 +4121,16 @@ export type Database = {
         }
         Returns: Json
       }
+      driver_ride: { Args: { p_ride_id: string }; Returns: Json }
+      driver_rides: {
+        Args: { p_limit?: number; p_scope?: string }
+        Returns: Json[]
+      }
+      driver_start_scheduled_pickup: {
+        Args: { p_ride_id: string }
+        Returns: Json
+      }
+      driver_start_trip: { Args: { p_ride_id: string }; Returns: Json }
       driver_transition_operation: {
         Args: {
           p_expected_run_version: number
