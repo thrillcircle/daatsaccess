@@ -29,7 +29,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          for part in .phase5-payload/part*; do
+            wc -c "$part"
+            sha256sum "$part"
+          done
           cat .phase5-payload/part* > /tmp/phase5-product.b64
+          wc -c /tmp/phase5-product.b64
+          sha256sum /tmp/phase5-product.b64
           echo "1449effaaac7028fe2001eb43a21732e89243c296298f8c53f89d01124f77f18  /tmp/phase5-product.b64" | sha256sum -c -
           base64 -d /tmp/phase5-product.b64 > /tmp/phase5-product.tar.gz
           echo "dbb9265e3d70d72736bc53b1e2cecc0215c3a0162d0add718f7a0be48f5bfa1c  /tmp/phase5-product.tar.gz" | sha256sum -c -
