@@ -140,6 +140,16 @@ export type QuoteSummary = {
 // so the manual PricingDatabase bridge has been retired.
 export const pricingDb = supabase;
 
+/**
+ * Generated RPC argument types cannot express a nullable Postgres parameter,
+ * so optional arguments are passed through this identity helper.
+ */
+export function rpcNullable<T>(value: T | null | undefined): T {
+  return (value ?? null) as T;
+}
+
+
+
 
 export function asCalculationSnapshot(value: JsonValue | null): PricingCalculationSnapshot | null {
   if (!value || Array.isArray(value) || typeof value !== "object") return null;
