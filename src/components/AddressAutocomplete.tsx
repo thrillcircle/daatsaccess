@@ -170,19 +170,22 @@ export function AddressAutocomplete({
         setSuggestions(mapped);
         setOpen(true);
       } catch (suggestionError) {
-        console.warn("Autocomplete failed", suggestionError);
-        const message =
-          suggestionError instanceof Error ? suggestionError.message : String(suggestionError);
-        if (/referer .* blocked/i.test(message)) {
-          setError(
-            "Address search isn't available on this domain — open the published preview link to test it.",
-          );
-        } else {
+        console.warn("Browser autocomplete failed, falling back to server", suggestionError);
+        try {
+          const serverSuggestions = await searchAddresses({
+            data: { query: text.trim(), lat: bias?.lat, lng: bias?.lng },
+          });
+          setSuggestions(serverSuggestions);
+          setOpen(serverSuggestions.length > 0);
+          setError(serverSuggestions.length ? null : "No matching addresses found.");
+        } catch (fallbackError) {
+          console.warn("Server autocomplete failed", fallbackError);
           setError("Couldn't load suggestions. Type a full address.");
         }
       } finally {
         setLoading(false);
       }
+
     }, 250);
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
