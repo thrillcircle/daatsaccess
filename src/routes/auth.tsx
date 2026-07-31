@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,14 +60,18 @@ function AuthPage() {
 
   async function signInWithProvider(provider: "google" | "apple") {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/app` },
+    const result = await lovable.auth.signInWithOAuth(provider, {
+      redirect_uri: window.location.origin,
     });
-    if (error) {
-      toast.error(`${provider === "google" ? "Google" : "Apple"} sign-in failed: ${error.message}`);
+    if (result.error) {
+      toast.error(
+        `${provider === "google" ? "Google" : "Apple"} sign-in failed: ${result.error.message}`,
+      );
       setLoading(false);
+      return;
     }
+    if (result.redirected) return;
+    navigate({ to: "/app" });
   }
 
   async function onSubmit(e: React.FormEvent) {

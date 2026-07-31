@@ -2,7 +2,7 @@
 -- All privileged changes are RPC-only and recorded in an immutable admin audit stream.
 
 -- The project's role helper lives in the private schema; expose a thin, authenticated-only
--- wrapper so the RLS policies below can evaluate it as the querying role.
+-- wrapper so RLS policies below can evaluate it as the querying role.
 create or replace function public.has_role(_user_id uuid, _role public.app_role)
 returns boolean language sql stable security definer set search_path=public,private as $$
   select private.has_role(_user_id, _role);
@@ -25,6 +25,8 @@ create table if not exists public.system_audit_events (
 );
 alter table public.system_audit_events enable row level security;
 grant select on public.system_audit_events to authenticated;
+grant all on public.system_audit_events to service_role;
+drop policy if exists "admins read system audit events" on public.system_audit_events;
 create policy "admins read system audit events" on public.system_audit_events
   for select to authenticated using (public.has_role(auth.uid(), 'admin'));
 
@@ -37,6 +39,8 @@ create table if not exists public.account_controls (
 );
 alter table public.account_controls enable row level security;
 grant select on public.account_controls to authenticated;
+grant all on public.account_controls to service_role;
+drop policy if exists "users see own account control and admins see all" on public.account_controls;
 create policy "users see own account control and admins see all" on public.account_controls
   for select to authenticated using (user_id = auth.uid() or public.has_role(auth.uid(), 'admin'));
 
@@ -51,6 +55,8 @@ create table if not exists public.app_settings (
 );
 alter table public.app_settings enable row level security;
 grant select on public.app_settings to authenticated;
+grant all on public.app_settings to service_role;
+drop policy if exists "admins read non-secret settings" on public.app_settings;
 create policy "admins read non-secret settings" on public.app_settings
   for select to authenticated using (public.has_role(auth.uid(), 'admin') and not is_sensitive);
 
@@ -85,6 +91,8 @@ create unique index if not exists one_active_shift_per_driver on public.driver_v
 create unique index if not exists one_active_shift_per_vehicle on public.driver_vehicle_shifts(vehicle_id) where status='active';
 alter table public.driver_vehicle_shifts enable row level security;
 grant select on public.driver_vehicle_shifts to authenticated;
+grant all on public.driver_vehicle_shifts to service_role;
+drop policy if exists "drivers see own shifts and admins see all" on public.driver_vehicle_shifts;
 create policy "drivers see own shifts and admins see all" on public.driver_vehicle_shifts
   for select to authenticated using (driver_user_id=auth.uid() or public.has_role(auth.uid(),'admin'));
 
@@ -242,33 +250,3 @@ grant execute on function public.admin_list_vehicle_shifts() to authenticated;
 
 -- Prevent browser clients from changing these protected records directly.
 revoke insert,update,delete on public.system_audit_events,public.account_controls,public.app_settings,public.driver_vehicle_shifts from authenticated,anon;
-
--- Service role access for maintenance jobs, and no signed-out access at all.
-grant all on public.system_audit_events, public.account_controls, public.app_settings, public.driver_vehicle_shifts to service_role;
-revoke all on public.system_audit_events, public.account_controls, public.app_settings, public.driver_vehicle_shifts from anon;
-grant select on public.system_audit_events, public.account_controls, public.app_settings, public.driver_vehicle_shifts to authenticated;
-
--- Signed-out visitors must never reach the protected routines.
-revoke all on function public.admin_list_users() from public, anon;
-revoke all on function public.current_account_status() from public, anon;
-revoke all on function public.admin_set_user_status(uuid,text,text) from public, anon;
-revoke all on function public.admin_set_user_roles(uuid,public.app_role[]) from public, anon;
-revoke all on function public.admin_update_setting(text,jsonb) from public, anon;
-revoke all on function public.admin_list_settings() from public, anon;
-revoke all on function public.admin_list_audit_events(integer) from public, anon;
-revoke all on function public.driver_start_vehicle_shift(uuid,numeric,jsonb,text) from public, anon;
-revoke all on function public.driver_end_vehicle_shift(uuid,numeric,jsonb,text,text) from public, anon;
-revoke all on function public.driver_shift_dashboard() from public, anon;
-revoke all on function public.admin_list_vehicle_shifts() from public, anon;
-
-grant execute on function public.admin_list_users() to authenticated;
-grant execute on function public.current_account_status() to authenticated;
-grant execute on function public.admin_set_user_status(uuid,text,text) to authenticated;
-grant execute on function public.admin_set_user_roles(uuid,public.app_role[]) to authenticated;
-grant execute on function public.admin_update_setting(text,jsonb) to authenticated;
-grant execute on function public.admin_list_settings() to authenticated;
-grant execute on function public.admin_list_audit_events(integer) to authenticated;
-grant execute on function public.driver_start_vehicle_shift(uuid,numeric,jsonb,text) to authenticated;
-grant execute on function public.driver_end_vehicle_shift(uuid,numeric,jsonb,text,text) to authenticated;
-grant execute on function public.driver_shift_dashboard() to authenticated;
-grant execute on function public.admin_list_vehicle_shifts() to authenticated;

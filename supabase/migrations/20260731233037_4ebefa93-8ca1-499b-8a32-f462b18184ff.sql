@@ -1,0 +1,1 @@
+revoke all on public.system_audit_events, public.account_controls, public.app_settings, public.driver_vehicle_shifts from anon;
