@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
@@ -121,7 +121,7 @@ type TripsSearch = { status: FilterKey; q: string };
 
 export const Route = createFileRoute("/app/admin/trips")({
   head: () => ({ meta: [{ title: "Trips — Admin" }] }),
-  validateSearch: (raw: Record<string, unknown>): TripsSearch => {
+  validateSearch: (raw: Record<string, unknown> & SearchSchemaInput): TripsSearch => {
     const status =
       typeof raw.status === "string" && VALID_FILTERS.has(raw.status as FilterKey)
         ? (raw.status as FilterKey)
@@ -434,7 +434,18 @@ function AdminTripsPage() {
           <CountChip label="Cancelled" value={counts?.cancelled ?? "—"} />
         </div>
         <Button asChild size="sm" variant="outline" className="h-8 text-xs">
-          <Link to="/app/admin/trip-history" search={{ status: "all", q: "", from: "", to: "" }}>
+          <Link
+            to="/app/admin/trip-history"
+            search={{
+              status: "all",
+              q: "",
+              from: "",
+              to: "",
+              driver: "",
+              vehicle: "",
+              sort: "newest",
+            }}
+          >
             <History className="mr-1 h-3 w-3" /> Trip History
           </Link>
         </Button>

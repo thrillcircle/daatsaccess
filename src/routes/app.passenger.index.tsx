@@ -17,6 +17,7 @@ import { usePassengerPricingEstimate } from "@/hooks/use-passenger-pricing-estim
 import type { Database } from "@/integrations/supabase/types";
 import { Car, Radio } from "lucide-react";
 import { useLiveLocation } from "@/hooks/use-live-location";
+import { PassengerOperationsTimeline } from "@/components/operations/PassengerOperationsTimeline";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,6 +76,7 @@ function PassengerPage() {
   return (
     <AppShell title="Ride" nav={nav}>
       <RideRequest userId={user?.id} />
+      <PassengerOperationsTimeline userId={user?.id} />
       <RatePrompt userId={user?.id} />
       <ScheduledTrips userId={user?.id} />
       <BecomeDriver userId={user?.id} hasDriverRole={!!roles?.includes("driver")} />

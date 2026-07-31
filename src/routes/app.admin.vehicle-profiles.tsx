@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Accessibility,
@@ -42,7 +42,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/admin/vehicle-profiles")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown> & SearchSchemaInput) => ({
     q: typeof search.q === "string" ? search.q : "",
     status: typeof search.status === "string" ? search.status : "all",
     assignment: typeof search.assignment === "string" ? search.assignment : "all",

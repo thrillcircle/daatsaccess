@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarClock,
@@ -39,7 +39,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/admin/driver-assignments")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown> & SearchSchemaInput) => ({
     q: typeof search.q === "string" ? search.q : "",
     view: typeof search.view === "string" ? search.view : "active",
   }),

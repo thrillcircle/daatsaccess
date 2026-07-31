@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { LifeBuoy, Loader2, MessageCircleQuestion, Plus, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,7 +51,7 @@ type SupportSearch = {
 const SUPPORT_CATEGORY_VALUES = new Set(SUPPORT_CATEGORIES.map((item) => item.value));
 
 export const Route = createFileRoute("/app/support")({
-  validateSearch: (search: Record<string, unknown>): SupportSearch => ({
+  validateSearch: (search: Record<string, unknown> & SearchSchemaInput): SupportSearch => ({
     rideId: typeof search.rideId === "string" ? search.rideId : "",
     bookingId: typeof search.bookingId === "string" ? search.bookingId : "",
     category:

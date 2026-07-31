@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
@@ -31,21 +31,42 @@ const VALID_OVERVIEW = new Set<OverviewFilter>([
 
 type OverviewSearch = { filter: OverviewFilter };
 
-const TRIPS_STATUS_FOR: Record<OverviewFilter, string> = {
+const TRIPS_STATUS_FOR = {
   all: "all",
   requested: "requested",
   scheduled: "scheduled",
   active: "all",
   completed: "completed",
   cancelled: "cancelled",
-};
+} as const satisfies Record<OverviewFilter, FilterKey>;
+
+type FilterKey =
+  | "all"
+  | "scheduled"
+  | "requested"
+  | "accepted"
+  | "driver_arriving"
+  | "arrived"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "pin_required";
+
+type DriverFilter =
+  | "all"
+  | "online"
+  | "offline"
+  | "assigned"
+  | "available"
+  | "stale"
+  | "incomplete";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 type RideChange = Database["public"]["Tables"]["ride_change_log"]["Row"];
 
 export const Route = createFileRoute("/app/admin/")({
   head: () => ({ meta: [{ title: "Admin — Access" }] }),
-  validateSearch: (raw: Record<string, unknown>): OverviewSearch => {
+  validateSearch: (raw: Record<string, unknown> & SearchSchemaInput): OverviewSearch => {
     const f =
       typeof raw.filter === "string" && VALID_OVERVIEW.has(raw.filter as OverviewFilter)
         ? (raw.filter as OverviewFilter)
@@ -385,7 +406,15 @@ function AdminPage() {
             <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
               <Link
                 to="/app/admin/trip-history"
-                search={{ status: "all", q: "", from: "", to: "" }}
+                search={{
+                  status: "all",
+                  q: "",
+                  from: "",
+                  to: "",
+                  driver: "",
+                  vehicle: "",
+                  sort: "newest",
+                }}
               >
                 Trip History
               </Link>
@@ -558,7 +587,7 @@ function DriverMetricCard({
   label: string;
   value: string | number;
   to: "/app/admin/drivers";
-  filterKey: string;
+  filterKey: DriverFilter;
 }) {
   return (
     <Link
