@@ -226,10 +226,10 @@ function OperationDetailPage() {
       p_incident_type: incidentType,
       p_severity: incidentSeverity,
       p_title: incidentTitle.trim(),
-      p_internal_notes: incidentNotes || null,
-      p_passenger_visible_summary: passengerSummary || null,
-      p_support_ticket_id: null,
-      p_maintenance_work_order_id: null,
+      p_internal_notes: incidentNotes || undefined,
+      p_passenger_visible_summary: passengerSummary || undefined,
+      p_support_ticket_id: undefined,
+      p_maintenance_work_order_id: undefined,
     });
     setBusy(false);
     if (error) toast.error(error.message);

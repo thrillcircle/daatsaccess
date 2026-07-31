@@ -1,11 +1,10 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Phase 5 is developed before the live schema is regenerated. Keep the bridge
- * isolated here; Lovable must regenerate types after applying the migrations.
+ * Typed client used by the Phase 5 operations UI. The generated Database types
+ * now include the operational schema, so no casting bridge is required.
  */
-export const operationsDb = supabase as unknown as SupabaseClient;
+export const operationsDb = supabase;
 
 export type OperationStatus =
   | "scheduled"

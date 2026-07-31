@@ -190,7 +190,7 @@ export function DriverOperationsPanel({
         ? await operationsDb.rpc("driver_decline_dispatch_offer", {
             p_offer_id: declineTarget.id,
             p_expected_offer_version: declineTarget.rowVersion,
-            p_reason: declineReason || null,
+            p_reason: declineReason || undefined,
           })
         : await operationsDb.rpc("driver_decline_operation", {
             p_assignment_id: declineTarget.id,
@@ -228,7 +228,7 @@ export function DriverOperationsPanel({
       p_run_id: run.id,
       p_target_status: target,
       p_expected_run_version: run.row_version,
-      p_reason: null,
+      p_reason: undefined,
       p_idempotency_key: crypto.randomUUID(),
     });
     setBusy(null);
@@ -249,7 +249,7 @@ export function DriverOperationsPanel({
       p_title: incidentTitle.trim(),
       p_internal_notes: incidentNotes.trim(),
       p_passenger_visible_summary:
-        incidentType === "delay" ? "Your service is delayed. Operations has been notified." : null,
+        incidentType === "delay" ? "Your service is delayed. Operations has been notified." : undefined,
     });
     setBusy(null);
     if (error) toast.error(error.message);

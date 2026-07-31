@@ -105,8 +105,8 @@ export function useLiveLocation(opts: Options): LiveLocationState {
               p_longitude: lng,
               p_captured_at: new Date(pos.timestamp || Date.now()).toISOString(),
               p_accuracy: accuracy ?? null,
-              p_heading: heading ?? null,
-              p_operation_run_id: operationRunId ?? null,
+              p_heading: heading ?? undefined,
+              p_operation_run_id: operationRunId ?? undefined,
               p_source: "browser",
             });
             if (error) throw error;
