@@ -1,6 +1,15 @@
 -- Access architecture closeout: users/roles, settings, vehicle shifts and audit logs.
 -- All privileged changes are RPC-only and recorded in an immutable admin audit stream.
 
+-- The project's role helper lives in the private schema; expose a thin, authenticated-only
+-- wrapper so the RLS policies below can evaluate it as the querying role.
+create or replace function public.has_role(_user_id uuid, _role public.app_role)
+returns boolean language sql stable security definer set search_path=public,private as $$
+  select private.has_role(_user_id, _role);
+$$;
+revoke all on function public.has_role(uuid, public.app_role) from public, anon;
+grant execute on function public.has_role(uuid, public.app_role) to authenticated, service_role;
+
 create table if not exists public.system_audit_events (
   id uuid primary key default gen_random_uuid(),
   actor_user_id uuid references auth.users(id) on delete set null,
@@ -93,7 +102,7 @@ returns table(user_id uuid, full_name text, phone text, email text, roles public
 language plpgsql security definer set search_path=public,auth as $$
 begin
   if not public.has_role(auth.uid(),'admin') then raise exception 'Administrator access required'; end if;
-  return query select u.id,p.full_name,p.phone,u.email,
+  return query select u.id,p.full_name,p.phone,u.email::text,
     coalesce(array_agg(r.role order by r.role) filter(where r.role is not null),'{}'::public.app_role[]),
     coalesce(c.status,'active'),u.created_at
   from auth.users u left join public.profiles p on p.user_id=u.id
@@ -233,3 +242,33 @@ grant execute on function public.admin_list_vehicle_shifts() to authenticated;
 
 -- Prevent browser clients from changing these protected records directly.
 revoke insert,update,delete on public.system_audit_events,public.account_controls,public.app_settings,public.driver_vehicle_shifts from authenticated,anon;
+
+-- Service role access for maintenance jobs, and no signed-out access at all.
+grant all on public.system_audit_events, public.account_controls, public.app_settings, public.driver_vehicle_shifts to service_role;
+revoke all on public.system_audit_events, public.account_controls, public.app_settings, public.driver_vehicle_shifts from anon;
+grant select on public.system_audit_events, public.account_controls, public.app_settings, public.driver_vehicle_shifts to authenticated;
+
+-- Signed-out visitors must never reach the protected routines.
+revoke all on function public.admin_list_users() from public, anon;
+revoke all on function public.current_account_status() from public, anon;
+revoke all on function public.admin_set_user_status(uuid,text,text) from public, anon;
+revoke all on function public.admin_set_user_roles(uuid,public.app_role[]) from public, anon;
+revoke all on function public.admin_update_setting(text,jsonb) from public, anon;
+revoke all on function public.admin_list_settings() from public, anon;
+revoke all on function public.admin_list_audit_events(integer) from public, anon;
+revoke all on function public.driver_start_vehicle_shift(uuid,numeric,jsonb,text) from public, anon;
+revoke all on function public.driver_end_vehicle_shift(uuid,numeric,jsonb,text,text) from public, anon;
+revoke all on function public.driver_shift_dashboard() from public, anon;
+revoke all on function public.admin_list_vehicle_shifts() from public, anon;
+
+grant execute on function public.admin_list_users() to authenticated;
+grant execute on function public.current_account_status() to authenticated;
+grant execute on function public.admin_set_user_status(uuid,text,text) to authenticated;
+grant execute on function public.admin_set_user_roles(uuid,public.app_role[]) to authenticated;
+grant execute on function public.admin_update_setting(text,jsonb) to authenticated;
+grant execute on function public.admin_list_settings() to authenticated;
+grant execute on function public.admin_list_audit_events(integer) to authenticated;
+grant execute on function public.driver_start_vehicle_shift(uuid,numeric,jsonb,text) to authenticated;
+grant execute on function public.driver_end_vehicle_shift(uuid,numeric,jsonb,text,text) to authenticated;
+grant execute on function public.driver_shift_dashboard() to authenticated;
+grant execute on function public.admin_list_vehicle_shifts() to authenticated;
