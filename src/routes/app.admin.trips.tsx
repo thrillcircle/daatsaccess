@@ -949,10 +949,6 @@ function AdminActionsDialog({
   }
 
   async function onAssignResources() {
-    if (ride.status === "requested" && !paymentConfirmed) {
-      toast.error("PayFast payment must be confirmed before this trip can be accepted");
-      return;
-    }
     if (!selectedDriver || !selectedFleet) {
       toast.error("Select both a driver and a suitable canonical vehicle");
       return;
