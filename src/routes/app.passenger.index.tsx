@@ -701,29 +701,53 @@ function ScheduledTrips({ userId }: { userId?: string }) {
   );
 }
 
-function BecomeDriver({ userId, hasDriverRole }: { userId?: string; hasDriverRole: boolean }) {
-  if (!userId || hasDriverRole) return null;
-  async function onBecome() {
-    const { error } = await supabase
-      .from("user_roles")
-      .insert({ user_id: userId!, role: "driver" });
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Driver role added — refresh to access driver mode");
-      setTimeout(() => window.location.reload(), 600);
+/**
+ * Simple bridge from the Ride page to full Trip Details for the passenger's
+ * current active ride. Renders nothing when there is no active ride.
+ */
+function ActiveTripShortcut({ userId }: { userId?: string }) {
+  const [ride, setRide] = useState<Ride | null>(null);
+
+  useEffect(() => {
+    if (!userId) {
+      setRide(null);
+      return;
     }
-  }
+    let cancelled = false;
+    (async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from("rides")
+        .select("*")
+        .eq("passenger_id", userId)
+        .in("status", ["requested", "accepted", "driver_arriving", "arrived", "in_progress"])
+        .or(`request_type.eq.now,scheduled_at.lte.${nowIso}`)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (!cancelled) setRide((data?.[0] as Ride | undefined) ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  if (!ride) return null;
+
   return (
-    <section className="mt-4 rounded-2xl border border-dashed bg-card p-4">
+    <section className="mt-4 rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
       <div className="flex items-start gap-3">
         <Car className="mt-0.5 h-5 w-5 text-primary" />
         <div className="flex-1">
-          <h3 className="font-medium">Drive with Access</h3>
-          <p className="text-sm text-muted-foreground">Earn by accepting rides from passengers.</p>
+          <h2 className="font-semibold">Your active trip</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Open Trip Details for your driver, journey and payment information.
+          </p>
         </div>
       </div>
-      <Button variant="outline" className="mt-3 w-full" onClick={onBecome}>
-        Become a driver
+      <Button asChild className="mt-3 w-full sm:w-auto">
+        <Link to="/app/trip/$rideId" params={{ rideId: ride.id }}>
+          View trip details
+        </Link>
       </Button>
     </section>
   );
