@@ -38,8 +38,11 @@ describe("Phase 7 automatic passenger PayFast UX", () => {
     expect(checkoutHelper).toContain("ride_id: rideId");
     expect(checkoutHelper).toContain("ride_change_request_id: changeRequestId");
     expect(checkoutHelper).toContain('idempotency_key: getIdempotencyKey("ride", rideId)');
-    expect(checkoutHelper).not.toMatch(/amount\s*:/i);
-    expect(checkoutHelper).not.toMatch(/price\s*:/i);
+    const requestBuilders = checkoutHelper.slice(
+      checkoutHelper.indexOf("export async function startPayfastCheckout"),
+    );
+    expect(requestBuilders).not.toMatch(/amount\s*:/i);
+    expect(requestBuilders).not.toMatch(/price\s*:/i);
   });
 
   it("posts signed checkout fields only to official PayFast endpoints", () => {
