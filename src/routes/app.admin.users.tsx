@@ -55,13 +55,7 @@ function UsersPage() {
     const q = query.trim().toLowerCase();
     return q
       ? users.filter((u) =>
-          [
-            u.full_name,
-            u.email,
-            u.phone,
-            ...u.roles,
-            u.is_master_admin ? "master admin" : null,
-          ]
+          [u.full_name, u.email, u.phone, ...u.roles, u.is_master_admin ? "master admin" : null]
             .filter(Boolean)
             .some((v) => String(v).toLowerCase().includes(q)),
         )
@@ -125,8 +119,8 @@ function UsersPage() {
               <Crown className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <p>
                 <strong>Master Admin controls enabled.</strong> You can manage passengers and
-                drivers, and you can grant, revoke, suspend or reactivate administrator access.
-                The Master Admin account itself is protected.
+                drivers, and you can grant, revoke, suspend or reactivate administrator access. The
+                Master Admin account itself is protected.
               </p>
             </div>
           ) : (
@@ -158,7 +152,8 @@ function UsersPage() {
         <div className="space-y-3">
           {visible.map((user) => {
             const statusManageable = canManageStatus(user);
-            const adminProtected = user.roles.includes("admin") && !capabilities?.can_manage_admins;
+            const adminProtected =
+              user.roles.includes("admin") && !capabilities?.can_manage_admins;
 
             return (
               <article key={user.user_id} className="rounded-2xl border bg-card p-4 shadow-sm">
@@ -180,7 +175,8 @@ function UsersPage() {
                     </p>
                     {user.is_master_admin ? (
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Protected account. Ordinary administrators cannot change its roles or status.
+                        Protected account. Ordinary administrators cannot change its roles or
+                        status.
                       </p>
                     ) : adminProtected ? (
                       <p className="mt-1 text-xs text-muted-foreground">
