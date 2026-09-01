@@ -2635,6 +2635,7 @@ export type Database = {
           pickup_place_id: string | null
           pricing_version_id: string | null
           request_type: string
+          route_stops: Json
           route_version: number
           scheduled_at: string | null
           service_booking_id: string | null
@@ -2671,6 +2672,7 @@ export type Database = {
           pickup_place_id?: string | null
           pricing_version_id?: string | null
           request_type?: string
+          route_stops?: Json
           route_version?: number
           scheduled_at?: string | null
           service_booking_id?: string | null
@@ -2707,6 +2709,7 @@ export type Database = {
           pickup_place_id?: string | null
           pricing_version_id?: string | null
           request_type?: string
+          route_stops?: Json
           route_version?: number
           scheduled_at?: string | null
           service_booking_id?: string | null
@@ -4600,6 +4603,7 @@ export type Database = {
           p_expected_route_version: number
           p_pickup: Json
           p_ride_id: string
+          p_stops?: Json
         }
         Returns: Json
       }
