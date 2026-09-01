@@ -745,9 +745,7 @@ function ActiveTripShortcut({ userId }: { userId?: string }) {
         </div>
       </div>
       <Button asChild className="mt-3 w-full sm:w-auto">
-        <Link to="/app/trip/$rideId" params={{ rideId: ride.id }}>
-          View trip details
-        </Link>
+        <a href={`/app/trip/${ride.id}`}>View trip details</a>
       </Button>
     </section>
   );
