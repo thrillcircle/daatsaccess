@@ -90,7 +90,9 @@ function CaseAssessmentDialog({ ticketId }: { ticketId: string }) {
         ) : ticket ? (
           <AdminSupportCaseMetadata ticket={ticket} />
         ) : (
-          <p className="py-6 text-sm text-muted-foreground">The support case could not be loaded.</p>
+          <p className="py-6 text-sm text-muted-foreground">
+            The support case could not be loaded.
+          </p>
         )}
       </DialogContent>
     </Dialog>

@@ -199,7 +199,10 @@ export function acceptPolicy(policyDocumentId: string) {
   return call("user_accept_policy", { p_policy_document_id: policyDocumentId });
 }
 
-export function submitPrivacyRequest(requestType: PrivacyRequest["request_type"], userNote?: string) {
+export function submitPrivacyRequest(
+  requestType: PrivacyRequest["request_type"],
+  userNote?: string,
+) {
   return call<PrivacyRequest>("user_submit_privacy_request", {
     p_request_type: requestType,
     p_user_note: userNote ?? undefined,

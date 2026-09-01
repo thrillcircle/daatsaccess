@@ -42,7 +42,9 @@ function AdminCommercialPage() {
       setRefunds(refundRows);
       setPrivacy(privacyRows);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not load commercial readiness data");
+      toast.error(
+        error instanceof Error ? error.message : "Could not load commercial readiness data",
+      );
     } finally {
       setLoading(false);
     }
@@ -87,8 +89,12 @@ function AdminCommercialPage() {
     }
   }
 
-  const activeRefunds = refunds.filter((item) => ["requested", "failed", "action_required", "processing"].includes(item.status));
-  const activePrivacy = privacy.filter((item) => ["requested", "in_progress"].includes(item.status));
+  const activeRefunds = refunds.filter((item) =>
+    ["requested", "failed", "action_required", "processing"].includes(item.status),
+  );
+  const activePrivacy = privacy.filter((item) =>
+    ["requested", "in_progress"].includes(item.status),
+  );
 
   return (
     <AdminShell title="Commercial Readiness">
@@ -101,7 +107,8 @@ function AdminCommercialPage() {
                 <h1 className="text-xl font-semibold">Commercial readiness</h1>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                Payments, refunds, operational exceptions, safety, privacy and notification readiness in one place.
+                Payments, refunds, operational exceptions, safety, privacy and notification
+                readiness in one place.
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
@@ -117,7 +124,9 @@ function AdminCommercialPage() {
         ) : (
           <>
             <section className="space-y-2">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Operations</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Operations
+              </h2>
               <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
                 <Metric label="Trips today" value={snapshot.operations.trips_today} />
                 <Metric label="Requested" value={snapshot.operations.requested} />
@@ -129,33 +138,73 @@ function AdminCommercialPage() {
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payments</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Payments
+              </h2>
               <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
-                <Metric label="Collected today" value={formatZAR(Number(snapshot.payments.collected_today))} />
+                <Metric
+                  label="Collected today"
+                  value={formatZAR(Number(snapshot.payments.collected_today))}
+                />
                 <Metric label="Pending payments" value={snapshot.payments.pending} />
                 <Metric label="Failed today" value={snapshot.payments.failed_today} />
                 <Metric label="Refund queue" value={snapshot.payments.refunds_requested} />
                 <Metric label="Refunds today" value={snapshot.payments.refunds_completed_today} />
-                <Metric label="Cancellation charges" value={formatZAR(Number(snapshot.payments.cancellation_charges_today))} />
+                <Metric
+                  label="Cancellation charges"
+                  value={formatZAR(Number(snapshot.payments.cancellation_charges_today))}
+                />
               </div>
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">System</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                System
+              </h2>
               <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-7">
-                <Metric label="Notification failures" value={snapshot.system.notification_failures} warn={snapshot.system.notification_failures > 0} />
-                <Metric label="External channels" value={snapshot.system.external_channels_action_required} warn={snapshot.system.external_channels_action_required > 0} />
-                <Metric label="Open SOS" value={snapshot.system.open_safety_incidents} warn={snapshot.system.open_safety_incidents > 0} />
-                <Metric label="Urgent support" value={snapshot.system.urgent_support_cases} warn={snapshot.system.urgent_support_cases > 0} />
-                <Metric label="Privacy requests" value={snapshot.system.open_privacy_requests} warn={snapshot.system.open_privacy_requests > 0} />
-                <Metric label="Scheduler failures" value={snapshot.system.scheduler_failures_24h} warn={snapshot.system.scheduler_failures_24h > 0} />
-                <Metric label="Ops alerts" value={snapshot.system.unresolved_operational_alerts} warn={snapshot.system.unresolved_operational_alerts > 0} />
+                <Metric
+                  label="Notification failures"
+                  value={snapshot.system.notification_failures}
+                  warn={snapshot.system.notification_failures > 0}
+                />
+                <Metric
+                  label="External channels"
+                  value={snapshot.system.external_channels_action_required}
+                  warn={snapshot.system.external_channels_action_required > 0}
+                />
+                <Metric
+                  label="Open SOS"
+                  value={snapshot.system.open_safety_incidents}
+                  warn={snapshot.system.open_safety_incidents > 0}
+                />
+                <Metric
+                  label="Urgent support"
+                  value={snapshot.system.urgent_support_cases}
+                  warn={snapshot.system.urgent_support_cases > 0}
+                />
+                <Metric
+                  label="Privacy requests"
+                  value={snapshot.system.open_privacy_requests}
+                  warn={snapshot.system.open_privacy_requests > 0}
+                />
+                <Metric
+                  label="Scheduler failures"
+                  value={snapshot.system.scheduler_failures_24h}
+                  warn={snapshot.system.scheduler_failures_24h > 0}
+                />
+                <Metric
+                  label="Ops alerts"
+                  value={snapshot.system.unresolved_operational_alerts}
+                  warn={snapshot.system.unresolved_operational_alerts > 0}
+                />
               </div>
               {snapshot.system.external_channels_action_required > 0 ? (
                 <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   <p>
-                    External push/SMS/WhatsApp/email delivery records are waiting for provider configuration. In-app notifications remain active. No provider secrets are stored in app settings.
+                    External push/SMS/WhatsApp/email delivery records are waiting for provider
+                    configuration. In-app notifications remain active. No provider secrets are
+                    stored in app settings.
                   </p>
                 </div>
               ) : null}
@@ -169,22 +218,31 @@ function AdminCommercialPage() {
             <h2 className="font-semibold">Refund & cancellation settlement queue</h2>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Prepaid fares are netted against cancellation charges. Only the unused balance is refunded; only a shortfall can become an additional charge.
+            Prepaid fares are netted against cancellation charges. Only the unused balance is
+            refunded; only a shortfall can become an additional charge.
           </p>
           <div className="mt-4 space-y-2">
             {!activeRefunds.length ? (
-              <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">No refunds need attention.</p>
+              <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
+                No refunds need attention.
+              </p>
             ) : (
               activeRefunds.map((refund) => (
                 <div key={refund.id} className="rounded-xl border p-3 text-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="font-medium">{refund.passenger_name ?? "Passenger"} · {formatZAR(Number(refund.amount))}</p>
+                      <p className="font-medium">
+                        {refund.passenger_name ?? "Passenger"} · {formatZAR(Number(refund.amount))}
+                      </p>
                       <p className="mt-1 text-xs text-muted-foreground">{refund.reason}</p>
-                      <p className="mt-1 font-mono text-[11px] text-muted-foreground">{refund.merchant_payment_id ?? refund.payment_id}</p>
+                      <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                        {refund.merchant_payment_id ?? refund.payment_id}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <span className="rounded-full border px-2 py-1 text-xs capitalize">{refund.status.replaceAll("_", " ")}</span>
+                      <span className="rounded-full border px-2 py-1 text-xs capitalize">
+                        {refund.status.replaceAll("_", " ")}
+                      </span>
                       {refund.status !== "processing" ? (
                         <Button
                           className="mt-2 block"
@@ -214,37 +272,72 @@ function AdminCommercialPage() {
             <Siren className="h-4 w-4 text-primary" />
             <h2 className="font-semibold">POPIA request queue</h2>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">Track data-export and account-deletion requests to a documented resolution.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Track data-export and account-deletion requests to a documented resolution.
+          </p>
           <div className="mt-4 space-y-3">
             {!activePrivacy.length ? (
-              <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">No privacy requests need attention.</p>
+              <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
+                No privacy requests need attention.
+              </p>
             ) : (
               activePrivacy.map((request) => (
                 <div key={request.id} className="rounded-xl border p-3 text-sm">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                      <p className="font-medium">{request.full_name ?? "User"} · {request.request_type.replaceAll("_", " ")}</p>
-                      <p className="text-xs text-muted-foreground">Requested {new Date(request.created_at).toLocaleString("en-ZA")}</p>
+                      <p className="font-medium">
+                        {request.full_name ?? "User"} · {request.request_type.replaceAll("_", " ")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Requested {new Date(request.created_at).toLocaleString("en-ZA")}
+                      </p>
                     </div>
-                    <span className="rounded-full border px-2 py-1 text-xs capitalize">{request.status.replaceAll("_", " ")}</span>
+                    <span className="rounded-full border px-2 py-1 text-xs capitalize">
+                      {request.status.replaceAll("_", " ")}
+                    </span>
                   </div>
                   <Textarea
                     className="mt-3"
                     rows={2}
                     placeholder="Resolution summary required before completion"
                     value={privacyResolution[request.id] ?? request.resolution_summary ?? ""}
-                    onChange={(event) => setPrivacyResolution((current) => ({ ...current, [request.id]: event.target.value }))}
+                    onChange={(event) =>
+                      setPrivacyResolution((current) => ({
+                        ...current,
+                        [request.id]: event.target.value,
+                      }))
+                    }
                   />
                   <div className="mt-2 flex flex-wrap justify-end gap-2">
                     {request.status === "requested" ? (
-                      <Button size="sm" variant="outline" disabled={busy === `privacy:${request.id}`} onClick={() => void updatePrivacy(request, "in_progress")}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy === `privacy:${request.id}`}
+                        onClick={() => void updatePrivacy(request, "in_progress")}
+                      >
                         Start processing
                       </Button>
                     ) : null}
-                    <Button size="sm" disabled={busy === `privacy:${request.id}` || !(privacyResolution[request.id] ?? request.resolution_summary ?? "").trim()} onClick={() => void updatePrivacy(request, "completed")}>
+                    <Button
+                      size="sm"
+                      disabled={
+                        busy === `privacy:${request.id}` ||
+                        !(privacyResolution[request.id] ?? request.resolution_summary ?? "").trim()
+                      }
+                      onClick={() => void updatePrivacy(request, "completed")}
+                    >
                       Mark completed
                     </Button>
-                    <Button size="sm" variant="outline" disabled={busy === `privacy:${request.id}` || !(privacyResolution[request.id] ?? request.resolution_summary ?? "").trim()} onClick={() => void updatePrivacy(request, "rejected")}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={
+                        busy === `privacy:${request.id}` ||
+                        !(privacyResolution[request.id] ?? request.resolution_summary ?? "").trim()
+                      }
+                      onClick={() => void updatePrivacy(request, "rejected")}
+                    >
                       Reject with reason
                     </Button>
                   </div>
@@ -258,7 +351,15 @@ function AdminCommercialPage() {
   );
 }
 
-function Metric({ label, value, warn = false }: { label: string; value: string | number; warn?: boolean }) {
+function Metric({
+  label,
+  value,
+  warn = false,
+}: {
+  label: string;
+  value: string | number;
+  warn?: boolean;
+}) {
   return (
     <div className={`rounded-xl border bg-card p-3 ${warn ? "border-amber-500/40" : ""}`}>
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>

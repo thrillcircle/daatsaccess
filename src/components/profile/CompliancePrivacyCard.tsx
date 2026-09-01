@@ -61,7 +61,9 @@ export function CompliancePrivacyCard() {
     setBusy(type);
     try {
       await submitPrivacyRequest(type);
-      toast.success(type === "data_export" ? "Data export requested" : "Account deletion requested");
+      toast.success(
+        type === "data_export" ? "Data export requested" : "Account deletion requested",
+      );
       await load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not submit privacy request");
@@ -78,7 +80,9 @@ export function CompliancePrivacyCard() {
       setPreferences(next);
       toast.success("Notification preferences saved");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save notification preferences");
+      toast.error(
+        error instanceof Error ? error.message : "Could not save notification preferences",
+      );
     } finally {
       setBusy(null);
     }
@@ -137,7 +141,9 @@ export function CompliancePrivacyCard() {
                   </Button>
                 )}
               </div>
-              {policy.content ? <p className="mt-2 whitespace-pre-wrap text-xs">{policy.content}</p> : null}
+              {policy.content ? (
+                <p className="mt-2 whitespace-pre-wrap text-xs">{policy.content}</p>
+              ) : null}
               {policy.document_url ? (
                 <a
                   href={policy.document_url}
@@ -178,8 +184,10 @@ export function CompliancePrivacyCard() {
             {snapshot.privacy_requests.slice(0, 4).map((item) => (
               <p key={item.id} className="text-xs text-muted-foreground">
                 {item.request_type === "data_export" ? "Data export" : "Account deletion"} ·{" "}
-                <span className="font-medium text-foreground">{item.status.replaceAll("_", " ")}</span> ·{" "}
-                {new Date(item.created_at).toLocaleDateString("en-ZA")}
+                <span className="font-medium text-foreground">
+                  {item.status.replaceAll("_", " ")}
+                </span>{" "}
+                · {new Date(item.created_at).toLocaleDateString("en-ZA")}
               </p>
             ))}
           </div>
@@ -193,11 +201,15 @@ export function CompliancePrivacyCard() {
             <h3 className="text-sm font-medium">Notification preferences</h3>
           </div>
           <p className="text-xs text-muted-foreground">
-            In-app safety and operational messages always remain available. External channels are used only after Access configures the relevant provider.
+            In-app safety and operational messages always remain available. External channels are
+            used only after Access configures the relevant provider.
           </p>
           <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
             {(["push", "sms", "whatsapp", "email"] as const).map((channel) => (
-              <label key={channel} className="flex items-center gap-2 rounded-lg border p-2 capitalize">
+              <label
+                key={channel}
+                className="flex items-center gap-2 rounded-lg border p-2 capitalize"
+              >
                 <input
                   type="checkbox"
                   checked={preferences[channel]}
@@ -211,7 +223,11 @@ export function CompliancePrivacyCard() {
               </label>
             ))}
           </div>
-          <Button size="sm" onClick={() => void savePreferences()} disabled={busy === "notifications"}>
+          <Button
+            size="sm"
+            onClick={() => void savePreferences()}
+            disabled={busy === "notifications"}
+          >
             {busy === "notifications" ? "Saving…" : "Save notification preferences"}
           </Button>
         </div>

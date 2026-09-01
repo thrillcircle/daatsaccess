@@ -96,7 +96,8 @@ function ProfilePage() {
           <h2 className="font-semibold">Support</h2>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Create and track a support ticket for trip, booking, profile, driver, payment, cancellation or vehicle issues.
+          Create and track a support ticket for trip, booking, profile, driver, payment,
+          cancellation or vehicle issues.
         </p>
         <Button asChild className="mt-4 w-full">
           <Link to="/app/support">Open Access Support</Link>

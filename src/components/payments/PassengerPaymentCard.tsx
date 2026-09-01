@@ -16,11 +16,7 @@ import {
   clearRideEditPayfastIdempotencyKey,
   startPayfastCheckout,
 } from "@/lib/payfast-checkout";
-import {
-  listRideRefunds,
-  processPayfastRefund,
-  type PaymentRefund,
-} from "@/lib/phase7-commercial";
+import { listRideRefunds, processPayfastRefund, type PaymentRefund } from "@/lib/phase7-commercial";
 import { formatZAR } from "@/lib/pricing";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
@@ -313,14 +309,12 @@ function PassengerCancellationSettlement({ ride }: { ride: Ride }) {
         .select("id,total_amount,actual_distance_km,service_fee,per_km_rate,category,reason")
         .eq("ride_id", ride.id)
         .maybeSingle(),
-      supabase
-        .from("payments")
-        .select("amount,status,purpose,provider")
-        .eq("ride_id", ride.id),
+      supabase.from("payments").select("amount,status,purpose,provider").eq("ride_id", ride.id),
     ]);
 
     if (chargeResult.error) console.error("Could not load cancellation charge", chargeResult.error);
-    if (paymentResult.error) console.error("Could not load cancellation payments", paymentResult.error);
+    if (paymentResult.error)
+      console.error("Could not load cancellation payments", paymentResult.error);
 
     const paymentRows = (paymentResult.data ?? []) as Array<{
       amount: number | string;
@@ -396,7 +390,8 @@ function PassengerCancellationSettlement({ ride }: { ride: Ride }) {
   if (loading) {
     return (
       <div className="mt-4 border-t pt-4 text-sm text-muted-foreground">
-        <LoaderCircle className="mr-2 inline h-4 w-4 animate-spin" /> Loading cancellation settlement…
+        <LoaderCircle className="mr-2 inline h-4 w-4 animate-spin" /> Loading cancellation
+        settlement…
       </div>
     );
   }
@@ -455,7 +450,8 @@ function PassengerCancellationSettlement({ ride }: { ride: Ride }) {
         </p>
       ) : activeRefund ? (
         <p className="rounded-xl border bg-muted/40 p-3 text-sm">
-          Refund status: <span className="font-medium capitalize">{activeRefund.status.replaceAll("_", " ")}</span>
+          Refund status:{" "}
+          <span className="font-medium capitalize">{activeRefund.status.replaceAll("_", " ")}</span>
           {activeRefund.action_required_reason ? ` · ${activeRefund.action_required_reason}` : ""}
           {activeRefund.failure_reason ? ` · ${activeRefund.failure_reason}` : ""}
         </p>

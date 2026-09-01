@@ -122,7 +122,8 @@ export function SafetySOSButton({ rideId, role }: Props) {
               <AlertTriangle className="h-5 w-5 text-destructive" /> Safety / SOS
             </DialogTitle>
             <DialogDescription>
-              Choose the emergency type, then press and hold the red button to alert Access Operations.
+              Choose the emergency type, then press and hold the red button to alert Access
+              Operations.
             </DialogDescription>
           </DialogHeader>
 

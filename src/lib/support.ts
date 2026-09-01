@@ -217,7 +217,9 @@ export function supportCaseSeverityLabel(value: string): string {
 
 export function supportDecisionLabel(value: string | null | undefined): string {
   if (!value) return "No decision";
-  return SUPPORT_DECISIONS.find((item) => item.value === value)?.label ?? value.replaceAll("_", " ");
+  return (
+    SUPPORT_DECISIONS.find((item) => item.value === value)?.label ?? value.replaceAll("_", " ")
+  );
 }
 
 export function containsUrgentSupportLanguage(value: string): boolean {

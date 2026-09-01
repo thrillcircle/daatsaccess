@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const migration = readFileSync(
-  join(process.cwd(), "supabase/migrations/20260901211500_phase7_commercial_readiness_closeout.sql"),
+  join(
+    process.cwd(),
+    "supabase/migrations/20260901211500_phase7_commercial_readiness_closeout.sql",
+  ),
   "utf8",
 );
 const rpcViews = readFileSync(
@@ -41,7 +44,9 @@ const commercialLib = readFileSync(join(process.cwd(), "src/lib/phase7-commercia
 describe("Phase 7 commercial readiness closeout", () => {
   it("nets prepaid fare before refunding or charging a cancellation balance", () => {
     expect(migration).toContain("queue_cancellation_settlement");
-    expect(migration).toContain("v_refund_target := GREATEST(round(v_prepaid - COALESCE(NEW.total_amount,0), 2), 0)");
+    expect(migration).toContain(
+      "v_refund_target := GREATEST(round(v_prepaid - COALESCE(NEW.total_amount,0), 2), 0)",
+    );
     expect(migration).toContain("v_amount := round(GREATEST(v_charge.total_amount-v_prepaid,0),2)");
     expect(migration).toContain("settlement_type = 'cancellation_settlement'");
     expect(adminCancel).toContain("processAutomaticRefunds");
@@ -104,7 +109,9 @@ describe("Phase 7 commercial readiness closeout", () => {
   it("keeps driver payout data admin-only and out of the driver UI", () => {
     expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.driver_payouts");
     expect(migration).toContain('CREATE POLICY "admins only read driver payouts"');
-    expect(migration).toContain("REVOKE INSERT,UPDATE,DELETE ON public.driver_payouts FROM authenticated");
+    expect(migration).toContain(
+      "REVOKE INSERT,UPDATE,DELETE ON public.driver_payouts FROM authenticated",
+    );
     expect(driverRide).not.toMatch(/payout|earnings|commission|payment amount|fare amount/i);
   });
 

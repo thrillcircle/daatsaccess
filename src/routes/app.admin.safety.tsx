@@ -88,7 +88,8 @@ function AdminSafetyPage() {
                 <h1 className="text-xl font-semibold">Safety & SOS response centre</h1>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                Passenger and driver emergency reports from active trips appear here for immediate operational response.
+                Passenger and driver emergency reports from active trips appear here for immediate
+                operational response.
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
@@ -96,10 +97,19 @@ function AdminSafetyPage() {
             </Button>
           </div>
           <div className="mt-4 flex gap-2">
-            <Button size="sm" variant={filter === "active" ? "default" : "outline"} onClick={() => setFilter("active")}>
-              Active ({incidents.filter((item) => !["resolved", "closed"].includes(item.status)).length})
+            <Button
+              size="sm"
+              variant={filter === "active" ? "default" : "outline"}
+              onClick={() => setFilter("active")}
+            >
+              Active (
+              {incidents.filter((item) => !["resolved", "closed"].includes(item.status)).length})
             </Button>
-            <Button size="sm" variant={filter === "all" ? "default" : "outline"} onClick={() => setFilter("all")}>
+            <Button
+              size="sm"
+              variant={filter === "all" ? "default" : "outline"}
+              onClick={() => setFilter("all")}
+            >
               All ({incidents.length})
             </Button>
           </div>
@@ -112,7 +122,9 @@ function AdminSafetyPage() {
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading incidents…
               </p>
             ) : !visible.length ? (
-              <p className="py-10 text-center text-sm text-muted-foreground">No safety incidents match this view.</p>
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                No safety incidents match this view.
+              </p>
             ) : (
               <div className="space-y-2">
                 {visible.map((incident) => (
@@ -131,16 +143,23 @@ function AdminSafetyPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-semibold">{incident.incident_reference}</p>
-                        <p className="mt-0.5 text-sm capitalize">{incident.category.replaceAll("_", " ")}</p>
+                        <p className="mt-0.5 text-sm capitalize">
+                          {incident.category.replaceAll("_", " ")}
+                        </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {incident.reporter_name ?? incident.reporter_role} · {new Date(incident.created_at).toLocaleString("en-ZA")}
+                          {incident.reporter_name ?? incident.reporter_role} ·{" "}
+                          {new Date(incident.created_at).toLocaleString("en-ZA")}
                         </p>
                       </div>
                       <div className="text-right">
-                        <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${incident.severity === "critical" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-800"}`}>
+                        <span
+                          className={`rounded-full px-2 py-1 text-[11px] font-medium ${incident.severity === "critical" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-800"}`}
+                        >
                           {incident.severity}
                         </span>
-                        <p className="mt-2 text-xs capitalize text-muted-foreground">{incident.status}</p>
+                        <p className="mt-2 text-xs capitalize text-muted-foreground">
+                          {incident.status}
+                        </p>
                       </div>
                     </div>
                   </button>
@@ -163,12 +182,24 @@ function AdminSafetyPage() {
                 </div>
 
                 <dl className="grid grid-cols-2 gap-3 text-sm">
-                  <Detail label="Reporter" value={selected.reporter_name ?? selected.reporter_role} />
+                  <Detail
+                    label="Reporter"
+                    value={selected.reporter_name ?? selected.reporter_role}
+                  />
                   <Detail label="Status" value={selected.status} />
                   <Detail label="Passenger" value={selected.passenger_name ?? "—"} />
                   <Detail label="Driver" value={selected.driver_name ?? "—"} />
-                  <Detail label="Vehicle" value={[selected.vehicle_name, selected.license_plate].filter(Boolean).join(" · ") || "—"} />
-                  <Detail label="Reported" value={new Date(selected.created_at).toLocaleString("en-ZA")} />
+                  <Detail
+                    label="Vehicle"
+                    value={
+                      [selected.vehicle_name, selected.license_plate].filter(Boolean).join(" · ") ||
+                      "—"
+                    }
+                  />
+                  <Detail
+                    label="Reported"
+                    value={new Date(selected.created_at).toLocaleString("en-ZA")}
+                  />
                 </dl>
 
                 {selected.latitude != null && selected.longitude != null ? (
@@ -196,25 +227,54 @@ function AdminSafetyPage() {
                 </Button>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium" htmlFor="safety-response-notes">Response notes</label>
-                  <Textarea id="safety-response-notes" value={responseNotes} onChange={(event) => setResponseNotes(event.target.value)} rows={3} />
+                  <label className="text-xs font-medium" htmlFor="safety-response-notes">
+                    Response notes
+                  </label>
+                  <Textarea
+                    id="safety-response-notes"
+                    value={responseNotes}
+                    onChange={(event) => setResponseNotes(event.target.value)}
+                    rows={3}
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium" htmlFor="safety-resolution">Resolution summary</label>
-                  <Textarea id="safety-resolution" value={resolution} onChange={(event) => setResolution(event.target.value)} rows={3} />
+                  <label className="text-xs font-medium" htmlFor="safety-resolution">
+                    Resolution summary
+                  </label>
+                  <Textarea
+                    id="safety-resolution"
+                    value={resolution}
+                    onChange={(event) => setResolution(event.target.value)}
+                    rows={3}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" disabled={saving} onClick={() => void update("acknowledged", true)}>
+                  <Button
+                    variant="outline"
+                    disabled={saving}
+                    onClick={() => void update("acknowledged", true)}
+                  >
                     Acknowledge & assign
                   </Button>
-                  <Button variant="outline" disabled={saving} onClick={() => void update("responding", true)}>
+                  <Button
+                    variant="outline"
+                    disabled={saving}
+                    onClick={() => void update("responding", true)}
+                  >
                     Responding
                   </Button>
-                  <Button disabled={saving || !resolution.trim()} onClick={() => void update("resolved", true)}>
+                  <Button
+                    disabled={saving || !resolution.trim()}
+                    onClick={() => void update("resolved", true)}
+                  >
                     Resolve incident
                   </Button>
-                  <Button variant="secondary" disabled={saving || !resolution.trim()} onClick={() => void update("closed", true)}>
+                  <Button
+                    variant="secondary"
+                    disabled={saving || !resolution.trim()}
+                    onClick={() => void update("closed", true)}
+                  >
                     Close
                   </Button>
                 </div>
