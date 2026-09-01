@@ -70,14 +70,6 @@ type PaymentRow = {
   status: PaymentStatus;
   amount: number;
   payment_method: string | null;
-  provider: string | null;
-  provider_status: string | null;
-  merchant_payment_id: string | null;
-  provider_payment_id: string | null;
-  paid_at: string | null;
-  environment: string | null;
-  pricing_version_id: string | null;
-  purpose: string | null;
 };
 type Review = { ride_id: string; rating: number; comment: string | null };
 
@@ -114,13 +106,6 @@ const ACTIVE_STATUSES = [
   "arrived",
   "in_progress",
 ] as const;
-const ACCEPTANCE_TARGETS = new Set<RideStatus>([
-  "accepted",
-  "driver_arriving",
-  "arrived",
-  "in_progress",
-  "completed",
-]);
 const PIN_LOCK_WINDOW_MIN = 15;
 const PIN_LOCK_THRESHOLD = 5;
 const PAGE_SIZE = 6;
@@ -185,20 +170,6 @@ function AdminTripsPage() {
   const reload = () => setReloadKey((k) => k + 1);
 
   useEffect(() => setSearchInput(search.q), [search.q]);
-
-  // Keep payment confirmation visible to dispatch/admin without a manual refresh.
-  useEffect(() => {
-    if (!isAdmin) return;
-    const channel = supabase
-      .channel("admin-trip-payment-confirmations")
-      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () =>
-        setReloadKey((key) => key + 1),
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [isAdmin]);
 
   // Reset pagination when filters change.
   useEffect(() => {
@@ -400,17 +371,10 @@ function AdminTripsPage() {
           const rideIds = list.map((r) => r.id);
           const { data: pays } = await supabase
             .from("payments")
-            .select(
-              "ride_id, status, amount, payment_method, provider, provider_status, merchant_payment_id, provider_payment_id, paid_at, environment, pricing_version_id, purpose, created_at",
-            )
-            .in("ride_id", rideIds)
-            .order("created_at", { ascending: false });
+            .select("ride_id, status, amount, payment_method")
+            .in("ride_id", rideIds);
           if (!cancelled) {
-            const paymentMap = new Map<string, PaymentRow>();
-            for (const row of (pays ?? []) as PaymentRow[]) {
-              if (!paymentMap.has(row.ride_id)) paymentMap.set(row.ride_id, row);
-            }
-            setPayments(paymentMap);
+            setPayments(new Map(((pays ?? []) as PaymentRow[]).map((p) => [p.ride_id, p])));
           }
         } else {
           setPayments(new Map());
@@ -633,7 +597,7 @@ function TripRow({
         <div className="shrink-0 text-right">
           <p className="text-sm font-semibold">{formatZAR(Number(ride.estimated_price))}</p>
           <RideStatusBadge status={ride.status} />
-          <PaymentBadge ride={ride} payment={payment} />
+          <PaymentBadge payment={payment} />
         </div>
       </div>
 
@@ -796,33 +760,19 @@ function TripRow({
   );
 }
 
-function hasConfirmedPayfastFare(ride: Ride, payment: PaymentRow | null): boolean {
-  if (!payment) return false;
-  return (
-    payment.purpose === "trip_fare" &&
-    payment.provider === "payfast" &&
-    payment.status === "paid" &&
-    payment.provider_status?.toUpperCase() === "COMPLETE" &&
-    !!payment.paid_at &&
-    Math.abs(Number(payment.amount) - Number(ride.estimated_price)) <= 0.01 &&
-    payment.pricing_version_id === ride.pricing_version_id
-  );
-}
-
-function PaymentBadge({ ride, payment }: { ride: Ride; payment: PaymentRow | null }) {
+function PaymentBadge({ payment }: { payment: PaymentRow | null }) {
   if (!payment) return null;
-  const confirmed = hasConfirmedPayfastFare(ride, payment);
-  const variant: "default" | "secondary" | "destructive" | "outline" = confirmed
-    ? "default"
-    : payment.status === "failed"
-      ? "destructive"
-      : payment.status === "refunded"
-        ? "outline"
-        : "secondary";
-  const label = confirmed ? "PayFast confirmed" : payment.status;
+  const variant: "default" | "secondary" | "destructive" | "outline" =
+    payment.status === "paid"
+      ? "default"
+      : payment.status === "failed"
+        ? "destructive"
+        : payment.status === "refunded"
+          ? "outline"
+          : "secondary";
   return (
     <Badge variant={variant} className="ml-1 mt-1 text-[10px] capitalize">
-      {label}
+      {payment.status}
     </Badge>
   );
 }
@@ -865,17 +815,15 @@ function AdminActionsDialog({
   const [drivers, setDrivers] = useState<DriverOption[]>([]);
   const [selectedDriver, setSelectedDriver] = useState<string>(ride.driver_id ?? "");
   const [selectedStatus, setSelectedStatus] = useState<RideStatus>(ride.status);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentStatus | "">(payment?.status ?? "");
   const [fleetRanked, setFleetRanked] = useState<Suitability[]>([]);
   const [selectedFleet, setSelectedFleet] = useState<string>(ride.vehicle_id ?? "");
-
-  const paymentConfirmed = hasConfirmedPayfastFare(ride, payment);
-  const acceptanceBlocked =
-    ride.status === "requested" && ACCEPTANCE_TARGETS.has(selectedStatus) && !paymentConfirmed;
 
   useEffect(() => {
     if (!open) return;
     setSelectedDriver(ride.driver_id ?? "");
     setSelectedStatus(ride.status);
+    setSelectedPayment(payment?.status ?? "");
     (async () => {
       const { data: roles } = await supabase
         .from("user_roles")
@@ -949,10 +897,6 @@ function AdminActionsDialog({
   }
 
   async function onAssignResources() {
-    if (ride.status === "requested" && !paymentConfirmed) {
-      toast.error("PayFast payment must be confirmed before this trip can be accepted");
-      return;
-    }
     if (!selectedDriver || !selectedFleet) {
       toast.error("Select both a driver and a suitable canonical vehicle");
       return;
@@ -985,14 +929,6 @@ function AdminActionsDialog({
 
   async function onChangeStatus() {
     if (selectedStatus === ride.status) return;
-    if (
-      ride.status === "requested" &&
-      ACCEPTANCE_TARGETS.has(selectedStatus) &&
-      !paymentConfirmed
-    ) {
-      toast.error("PayFast payment must be confirmed before this trip can be accepted");
-      return;
-    }
     const patch: Partial<Ride> = { status: selectedStatus };
     const nowIso = new Date().toISOString();
     if (selectedStatus === "accepted" && !ride.accepted_at) patch.accepted_at = nowIso;
@@ -1006,14 +942,28 @@ function AdminActionsDialog({
   const [cancelOpen, setCancelOpen] = useState(false);
 
   async function onComplete() {
-    if (ride.status === "requested" && !paymentConfirmed) {
-      toast.error("PayFast payment must be confirmed before this trip can leave requested status");
-      return;
-    }
     await runUpdate(
       { status: "completed", completed_at: ride.completed_at ?? new Date().toISOString() },
       "Trip marked completed",
     );
+  }
+
+  async function onUpdatePayment() {
+    if (!payment || !selectedPayment || selectedPayment === payment.status) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase
+        .from("payments")
+        .update({ status: selectedPayment })
+        .eq("ride_id", ride.id);
+      if (error) throw error;
+      toast.success(`Payment marked ${selectedPayment}`);
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Payment update failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const terminal = ride.status === "completed" || ride.status === "cancelled";
@@ -1045,69 +995,6 @@ function AdminActionsDialog({
                 {fleetVehicle.license_plate}
               </p>
             ) : null}
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs">Payment confirmation</Label>
-            <div
-              className={
-                "rounded-md border p-2 text-xs " +
-                (paymentConfirmed
-                  ? "border-emerald-500/40 bg-emerald-500/10"
-                  : "border-amber-500/40 bg-amber-500/10")
-              }
-            >
-              {payment ? (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">
-                      {paymentConfirmed ? "PayFast payment confirmed" : "Payment not confirmed"}
-                    </span>
-                    <Badge
-                      variant={paymentConfirmed ? "default" : "secondary"}
-                      className="text-[10px]"
-                    >
-                      {payment.provider_status ?? payment.status}
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-muted-foreground">
-                    <span>Amount</span>
-                    <span className="text-right font-medium text-foreground">
-                      {formatZAR(Number(payment.amount))}
-                    </span>
-                    <span>Access reference</span>
-                    <span className="break-all text-right font-mono text-foreground">
-                      {payment.merchant_payment_id ?? "—"}
-                    </span>
-                    <span>PayFast reference</span>
-                    <span className="break-all text-right font-mono text-foreground">
-                      {payment.provider_payment_id ?? "Awaiting PayFast confirmation"}
-                    </span>
-                    <span>Confirmed</span>
-                    <span className="text-right text-foreground">
-                      {payment.paid_at ? new Date(payment.paid_at).toLocaleString() : "Not yet"}
-                    </span>
-                    <span>Environment</span>
-                    <span className="text-right uppercase text-foreground">
-                      {payment.environment ?? "—"}
-                    </span>
-                  </div>
-                  <p className="pt-1 text-[10px]">
-                    {paymentConfirmed
-                      ? "Payment matches the current trip fare. Admin acceptance is unlocked."
-                      : "Admin acceptance stays locked until PayFast confirms COMPLETE for the current trip fare."}
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <p className="font-medium">Awaiting passenger payment</p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    This requested trip cannot be accepted or assigned until PayFast confirms
-                    payment.
-                  </p>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Contact */}
@@ -1247,13 +1134,7 @@ function AdminActionsDialog({
 
             <Button
               size="sm"
-              disabled={
-                busy ||
-                terminal ||
-                !selectedDriver ||
-                !selectedFleet ||
-                (ride.status === "requested" && !paymentConfirmed)
-              }
+              disabled={busy || terminal || !selectedDriver || !selectedFleet}
               onClick={onAssignResources}
               className="h-8 text-xs"
             >
@@ -1261,9 +1142,7 @@ function AdminActionsDialog({
               Assign resources
             </Button>
             <p className="text-[10px] text-muted-foreground">
-              {ride.status === "requested" && !paymentConfirmed
-                ? "Locked until the passenger payment is confirmed by PayFast."
-                : "Driver and vehicle are validated and written in one protected transaction."}
+              Driver and vehicle are validated and written in one protected transaction.
             </p>
           </div>
 
@@ -1280,16 +1159,7 @@ function AdminActionsDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {STATUS_TRANSITIONS.map((s) => (
-                    <SelectItem
-                      key={s}
-                      value={s}
-                      className="capitalize"
-                      disabled={
-                        ride.status === "requested" &&
-                        ACCEPTANCE_TARGETS.has(s) &&
-                        !paymentConfirmed
-                      }
-                    >
+                    <SelectItem key={s} value={s} className="capitalize">
                       {s.replace(/_/g, " ")}
                     </SelectItem>
                   ))}
@@ -1297,19 +1167,46 @@ function AdminActionsDialog({
               </Select>
               <Button
                 size="sm"
-                disabled={busy || selectedStatus === ride.status || acceptanceBlocked}
+                disabled={busy || selectedStatus === ride.status}
                 onClick={onChangeStatus}
                 className="h-9 text-xs"
               >
                 Apply
               </Button>
             </div>
-            {acceptanceBlocked ? (
-              <p className="text-[10px] text-amber-700 dark:text-amber-300">
-                PayFast confirmation is required before leaving Requested status.
-              </p>
-            ) : null}
           </div>
+
+          {/* Payment */}
+          {payment && (
+            <div className="space-y-1">
+              <Label className="text-xs">Payment status</Label>
+              <div className="flex gap-1.5">
+                <Select
+                  value={selectedPayment || undefined}
+                  onValueChange={(v) => setSelectedPayment(v as PaymentStatus)}
+                >
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(["pending", "paid", "failed", "refunded"] as PaymentStatus[]).map((s) => (
+                      <SelectItem key={s} value={s} className="capitalize">
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  disabled={busy || !selectedPayment || selectedPayment === payment.status}
+                  onClick={onUpdatePayment}
+                  className="h-9 text-xs"
+                >
+                  Update
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
@@ -1331,12 +1228,7 @@ function AdminActionsDialog({
           />
           <Button
             size="sm"
-            disabled={
-              busy ||
-              ride.status === "completed" ||
-              ride.status === "cancelled" ||
-              (ride.status === "requested" && !paymentConfirmed)
-            }
+            disabled={busy || ride.status === "completed" || ride.status === "cancelled"}
             onClick={onComplete}
           >
             <Check className="mr-1 h-3 w-3" /> Mark completed
