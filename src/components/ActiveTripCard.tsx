@@ -11,6 +11,7 @@ import { useRideLiveLocations } from "@/hooks/use-ride-live-locations";
 import { EditTripDialog } from "@/components/EditTripDialog";
 import { PassengerStartPin } from "@/components/PassengerStartPin";
 import { getRideDriverDetails, type DriverDetails } from "@/lib/active-trip.functions";
+import { parseRideStops } from "@/lib/driver-ride-projection";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
