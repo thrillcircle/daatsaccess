@@ -985,14 +985,6 @@ function AdminActionsDialog({
 
   async function onChangeStatus() {
     if (selectedStatus === ride.status) return;
-    if (
-      ride.status === "requested" &&
-      ACCEPTANCE_TARGETS.has(selectedStatus) &&
-      !paymentConfirmed
-    ) {
-      toast.error("PayFast payment must be confirmed before this trip can be accepted");
-      return;
-    }
     const patch: Partial<Ride> = { status: selectedStatus };
     const nowIso = new Date().toISOString();
     if (selectedStatus === "accepted" && !ride.accepted_at) patch.accepted_at = nowIso;
