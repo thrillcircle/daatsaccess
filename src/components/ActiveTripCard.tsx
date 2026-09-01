@@ -227,6 +227,14 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
           label="From"
           value={ride.pickup_address}
         />
+        {stops.map((stop) => (
+          <Row
+            key={`stop-${stop.sequence}`}
+            icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
+            label={`Stop ${stop.sequence + 1}`}
+            value={stop.address}
+          />
+        ))}
         <Row
           icon={<Navigation className="h-4 w-4 text-primary" />}
           label="To"
@@ -238,11 +246,16 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
 
       <EditTripButton ride={ride} />
 
-      {onCancel && ride.status !== "in_progress" && ride.status !== "arrived" && (
-        <Button variant="outline" className="mt-2 w-full" onClick={onCancel}>
-          Cancel ride
-        </Button>
-      )}
+      {onCancel &&
+        (ride.status === "requested" ? (
+          <Button variant="outline" className="mt-2 w-full" onClick={onCancel}>
+            Cancel ride
+          </Button>
+        ) : (
+          <p className="mt-2 rounded-lg border bg-muted/40 px-3 py-2 text-center text-xs text-muted-foreground">
+            This trip has been accepted. Contact Support to cancel.
+          </p>
+        ))}
     </section>
   );
 }
