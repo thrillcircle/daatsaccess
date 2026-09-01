@@ -204,13 +204,21 @@ export function ActiveRideCard({
   const [pinOpen, setPinOpen] = useState(false);
   const [navBlocked, setNavBlocked] = useState(false);
 
+  // Stops are only waypoints once the passenger is on board.
+  const stops = parseRideStops(ride.route_stops);
+  const stopWaypoints = stops.map((s) => ({ lat: s.lat, lng: s.lng }));
+
   const navTarget: { lat: number; lng: number; label: string } =
     ride.status === "in_progress"
       ? { lat: ride.destination_lat, lng: ride.destination_lng, label: "destination" }
       : { lat: ride.pickup_lat, lng: ride.pickup_lng, label: "pickup" };
 
   function launchNav() {
-    const win = openMapsNav(navTarget.lat, navTarget.lng);
+    const win = openMapsNav(
+      navTarget.lat,
+      navTarget.lng,
+      ride.status === "in_progress" ? stopWaypoints : [],
+    );
     setNavBlocked(!win);
     return win;
   }
