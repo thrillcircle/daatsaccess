@@ -152,8 +152,7 @@ function UsersPage() {
         <div className="space-y-3">
           {visible.map((user) => {
             const statusManageable = canManageStatus(user);
-            const adminProtected =
-              user.roles.includes("admin") && !capabilities?.can_manage_admins;
+            const adminProtected = user.roles.includes("admin") && !capabilities?.can_manage_admins;
 
             return (
               <article key={user.user_id} className="rounded-2xl border bg-card p-4 shadow-sm">
