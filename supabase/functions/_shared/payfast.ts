@@ -117,7 +117,12 @@ export function parseItnBody(rawBody: string): {
   const search = new URLSearchParams(rawBody);
   const allEntries = Array.from(search.entries()) as PayfastEntry[];
   const signature = search.get("signature") ?? "";
-  const entries = allEntries.filter(([key]) => key !== "signature");
+  const signatureIndex = allEntries.findIndex(([key]) => key === "signature");
+  // PayFast's ITN reference implementation builds the validation parameter
+  // string only from fields posted before `signature`, then stops. Fields that
+  // follow `signature` are still useful payload data, but including them in the
+  // signature/server-validation body makes a genuine ITN fail validation.
+  const entries = signatureIndex === -1 ? allEntries : allEntries.slice(0, signatureIndex);
 
   return {
     entries,
