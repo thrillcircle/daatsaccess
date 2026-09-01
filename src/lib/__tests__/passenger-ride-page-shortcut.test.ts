@@ -16,9 +16,7 @@ describe("passenger Ride page", () => {
 
   it("shows an active-trip shortcut linking to Trip Details", () => {
     expect(source).toContain("Your active trip");
-    expect(source).toContain(
-      "Open Trip Details for your driver, journey and payment information.",
-    );
+    expect(source).toContain("Open Trip Details for your driver, journey and payment information.");
     expect(source).toContain("View trip details");
     expect(source).toContain("`/app/trip/${ride.id}`");
   });
