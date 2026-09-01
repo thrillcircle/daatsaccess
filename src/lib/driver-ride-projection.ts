@@ -72,6 +72,7 @@ export type DriverSafeRide = {
   pickup_lng: number;
   destination_lat: number;
   destination_lng: number;
+  route_stops: RideStop[];
   distance_km: number;
   actual_distance_km: number | null;
   estimated_duration_seconds: number | null;
