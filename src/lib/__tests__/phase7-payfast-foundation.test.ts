@@ -14,10 +14,7 @@ const syncedMigration = readFileSync(
   "utf8",
 );
 const itnStateHardening = readFileSync(
-  join(
-    process.cwd(),
-    "supabase/migrations/20260901163000_phase7_payfast_itn_state_hardening.sql",
-  ),
+  join(process.cwd(), "supabase/migrations/20260901163000_phase7_payfast_itn_state_hardening.sql"),
   "utf8",
 );
 const shared = readFileSync(join(process.cwd(), "supabase/functions/_shared/payfast.ts"), "utf8");
