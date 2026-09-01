@@ -78,12 +78,17 @@ function UsersPage() {
 
   async function toggleRole(user: ManagedUser, role: AppRole, checked: boolean) {
     if (!canManageRole(user, role)) return;
-    const roles = checked
+    const nextRoles = checked
       ? [...new Set([...user.roles, role])]
       : user.roles.filter((item) => item !== role);
+    const roles: AppRole[] = nextRoles.length ? nextRoles : ["passenger"];
     try {
       await setUserRoles(user.user_id, roles);
-      toast.success("Roles updated");
+      toast.success(
+        !checked && nextRoles.length === 0
+          ? "Elevated access removed; account returned to Passenger"
+          : "Roles updated",
+      );
       await load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update roles");
