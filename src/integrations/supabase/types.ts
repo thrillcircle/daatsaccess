@@ -2805,6 +2805,7 @@ export type Database = {
           service_booking_id: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["ride_status"]
+          submitted_at: string | null
           updated_at: string
           vehicle_id: string | null
         }
@@ -2842,6 +2843,7 @@ export type Database = {
           service_booking_id?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
+          submitted_at?: string | null
           updated_at?: string
           vehicle_id?: string | null
         }
@@ -2879,6 +2881,7 @@ export type Database = {
           service_booking_id?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
+          submitted_at?: string | null
           updated_at?: string
           vehicle_id?: string | null
         }
@@ -4683,6 +4686,10 @@ export type Database = {
           p_reason?: string
           p_ride_id: string
         }
+        Returns: Json
+      }
+      passenger_cancel_unpaid_ride: {
+        Args: { p_ride_id: string }
         Returns: Json
       }
       passenger_create_priced_ride: {
