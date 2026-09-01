@@ -8,6 +8,7 @@ import {
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentAccountStatus } from "@/lib/architecture-closeout";
+import { getPassengerOnboardingStatus } from "@/lib/passenger-onboarding";
 import { AutomaticPayfastCheckout } from "@/components/payments/AutomaticPayfastCheckout";
 
 export const Route = createFileRoute("/app")({
@@ -44,9 +45,31 @@ function AppLayout() {
         .eq("user_id", u.user.id);
       const rs = (roles ?? []).map((r) => r.role as string);
       if (!mounted) return;
-      if (rs.includes("admin")) navigate({ to: "/app/admin" });
-      else if (rs.includes("driver")) navigate({ to: "/app/driver" });
-      else navigate({ to: "/app/passenger" });
+
+      if (rs.includes("admin")) {
+        navigate({ to: "/app/admin" });
+        return;
+      }
+      if (rs.includes("driver")) {
+        navigate({ to: "/app/driver" });
+        return;
+      }
+      if (rs.includes("passenger")) {
+        try {
+          const onboarding = await getPassengerOnboardingStatus();
+          if (!mounted) return;
+          navigate({
+            to: onboarding.complete ? "/app/passenger" : "/app/passenger/onboarding",
+          });
+          return;
+        } catch {
+          if (!mounted) return;
+          navigate({ to: "/app/passenger/onboarding" });
+          return;
+        }
+      }
+
+      navigate({ to: "/app/profile" });
     })();
     return () => {
       mounted = false;
