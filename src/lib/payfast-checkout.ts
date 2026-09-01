@@ -52,6 +52,10 @@ export function clearPayfastIdempotencyKey(rideId: string) {
   clearIdempotencyKey("ride", rideId);
 }
 
+export function clearRideEditPayfastIdempotencyKey(changeRequestId: string) {
+  clearIdempotencyKey("edit", changeRequestId);
+}
+
 export function submitPayfastForm(checkoutUrl: string, fields: Record<string, string>) {
   if (!ALLOWED_PAYFAST_CHECKOUTS.has(checkoutUrl)) {
     throw new Error("Unexpected PayFast checkout address");
