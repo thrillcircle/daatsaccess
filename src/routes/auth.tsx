@@ -17,13 +17,13 @@ export const Route = createFileRoute("/auth")({
       {
         name: "description",
         content:
-          "Sign in to Access or create an account to book rides, assisted travel and appointment transport across South Africa.",
+          "Sign in to Access or create a passenger account to book rides, assisted travel and appointment transport across South Africa.",
       },
       { property: "og:title", content: "Sign in — Access" },
       {
         property: "og:description",
         content:
-          "Sign in to Access or create an account to book rides, assisted travel and appointment transport across South Africa.",
+          "Sign in to Access or create a passenger account to book rides, assisted travel and appointment transport across South Africa.",
       },
       { property: "og:url", content: "https://daats.app/auth" },
       { property: "og:type", content: "website" },
@@ -88,7 +88,7 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Account created");
+        toast.success("Passenger account created");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -115,10 +115,12 @@ function AuthPage() {
         <main className="flex-1">
           <div className="mt-8 space-y-1">
             <h1 className="text-3xl font-semibold tracking-tight">
-              {mode === "signup" ? "Create your account" : "Welcome back"}
+              {mode === "signup" ? "Create your passenger account" : "Welcome back"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {mode === "signup" ? "Sign up to request rides or drive." : "Sign in to continue."}
+              {mode === "signup"
+                ? "Create an account to request and manage your Access trips. Driver and Admin access is assigned internally by DAATS."
+                : "Sign in to continue."}
             </p>
           </div>
 
@@ -198,7 +200,11 @@ function AuthPage() {
             </div>
 
             <Button type="submit" size="lg" className="w-full" disabled={loading}>
-              {loading ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
+              {loading
+                ? "Please wait…"
+                : mode === "signup"
+                  ? "Create passenger account"
+                  : "Sign in"}
             </Button>
           </form>
 
