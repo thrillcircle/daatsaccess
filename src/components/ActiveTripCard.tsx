@@ -100,6 +100,8 @@ export function ActiveTripCard({ ride, onCancel }: { ride: Ride; onCancel?: () =
     ? { lat: Number(passengerLive.latitude), lng: Number(passengerLive.longitude) }
     : null;
 
+  const stops = parseRideStops(ride.route_stops);
+
   return (
     <section className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
       <div className="mb-3 flex items-center justify-between">
