@@ -1844,38 +1844,202 @@ export type Database = {
         }
         Relationships: []
       }
-      payments: {
+      payment_gateway_events: {
+        Row: {
+          created_at: string
+          environment: string
+          event_key: string
+          event_type: string
+          id: string
+          payload: Json
+          payment_id: string | null
+          provider: string
+          provider_payment_id: string | null
+          validation_checks: Json
+          validation_status: string
+        }
+        Insert: {
+          created_at?: string
+          environment: string
+          event_key: string
+          event_type: string
+          id?: string
+          payload?: Json
+          payment_id?: string | null
+          provider: string
+          provider_payment_id?: string | null
+          validation_checks?: Json
+          validation_status: string
+        }
+        Update: {
+          created_at?: string
+          environment?: string
+          event_key?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          payment_id?: string | null
+          provider?: string
+          provider_payment_id?: string | null
+          validation_checks?: Json
+          validation_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_gateway_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_refunds: {
         Row: {
           amount: number
+          completed_at: string | null
           created_at: string
-          driver_id: string | null
+          currency: string
+          failed_at: string | null
+          failure_reason: string | null
           id: string
-          passenger_id: string
-          payment_method: string | null
-          ride_id: string
-          status: Database["public"]["Enums"]["payment_status"]
+          metadata: Json
+          payment_id: string
+          provider_refund_id: string | null
+          provider_status: string | null
+          reason: string
+          requested_by: string
+          status: string
+          updated_at: string
         }
         Insert: {
           amount: number
+          completed_at?: string | null
           created_at?: string
-          driver_id?: string | null
+          currency?: string
+          failed_at?: string | null
+          failure_reason?: string | null
           id?: string
-          passenger_id: string
-          payment_method?: string | null
-          ride_id: string
-          status?: Database["public"]["Enums"]["payment_status"]
+          metadata?: Json
+          payment_id: string
+          provider_refund_id?: string | null
+          provider_status?: string | null
+          reason: string
+          requested_by: string
+          status?: string
+          updated_at?: string
         }
         Update: {
           amount?: number
+          completed_at?: string | null
           created_at?: string
-          driver_id?: string | null
+          currency?: string
+          failed_at?: string | null
+          failure_reason?: string | null
           id?: string
-          passenger_id?: string
-          payment_method?: string | null
-          ride_id?: string
-          status?: Database["public"]["Enums"]["payment_status"]
+          metadata?: Json
+          payment_id?: string
+          provider_refund_id?: string | null
+          provider_status?: string | null
+          reason?: string
+          requested_by?: string
+          status?: string
+          updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          cancelled_at: string | null
+          created_at: string
+          currency: string
+          driver_id: string | null
+          environment: string | null
+          failed_at: string | null
+          failure_reason: string | null
+          id: string
+          idempotency_key: string | null
+          merchant_payment_id: string | null
+          metadata: Json
+          paid_at: string | null
+          passenger_id: string
+          payment_method: string | null
+          pricing_version_id: string | null
+          provider: string
+          provider_payment_id: string | null
+          provider_status: string | null
+          purpose: string
+          ride_id: string
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          cancelled_at?: string | null
+          created_at?: string
+          currency?: string
+          driver_id?: string | null
+          environment?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          idempotency_key?: string | null
+          merchant_payment_id?: string | null
+          metadata?: Json
+          paid_at?: string | null
+          passenger_id: string
+          payment_method?: string | null
+          pricing_version_id?: string | null
+          provider?: string
+          provider_payment_id?: string | null
+          provider_status?: string | null
+          purpose?: string
+          ride_id: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          cancelled_at?: string | null
+          created_at?: string
+          currency?: string
+          driver_id?: string | null
+          environment?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          idempotency_key?: string | null
+          merchant_payment_id?: string | null
+          metadata?: Json
+          paid_at?: string | null
+          passenger_id?: string
+          payment_method?: string | null
+          pricing_version_id?: string | null
+          provider?: string
+          provider_payment_id?: string | null
+          provider_status?: string | null
+          purpose?: string
+          ride_id?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_pricing_version_id_fkey"
+            columns: ["pricing_version_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_versions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_ride_id_fkey"
             columns: ["ride_id"]
@@ -4194,6 +4358,10 @@ export type Database = {
         Args: { p_document_id: string; p_reason: string }
         Returns: Json
       }
+      admin_request_payment_refund: {
+        Args: { p_amount?: number; p_payment_id: string; p_reason: string }
+        Returns: Json
+      }
       admin_reset_ride_pin: { Args: { _ride_id: string }; Returns: Json }
       admin_resolve_operational_alert: {
         Args: {
@@ -4319,6 +4487,14 @@ export type Database = {
         Returns: Json
       }
       admin_view_ride_pin: { Args: { _ride_id: string }; Returns: Json }
+      create_ride_payment: {
+        Args: {
+          p_environment?: string
+          p_idempotency_key?: string
+          p_ride_id: string
+        }
+        Returns: Json
+      }
       current_account_status: { Args: never; Returns: string }
       driver_accept_dispatch_offer: {
         Args: {
@@ -4682,6 +4858,18 @@ export type Database = {
       pricing_round_zar: { Args: { p_amount: number }; Returns: number }
       pricing_validate_version_internal: {
         Args: { p_version_id: string }
+        Returns: Json
+      }
+      process_payfast_itn: {
+        Args: {
+          p_amount_gross: number
+          p_environment: string
+          p_event_key: string
+          p_merchant_payment_id: string
+          p_payload?: Json
+          p_provider_payment_id: string
+          p_provider_status: string
+        }
         Returns: Json
       }
       refresh_vehicle_assignment_compatibility: {
