@@ -202,8 +202,10 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
   const refunded = payment?.status === "refunded";
   const failed = payment?.status === "failed";
   const pending = payment?.status === "pending";
-  const isCancellation = payment?.purpose === "cancellation_charge" || ride.status === "cancelled";
-  const displayAmount = payment?.amount != null ? Number(payment.amount) : Number(ride.estimated_price);
+  const isCancellation =
+    payment?.purpose === "cancellation_charge" || ride.status === "cancelled";
+  const displayAmount =
+    payment?.amount != null ? Number(payment.amount) : Number(ride.estimated_price);
 
   return (
     <section className="rounded-2xl border bg-card p-4">
@@ -229,7 +231,9 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
               {isCancellation ? "Cancellation charge" : "Trip payment"}
             </p>
             <p className="text-xl font-semibold">
-              {payment || ride.status !== "cancelled" ? formatZAR(displayAmount) : "Calculated securely"}
+              {payment || ride.status !== "cancelled"
+                ? formatZAR(displayAmount)
+                : "Calculated securely"}
             </p>
           </div>
           <PaymentStatus status={payment?.status ?? null} />
@@ -261,9 +265,9 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
           <>
             {ride.status === "cancelled" && !payment ? (
               <p className="text-sm text-muted-foreground">
-                If a passenger-requested cancellation charge applies, Access will use the locked trip
-                pricing and recorded driver travel distance. Operational or driver/vehicle failure
-                cancellations remain R0.
+                If a passenger-requested cancellation charge applies, Access will use the locked
+                trip pricing and recorded driver travel distance. Operational or driver/vehicle
+                failure cancellations remain R0.
               </p>
             ) : null}
 
@@ -309,7 +313,9 @@ function PaymentHeading() {
   return (
     <div className="mb-3 flex items-center gap-2">
       <ReceiptText className="h-4 w-4" />
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payment</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Payment
+      </h3>
     </div>
   );
 }
