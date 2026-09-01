@@ -1,5 +1,9 @@
 import md5 from "npm:blueimp-md5@2.19.0";
-import { parsePayfastItnEntries } from "./payfast-itn-parser.ts";
+import {
+  parsePayfastItnEntries,
+  payfastItnParameterString,
+  payfastItnSignatureInput,
+} from "./payfast-itn-parser.ts";
 
 export type PayfastMode = "sandbox" | "live";
 
@@ -122,7 +126,7 @@ export function parseItnBody(rawBody: string): {
     entries,
     data: parsed.data,
     signature: parsed.signature,
-    validationBody: payfastParameterString(entries),
+    validationBody: payfastItnParameterString(entries),
   };
 }
 
@@ -132,7 +136,7 @@ export function validItnSignature(
   passphrase: string,
 ): boolean {
   if (!receivedSignature) return false;
-  return payfastSignature(entries, passphrase) === receivedSignature.toLowerCase();
+  return md5(payfastItnSignatureInput(entries, passphrase)) === receivedSignature.toLowerCase();
 }
 
 export function amountMatches(expected: number, received: number): boolean {
