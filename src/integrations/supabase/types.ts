@@ -635,6 +635,65 @@ export type Database = {
           },
         ]
       }
+      driver_payouts: {
+        Row: {
+          amount: number
+          approved_by: string | null
+          calculation_snapshot: Json
+          compensation_model: string | null
+          created_at: string
+          currency: string
+          driver_user_id: string
+          id: string
+          paid_at: string | null
+          period_end: string | null
+          period_start: string | null
+          ride_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          approved_by?: string | null
+          calculation_snapshot?: Json
+          compensation_model?: string | null
+          created_at?: string
+          currency?: string
+          driver_user_id: string
+          id?: string
+          paid_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          ride_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_by?: string | null
+          calculation_snapshot?: Json
+          compensation_model?: string | null
+          created_at?: string
+          currency?: string
+          driver_user_id?: string
+          id?: string
+          paid_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          ride_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_payouts_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_profiles: {
         Row: {
           created_at: string
@@ -857,6 +916,59 @@ export type Database = {
           wheelchair_capacity?: number
         }
         Relationships: []
+      }
+      notification_channel_deliveries: {
+        Row: {
+          attempt_count: number
+          channel: string
+          created_at: string
+          delivered_at: string | null
+          id: string
+          last_error: string | null
+          notification_outbox_id: string
+          provider: string | null
+          provider_message_id: string | null
+          recipient_user_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          channel: string
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          last_error?: string | null
+          notification_outbox_id: string
+          provider?: string | null
+          provider_message_id?: string | null
+          recipient_user_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          channel?: string
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          last_error?: string | null
+          notification_outbox_id?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          recipient_user_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_channel_deliveries_notification_outbox_id_fkey"
+            columns: ["notification_outbox_id"]
+            isOneToOne: false
+            referencedRelation: "notification_outbox"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_delivery_attempts: {
         Row: {
@@ -1896,7 +2008,9 @@ export type Database = {
       }
       payment_refunds: {
         Row: {
+          action_required_reason: string | null
           amount: number
+          automatic: boolean
           completed_at: string | null
           created_at: string
           currency: string
@@ -1909,11 +2023,14 @@ export type Database = {
           provider_status: string | null
           reason: string
           requested_by: string
+          settlement_type: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          action_required_reason?: string | null
           amount: number
+          automatic?: boolean
           completed_at?: string | null
           created_at?: string
           currency?: string
@@ -1926,11 +2043,14 @@ export type Database = {
           provider_status?: string | null
           reason: string
           requested_by: string
+          settlement_type?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          action_required_reason?: string | null
           amount?: number
+          automatic?: boolean
           completed_at?: string | null
           created_at?: string
           currency?: string
@@ -1943,6 +2063,7 @@ export type Database = {
           provider_status?: string | null
           reason?: string
           requested_by?: string
+          settlement_type?: string | null
           status?: string
           updated_at?: string
         }
@@ -2080,6 +2201,80 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      policy_acceptances: {
+        Row: {
+          accepted_at: string
+          id: string
+          policy_document_id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          id?: string
+          policy_document_id: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          id?: string
+          policy_document_id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_acceptances_policy_document_id_fkey"
+            columns: ["policy_document_id"]
+            isOneToOne: false
+            referencedRelation: "policy_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      policy_documents: {
+        Row: {
+          content: string | null
+          created_at: string
+          document_url: string | null
+          effective_at: string | null
+          id: string
+          policy_type: string
+          published_by: string | null
+          status: string
+          title: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          document_url?: string | null
+          effective_at?: string | null
+          id?: string
+          policy_type: string
+          published_by?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          document_url?: string | null
+          effective_at?: string | null
+          id?: string
+          policy_type?: string
+          published_by?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
       }
       pricing_audit_events: {
         Row: {
@@ -2284,6 +2479,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      privacy_requests: {
+        Row: {
+          admin_note: string | null
+          assigned_admin_id: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          request_type: string
+          resolution_summary: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          user_note: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          assigned_admin_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          request_type: string
+          resolution_summary?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          user_note?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          assigned_admin_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          request_type?: string
+          resolution_summary?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          user_note?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -3010,6 +3247,131 @@ export type Database = {
           },
         ]
       }
+      safety_incident_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          incident_id: string
+          new_value: Json | null
+          performed_by: string | null
+          previous_value: Json | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          incident_id: string
+          new_value?: Json | null
+          performed_by?: string | null
+          previous_value?: Json | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          incident_id?: string
+          new_value?: Json | null
+          performed_by?: string | null
+          previous_value?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_incident_events_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "safety_incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      safety_incidents: {
+        Row: {
+          accuracy_m: number | null
+          assigned_admin_id: string | null
+          category: string
+          created_at: string
+          description: string | null
+          driver_id: string | null
+          id: string
+          incident_reference: string
+          latitude: number | null
+          longitude: number | null
+          passenger_id: string | null
+          reported_by: string
+          reporter_role: string
+          resolution_summary: string | null
+          resolved_at: string | null
+          response_notes: string | null
+          ride_id: string
+          severity: string
+          status: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          accuracy_m?: number | null
+          assigned_admin_id?: string | null
+          category: string
+          created_at?: string
+          description?: string | null
+          driver_id?: string | null
+          id?: string
+          incident_reference?: string
+          latitude?: number | null
+          longitude?: number | null
+          passenger_id?: string | null
+          reported_by: string
+          reporter_role: string
+          resolution_summary?: string | null
+          resolved_at?: string | null
+          response_notes?: string | null
+          ride_id: string
+          severity?: string
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          accuracy_m?: number | null
+          assigned_admin_id?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          driver_id?: string | null
+          id?: string
+          incident_reference?: string
+          latitude?: number | null
+          longitude?: number | null
+          passenger_id?: string | null
+          reported_by?: string
+          reporter_role?: string
+          resolution_summary?: string | null
+          resolved_at?: string | null
+          response_notes?: string | null
+          ride_id?: string
+          severity?: string
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_incidents_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_incidents_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_booking_events: {
         Row: {
           actor_user_id: string | null
@@ -3488,12 +3850,17 @@ export type Database = {
       support_tickets: {
         Row: {
           assigned_admin_id: string | null
+          case_severity: string
           category: string
           closed_at: string | null
           created_at: string
           created_by: string
+          decision_amount: number | null
+          decision_type: string | null
           description: string
           driver_id: string | null
+          escalated_at: string | null
+          evidence: Json
           id: string
           passenger_id: string | null
           priority: string
@@ -3501,6 +3868,7 @@ export type Database = {
           resolution_summary: string | null
           resolved_at: string | null
           ride_id: string | null
+          safety_incident_id: string | null
           service_booking_id: string | null
           status: string
           subject: string
@@ -3510,12 +3878,17 @@ export type Database = {
         }
         Insert: {
           assigned_admin_id?: string | null
+          case_severity?: string
           category: string
           closed_at?: string | null
           created_at?: string
           created_by: string
+          decision_amount?: number | null
+          decision_type?: string | null
           description: string
           driver_id?: string | null
+          escalated_at?: string | null
+          evidence?: Json
           id?: string
           passenger_id?: string | null
           priority?: string
@@ -3523,6 +3896,7 @@ export type Database = {
           resolution_summary?: string | null
           resolved_at?: string | null
           ride_id?: string | null
+          safety_incident_id?: string | null
           service_booking_id?: string | null
           status?: string
           subject: string
@@ -3532,12 +3906,17 @@ export type Database = {
         }
         Update: {
           assigned_admin_id?: string | null
+          case_severity?: string
           category?: string
           closed_at?: string | null
           created_at?: string
           created_by?: string
+          decision_amount?: number | null
+          decision_type?: string | null
           description?: string
           driver_id?: string | null
+          escalated_at?: string | null
+          evidence?: Json
           id?: string
           passenger_id?: string | null
           priority?: string
@@ -3545,6 +3924,7 @@ export type Database = {
           resolution_summary?: string | null
           resolved_at?: string | null
           ride_id?: string | null
+          safety_incident_id?: string | null
           service_booking_id?: string | null
           status?: string
           subject?: string
@@ -3558,6 +3938,13 @@ export type Database = {
             columns: ["ride_id"]
             isOneToOne: false
             referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_safety_incident_id_fkey"
+            columns: ["safety_incident_id"]
+            isOneToOne: false
+            referencedRelation: "safety_incidents"
             referencedColumns: ["id"]
           },
           {
@@ -3615,6 +4002,36 @@ export type Database = {
           outcome?: string
           target_id?: string | null
           target_type?: string | null
+        }
+        Relationships: []
+      }
+      user_notification_preferences: {
+        Row: {
+          email: boolean
+          in_app: boolean
+          push: boolean
+          sms: boolean
+          updated_at: string
+          user_id: string
+          whatsapp: boolean
+        }
+        Insert: {
+          email?: boolean
+          in_app?: boolean
+          push?: boolean
+          sms?: boolean
+          updated_at?: string
+          user_id: string
+          whatsapp?: boolean
+        }
+        Update: {
+          email?: boolean
+          in_app?: boolean
+          push?: boolean
+          sms?: boolean
+          updated_at?: string
+          user_id?: string
+          whatsapp?: boolean
         }
         Relationships: []
       }
@@ -4240,6 +4657,7 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_commercial_snapshot: { Args: never; Returns: Json }
       admin_convert_support_ticket_to_maintenance: {
         Args: {
           p_description?: string
@@ -4343,6 +4761,9 @@ export type Database = {
         Returns: Json
       }
       admin_list_audit_events: { Args: { p_limit?: number }; Returns: Json }
+      admin_list_payment_refunds: { Args: { p_limit?: number }; Returns: Json }
+      admin_list_privacy_requests: { Args: { p_limit?: number }; Returns: Json }
+      admin_list_safety_incidents: { Args: { p_limit?: number }; Returns: Json }
       admin_list_settings: { Args: never; Returns: Json }
       admin_list_users: {
         Args: never
@@ -4550,6 +4971,25 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_update_privacy_request: {
+        Args: {
+          p_admin_note?: string
+          p_request_id: string
+          p_resolution_summary?: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      admin_update_safety_incident: {
+        Args: {
+          p_assign_to_self?: boolean
+          p_incident_id: string
+          p_resolution_summary?: string
+          p_response_notes?: string
+          p_status: string
+        }
+        Returns: Json
+      }
       admin_update_setting: {
         Args: { p_key: string; p_value: Json }
         Returns: undefined
@@ -4734,8 +5174,20 @@ export type Database = {
         }
         Returns: Json
       }
+      finalize_payment_refund: {
+        Args: {
+          p_failure_reason?: string
+          p_metadata?: Json
+          p_outcome: string
+          p_provider_refund_id?: string
+          p_provider_status?: string
+          p_refund_id: string
+        }
+        Returns: Json
+      }
       fleet_require_admin: { Args: never; Returns: string }
       generate_ride_pin: { Args: never; Returns: string }
+      get_notification_preferences: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4743,6 +5195,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_ride_refunds: { Args: { p_ride_id: string }; Returns: Json }
       my_booking_companions: {
         Args: never
         Returns: {
@@ -4896,6 +5349,7 @@ export type Database = {
         }
         Returns: Json
       }
+      prepare_payment_refund: { Args: { p_refund_id: string }; Returns: Json }
       pricing_assert_draft: {
         Args: { p_expected_row_version?: number; p_version_id: string }
         Returns: {
@@ -4989,6 +5443,17 @@ export type Database = {
         Args: { p_driver_id?: string; p_vehicle_id: string }
         Returns: undefined
       }
+      report_safety_incident: {
+        Args: {
+          p_accuracy_m?: number
+          p_category: string
+          p_description?: string
+          p_latitude?: number
+          p_longitude?: number
+          p_ride_id: string
+        }
+        Returns: Json
+      }
       short_addr: { Args: { t: string }; Returns: string }
       support_add_message: {
         Args: {
@@ -5012,6 +5477,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      support_admin_update_case_metadata: {
+        Args: {
+          p_case_severity: string
+          p_decision_amount?: number
+          p_decision_type?: string
+          p_evidence?: Json
+          p_ticket_id: string
+        }
+        Returns: Json
+      }
       support_admin_update_ticket: {
         Args: {
           p_assigned_admin_id?: string
@@ -5022,12 +5497,17 @@ export type Database = {
         }
         Returns: {
           assigned_admin_id: string | null
+          case_severity: string
           category: string
           closed_at: string | null
           created_at: string
           created_by: string
+          decision_amount: number | null
+          decision_type: string | null
           description: string
           driver_id: string | null
+          escalated_at: string | null
+          evidence: Json
           id: string
           passenger_id: string | null
           priority: string
@@ -5035,6 +5515,7 @@ export type Database = {
           resolution_summary: string | null
           resolved_at: string | null
           ride_id: string | null
+          safety_incident_id: string | null
           service_booking_id: string | null
           status: string
           subject: string
@@ -5063,12 +5544,17 @@ export type Database = {
         }
         Returns: {
           assigned_admin_id: string | null
+          case_severity: string
           category: string
           closed_at: string | null
           created_at: string
           created_by: string
+          decision_amount: number | null
+          decision_type: string | null
           description: string
           driver_id: string | null
+          escalated_at: string | null
+          evidence: Json
           id: string
           passenger_id: string | null
           priority: string
@@ -5076,6 +5562,7 @@ export type Database = {
           resolution_summary: string | null
           resolved_at: string | null
           ride_id: string | null
+          safety_incident_id: string | null
           service_booking_id: string | null
           status: string
           subject: string
@@ -5089,6 +5576,24 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_notification_preferences: {
+        Args: {
+          p_email: boolean
+          p_push: boolean
+          p_sms: boolean
+          p_whatsapp: boolean
+        }
+        Returns: Json
+      }
+      user_accept_policy: {
+        Args: { p_policy_document_id: string }
+        Returns: Json
+      }
+      user_compliance_snapshot: { Args: never; Returns: Json }
+      user_submit_privacy_request: {
+        Args: { p_request_type: string; p_user_note?: string }
+        Returns: Json
       }
       vehicle_has_expired_mandatory_document: {
         Args: {
