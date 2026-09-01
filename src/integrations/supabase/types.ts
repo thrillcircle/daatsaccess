@@ -2274,6 +2274,75 @@ export type Database = {
           },
         ]
       }
+      ride_cancellation_charges: {
+        Row: {
+          actor_role: string
+          actual_distance_km: number
+          cancelled_by: string
+          category: string
+          created_at: string
+          currency: string
+          id: string
+          metadata: Json
+          per_km_rate: number
+          pricing_version_id: string | null
+          reason: string
+          ride_id: string
+          service_fee: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          actor_role: string
+          actual_distance_km?: number
+          cancelled_by: string
+          category: string
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json
+          per_km_rate?: number
+          pricing_version_id?: string | null
+          reason: string
+          ride_id: string
+          service_fee?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          actor_role?: string
+          actual_distance_km?: number
+          cancelled_by?: string
+          category?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json
+          per_km_rate?: number
+          pricing_version_id?: string | null
+          reason?: string
+          ride_id?: string
+          service_fee?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_cancellation_charges_pricing_version_id_fkey"
+            columns: ["pricing_version_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_cancellation_charges_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ride_change_log: {
         Row: {
           acknowledged_by_driver_at: string | null
@@ -3876,6 +3945,15 @@ export type Database = {
           p_expected_run_version: number
           p_reason: string
           p_run_id: string
+        }
+        Returns: Json
+      }
+      admin_cancel_ride: {
+        Args: {
+          p_actual_distance_km?: number
+          p_category: string
+          p_reason: string
+          p_ride_id: string
         }
         Returns: Json
       }
