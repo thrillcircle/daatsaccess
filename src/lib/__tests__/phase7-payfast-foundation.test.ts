@@ -80,7 +80,9 @@ describe("Phase 7 PayFast payment foundation", () => {
     expect(payBeforeAcceptance).toContain("rides_lock_paid_requested_route_trigger");
     expect(payBeforeAcceptance).toContain("OLD.status = 'requested'");
     expect(payBeforeAcceptance).toContain("OLD.stops IS DISTINCT FROM NEW.stops");
-    expect(payBeforeAcceptance).toContain("OLD.estimated_price IS DISTINCT FROM NEW.estimated_price");
+    expect(payBeforeAcceptance).toContain(
+      "OLD.estimated_price IS DISTINCT FROM NEW.estimated_price",
+    );
     expect(payBeforeAcceptance).toContain(
       "This trip is already paid. Contact support to change the route before acceptance",
     );
