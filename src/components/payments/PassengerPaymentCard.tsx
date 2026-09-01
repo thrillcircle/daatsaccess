@@ -144,14 +144,16 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
   const pendingEditPayment = payment?.purpose === "trip_adjustment" && pending;
   const rideStatus = ride.status as string;
   const unpaidDraft = rideStatus === "payment_pending";
-  const legacyUnpaidRequest = rideStatus === "requested" && !paid && payment?.purpose !== "trip_adjustment";
+  const legacyUnpaidRequest =
+    rideStatus === "requested" && !paid && payment?.purpose !== "trip_adjustment";
   const cancelled = rideStatus === "cancelled";
   const canStartRideCheckout =
     !pendingEditPayment &&
     !paid &&
     !refunded &&
     (unpaidDraft || legacyUnpaidRequest || cancelled || payment?.purpose === "cancellation_charge");
-  const displayAmount = payment?.amount != null ? Number(payment.amount) : Number(ride.estimated_price);
+  const displayAmount =
+    payment?.amount != null ? Number(payment.amount) : Number(ride.estimated_price);
 
   return (
     <section className="rounded-2xl border bg-card p-4">
