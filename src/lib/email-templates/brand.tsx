@@ -142,28 +142,32 @@ const accent = {
   fontSize: '1px',
 }
 const cardInner = { padding: '36px 32px 40px' }
+const brandTable = { margin: '0 0 28px', borderCollapse: 'collapse' as const }
+const brandLogoCell = { verticalAlign: 'middle' as const, paddingRight: '10px' }
+const brandTextCell = { verticalAlign: 'middle' as const }
 const logo = {
   display: 'block' as const,
-  width: '52px',
-  height: '52px',
-  borderRadius: '14px',
-  margin: '0 0 16px',
+  width: '40px',
+  height: '40px',
+  borderRadius: '12px',
+  margin: '0',
 }
 const wordmark = {
-  fontSize: '30px',
-  lineHeight: '1',
-  fontWeight: 'bold' as const,
-  letterSpacing: '4px',
+  fontSize: '20px',
+  lineHeight: '1.15',
+  fontWeight: 600,
+  letterSpacing: '0',
   color: BRAND_BLUE,
   margin: '0',
 }
 const endorsement = {
-  fontSize: '11px',
-  letterSpacing: '2px',
-  textTransform: 'uppercase' as const,
+  fontSize: '12px',
+  lineHeight: '1.2',
+  letterSpacing: '0',
   color: '#7A869A',
-  margin: '6px 0 28px',
+  margin: '2px 0 0',
 }
+
 const h1 = {
   fontSize: '22px',
   lineHeight: '1.3',
