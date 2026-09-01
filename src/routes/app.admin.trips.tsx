@@ -868,10 +868,6 @@ function AdminActionsDialog({
   const [fleetRanked, setFleetRanked] = useState<Suitability[]>([]);
   const [selectedFleet, setSelectedFleet] = useState<string>(ride.vehicle_id ?? "");
 
-  const paymentConfirmed = hasConfirmedPayfastFare(ride, payment);
-  const acceptanceBlocked =
-    ride.status === "requested" && ACCEPTANCE_TARGETS.has(selectedStatus) && !paymentConfirmed;
-
   useEffect(() => {
     if (!open) return;
     setSelectedDriver(ride.driver_id ?? "");
