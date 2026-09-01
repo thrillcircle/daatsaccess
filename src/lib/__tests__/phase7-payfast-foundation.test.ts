@@ -32,7 +32,9 @@ describe("Phase 7 PayFast payment foundation", () => {
   });
 
   it("never accepts a browser-provided authoritative payment amount", () => {
-    const functionBody = migration.slice(migration.indexOf("CREATE OR REPLACE FUNCTION public.create_ride_payment"));
+    const start = migration.indexOf("CREATE OR REPLACE FUNCTION public.create_ride_payment");
+    const end = migration.indexOf("REVOKE ALL ON FUNCTION public.create_ride_payment", start);
+    const functionBody = migration.slice(start, end);
     expect(functionBody).toContain("v_ride.estimated_price");
     expect(functionBody).toContain("v_charge.total_amount");
     expect(functionBody).not.toMatch(/p_amount\s+numeric/i);
