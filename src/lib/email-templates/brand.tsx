@@ -6,6 +6,7 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Link,
   Preview,
   Section,
@@ -14,6 +15,7 @@ import {
 
 export const BRAND_BLUE = '#0067D1'
 export const SITE_URL = 'https://daats.app'
+export const LOGO_URL = `${SITE_URL}/access-logo.png`
 
 interface EmailShellProps {
   preview: string
@@ -45,6 +47,13 @@ export const EmailShell = ({
         <Section className="dm-card" style={card}>
           <Section style={accent} />
           <Section style={cardInner}>
+            <Img
+              src={LOGO_URL}
+              alt="Access by DAATS"
+              width="52"
+              height="52"
+              style={logo}
+            />
             <Text className="dm-wordmark" style={wordmark}>
               ACCESS
             </Text>
@@ -117,6 +126,13 @@ const accent = {
   fontSize: '1px',
 }
 const cardInner = { padding: '36px 32px 40px' }
+const logo = {
+  display: 'block' as const,
+  width: '52px',
+  height: '52px',
+  borderRadius: '14px',
+  margin: '0 0 16px',
+}
 const wordmark = {
   fontSize: '30px',
   lineHeight: '1',
