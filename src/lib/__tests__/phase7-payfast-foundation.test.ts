@@ -6,18 +6,12 @@ const migration = readFileSync(
   join(process.cwd(), "supabase/migrations/20260901153000_phase7_payment_foundation.sql"),
   "utf8",
 );
-const shared = readFileSync(
-  join(process.cwd(), "supabase/functions/_shared/payfast.ts"),
-  "utf8",
-);
+const shared = readFileSync(join(process.cwd(), "supabase/functions/_shared/payfast.ts"), "utf8");
 const createPayment = readFileSync(
   join(process.cwd(), "supabase/functions/payfast-create-payment/index.ts"),
   "utf8",
 );
-const itn = readFileSync(
-  join(process.cwd(), "supabase/functions/payfast-itn/index.ts"),
-  "utf8",
-);
+const itn = readFileSync(join(process.cwd(), "supabase/functions/payfast-itn/index.ts"), "utf8");
 
 describe("Phase 7 PayFast payment foundation", () => {
   it("uses the PayFast documentation sandbox merchant only in sandbox mode", () => {
@@ -48,11 +42,21 @@ describe("Phase 7 PayFast payment foundation", () => {
   });
 
   it("protects payment mutation behind RPC/service-role boundaries", () => {
-    expect(migration).toMatch(/REVOKE INSERT, UPDATE, DELETE ON public\.payments FROM authenticated/i);
-    expect(migration).toMatch(/REVOKE ALL ON FUNCTION public\.process_payfast_itn[\s\S]*FROM authenticated/i);
-    expect(migration).toMatch(/GRANT EXECUTE ON FUNCTION public\.process_payfast_itn[\s\S]*TO service_role/i);
-    expect(migration).toMatch(/passenger_id = auth\.uid\(\)[\s\S]*private\.has_role\(auth\.uid\(\), 'admin'/i);
-    expect(migration).not.toMatch(/passenger_id = auth\.uid\(\)[\s\S]{0,120}driver_id = auth\.uid\(\)/i);
+    expect(migration).toMatch(
+      /REVOKE INSERT, UPDATE, DELETE ON public\.payments FROM authenticated/i,
+    );
+    expect(migration).toMatch(
+      /REVOKE ALL ON FUNCTION public\.process_payfast_itn[\s\S]*FROM authenticated/i,
+    );
+    expect(migration).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.process_payfast_itn[\s\S]*TO service_role/i,
+    );
+    expect(migration).toMatch(
+      /passenger_id = auth\.uid\(\)[\s\S]*private\.has_role\(auth\.uid\(\), 'admin'/i,
+    );
+    expect(migration).not.toMatch(
+      /passenger_id = auth\.uid\(\)[\s\S]{0,120}driver_id = auth\.uid\(\)/i,
+    );
   });
 
   it("requires all PayFast ITN security checks before reconciliation", () => {
@@ -80,7 +84,9 @@ describe("Phase 7 PayFast payment foundation", () => {
     expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.payment_refunds");
     expect(migration).toContain("public.admin_request_payment_refund");
     expect(migration).toContain("Refund amount exceeds the available balance");
-    expect(migration).not.toMatch(/GRANT (INSERT|UPDATE|DELETE)[^;]*payment_refunds TO authenticated/i);
+    expect(migration).not.toMatch(
+      /GRANT (INSERT|UPDATE|DELETE)[^;]*payment_refunds TO authenticated/i,
+    );
   });
 
   it("does not expose the service-role key from the authenticated checkout function", () => {
