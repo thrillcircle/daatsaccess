@@ -67,7 +67,9 @@ describe("passenger onboarding gate", () => {
   it("keeps existing trips accessible while gating new passenger service entry", () => {
     expect(passengerLayout).toContain('pathname.startsWith("/app/passenger/bookings")');
     expect(passengerLayout).toContain("activeRides?.length");
-    expect(passengerLayout).toContain('navigate({ to: "/app/passenger/onboarding", replace: true })');
+    expect(passengerLayout).toContain(
+      'navigate({ to: "/app/passenger/onboarding", replace: true })',
+    );
   });
 
   it("collects all five onboarding sections in the passenger UI", () => {
