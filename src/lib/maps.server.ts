@@ -70,18 +70,32 @@ export async function geocode(address: string): Promise<GeocodeResult> {
 
 export type RouteEstimate = { distanceKm: number; durationMin: number };
 
+export type RouteWaypoint = { lat: number; lng: number };
+
+/**
+ * Driving route for pickup -> ordered stops -> destination. Intermediate
+ * waypoints keep their given order (`optimizeWaypointOrder` stays off).
+ */
 export async function route(input: {
   originLat: number;
   originLng: number;
   destLat: number;
   destLng: number;
+  waypoints?: RouteWaypoint[];
 }): Promise<RouteEstimate> {
-  const body = {
+  const stops = (input.waypoints ?? []).slice(0, 5);
+  const body: Record<string, unknown> = {
     origin: { location: { latLng: { latitude: input.originLat, longitude: input.originLng } } },
     destination: { location: { latLng: { latitude: input.destLat, longitude: input.destLng } } },
     travelMode: "DRIVE",
     routingPreference: "TRAFFIC_UNAWARE",
   };
+  if (stops.length) {
+    body.intermediates = stops.map((s) => ({
+      location: { latLng: { latitude: s.lat, longitude: s.lng } },
+    }));
+    body.optimizeWaypointOrder = false;
+  }
   const res = await fetch(`${GATEWAY_URL}/routes/directions/v2:computeRoutes`, {
     method: "POST",
     headers: gatewayHeaders({
