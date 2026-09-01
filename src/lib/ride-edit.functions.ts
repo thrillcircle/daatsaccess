@@ -50,6 +50,11 @@ export const updateRideTrip = createServerFn({ method: "POST" })
         p_ride_id: data.rideId,
         p_pickup: rpcNullable(data.pickup as unknown as JsonValue),
         p_destination: rpcNullable(data.destination as unknown as JsonValue),
+        p_stops: rpcNullable(
+          (data.stops == null
+            ? null
+            : data.stops.map((stop, index) => ({ ...stop, sequence: index }))) as JsonValue,
+        ),
         p_distance_km: data.distanceKm,
         p_duration_seconds: rpcNullable(data.durationMin != null ? data.durationMin * 60 : null),
         p_expected_route_version: ride.route_version ?? 1,
