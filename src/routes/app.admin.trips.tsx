@@ -191,10 +191,8 @@ function AdminTripsPage() {
     if (!isAdmin) return;
     const channel = supabase
       .channel("admin-trip-payment-confirmations")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "payments" },
-        () => setReloadKey((key) => key + 1),
+      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () =>
+        setReloadKey((key) => key + 1),
       )
       .subscribe();
     return () => {
@@ -987,7 +985,11 @@ function AdminActionsDialog({
 
   async function onChangeStatus() {
     if (selectedStatus === ride.status) return;
-    if (ride.status === "requested" && ACCEPTANCE_TARGETS.has(selectedStatus) && !paymentConfirmed) {
+    if (
+      ride.status === "requested" &&
+      ACCEPTANCE_TARGETS.has(selectedStatus) &&
+      !paymentConfirmed
+    ) {
       toast.error("PayFast payment must be confirmed before this trip can be accepted");
       return;
     }
@@ -1061,7 +1063,10 @@ function AdminActionsDialog({
                     <span className="font-medium">
                       {paymentConfirmed ? "PayFast payment confirmed" : "Payment not confirmed"}
                     </span>
-                    <Badge variant={paymentConfirmed ? "default" : "secondary"} className="text-[10px]">
+                    <Badge
+                      variant={paymentConfirmed ? "default" : "secondary"}
+                      className="text-[10px]"
+                    >
                       {payment.provider_status ?? payment.status}
                     </Badge>
                   </div>
@@ -1097,7 +1102,8 @@ function AdminActionsDialog({
                 <div>
                   <p className="font-medium">Awaiting passenger payment</p>
                   <p className="mt-1 text-[10px] text-muted-foreground">
-                    This requested trip cannot be accepted or assigned until PayFast confirms payment.
+                    This requested trip cannot be accepted or assigned until PayFast confirms
+                    payment.
                   </p>
                 </div>
               )}
