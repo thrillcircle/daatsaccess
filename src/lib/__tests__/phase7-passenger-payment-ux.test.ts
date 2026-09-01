@@ -10,7 +10,9 @@ const tripPage = readFileSync(join(process.cwd(), "src/routes/app.trip.$rideId.t
 
 describe("Phase 7 passenger PayFast UX", () => {
   it("submits only the ride reference and idempotency key to the payment initializer", () => {
-    const invocationStart = paymentCard.indexOf('supabase.functions.invoke("payfast-create-payment"');
+    const invocationStart = paymentCard.indexOf(
+      'supabase.functions.invoke("payfast-create-payment"',
+    );
     const invocationEnd = paymentCard.indexOf("});", invocationStart);
     const invocation = paymentCard.slice(invocationStart, invocationEnd);
 
@@ -30,7 +32,9 @@ describe("Phase 7 passenger PayFast UX", () => {
 
   it("keeps requested trips non-payable until admin acceptance", () => {
     expect(paymentCard).toContain('if (ride.status === "requested")');
-    expect(paymentCard).toContain("Payment becomes available after DAATS accepts your trip request.");
+    expect(paymentCard).toContain(
+      "Payment becomes available after DAATS accepts your trip request.",
+    );
     expect(paymentCard).not.toContain('"requested",\n  "accepted"');
   });
 
@@ -46,7 +50,8 @@ describe("Phase 7 passenger PayFast UX", () => {
       expect(paymentCard).toContain(status);
     }
     expect(paymentCard).toContain("Check & pay cancellation charge");
-    expect(paymentCard).toContain("Operational or driver/vehicle failure");
+    expect(paymentCard).toContain("Operational or driver/vehicle");
+    expect(paymentCard).toContain("failure cancellations remain R0.");
   });
 
   it("does not trust the browser return redirect as payment confirmation", () => {
@@ -64,7 +69,9 @@ describe("Phase 7 passenger PayFast UX", () => {
   });
 
   it("renders payment controls only for the passenger in the existing trip page", () => {
-    expect(tripPage).toContain("const isPassenger = !!user && !!ride && ride.passenger_id === user.id");
+    expect(tripPage).toContain(
+      "const isPassenger = !!user && !!ride && ride.passenger_id === user.id",
+    );
     expect(tripPage).toContain("{isPassenger ? <PassengerPaymentCard ride={ride} /> : null}");
     expect(tripPage).not.toContain("NAV_ICONS.Payment");
   });
