@@ -2551,6 +2551,100 @@ export type Database = {
           },
         ]
       }
+      ride_change_requests: {
+        Row: {
+          amount_due: number
+          applied_at: string | null
+          change_type: string
+          created_at: string
+          estimate_snapshot: Json
+          expected_route_version: number
+          failure_reason: string | null
+          id: string
+          passenger_id: string
+          payment_id: string | null
+          previous_total: number
+          pricing_version_id: string | null
+          proposed_destination: Json
+          proposed_distance_km: number
+          proposed_duration_seconds: number | null
+          proposed_pickup: Json
+          proposed_stops: Json
+          proposed_total: number
+          ride_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_due: number
+          applied_at?: string | null
+          change_type: string
+          created_at?: string
+          estimate_snapshot?: Json
+          expected_route_version: number
+          failure_reason?: string | null
+          id?: string
+          passenger_id: string
+          payment_id?: string | null
+          previous_total: number
+          pricing_version_id?: string | null
+          proposed_destination: Json
+          proposed_distance_km: number
+          proposed_duration_seconds?: number | null
+          proposed_pickup: Json
+          proposed_stops?: Json
+          proposed_total: number
+          ride_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_due?: number
+          applied_at?: string | null
+          change_type?: string
+          created_at?: string
+          estimate_snapshot?: Json
+          expected_route_version?: number
+          failure_reason?: string | null
+          id?: string
+          passenger_id?: string
+          payment_id?: string | null
+          previous_total?: number
+          pricing_version_id?: string | null
+          proposed_destination?: Json
+          proposed_distance_km?: number
+          proposed_duration_seconds?: number | null
+          proposed_pickup?: Json
+          proposed_stops?: Json
+          proposed_total?: number
+          ride_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_change_requests_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_change_requests_pricing_version_id_fkey"
+            columns: ["pricing_version_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_change_requests_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ride_live_locations: {
         Row: {
           accuracy: number | null
@@ -4490,6 +4584,14 @@ export type Database = {
         Returns: Json
       }
       admin_view_ride_pin: { Args: { _ride_id: string }; Returns: Json }
+      create_ride_change_payment: {
+        Args: {
+          p_change_request_id: string
+          p_environment?: string
+          p_idempotency_key?: string
+        }
+        Returns: Json
+      }
       create_ride_payment: {
         Args: {
           p_environment?: string
@@ -4686,6 +4788,10 @@ export type Database = {
           p_reason?: string
           p_ride_id: string
         }
+        Returns: Json
+      }
+      passenger_cancel_ride_change_request: {
+        Args: { p_request_id: string }
         Returns: Json
       }
       passenger_cancel_unpaid_ride: {
