@@ -114,13 +114,6 @@ const ACTIVE_STATUSES = [
   "arrived",
   "in_progress",
 ] as const;
-const ACCEPTANCE_TARGETS = new Set<RideStatus>([
-  "accepted",
-  "driver_arriving",
-  "arrived",
-  "in_progress",
-  "completed",
-]);
 const PIN_LOCK_WINDOW_MIN = 15;
 const PIN_LOCK_THRESHOLD = 5;
 const PAGE_SIZE = 6;
@@ -868,10 +861,6 @@ function AdminActionsDialog({
   const [fleetRanked, setFleetRanked] = useState<Suitability[]>([]);
   const [selectedFleet, setSelectedFleet] = useState<string>(ride.vehicle_id ?? "");
 
-  const paymentConfirmed = hasConfirmedPayfastFare(ride, payment);
-  const acceptanceBlocked =
-    ride.status === "requested" && ACCEPTANCE_TARGETS.has(selectedStatus) && !paymentConfirmed;
-
   useEffect(() => {
     if (!open) return;
     setSelectedDriver(ride.driver_id ?? "");
@@ -949,10 +938,6 @@ function AdminActionsDialog({
   }
 
   async function onAssignResources() {
-    if (ride.status === "requested" && !paymentConfirmed) {
-      toast.error("PayFast payment must be confirmed before this trip can be accepted");
-      return;
-    }
     if (!selectedDriver || !selectedFleet) {
       toast.error("Select both a driver and a suitable canonical vehicle");
       return;
@@ -985,14 +970,6 @@ function AdminActionsDialog({
 
   async function onChangeStatus() {
     if (selectedStatus === ride.status) return;
-    if (
-      ride.status === "requested" &&
-      ACCEPTANCE_TARGETS.has(selectedStatus) &&
-      !paymentConfirmed
-    ) {
-      toast.error("PayFast payment must be confirmed before this trip can be accepted");
-      return;
-    }
     const patch: Partial<Ride> = { status: selectedStatus };
     const nowIso = new Date().toISOString();
     if (selectedStatus === "accepted" && !ride.accepted_at) patch.accepted_at = nowIso;
@@ -1006,10 +983,6 @@ function AdminActionsDialog({
   const [cancelOpen, setCancelOpen] = useState(false);
 
   async function onComplete() {
-    if (ride.status === "requested" && !paymentConfirmed) {
-      toast.error("PayFast payment must be confirmed before this trip can leave requested status");
-      return;
-    }
     await runUpdate(
       { status: "completed", completed_at: ride.completed_at ?? new Date().toISOString() },
       "Trip marked completed",
@@ -1047,26 +1020,14 @@ function AdminActionsDialog({
             ) : null}
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-xs">Payment confirmation</Label>
-            <div
-              className={
-                "rounded-md border p-2 text-xs " +
-                (paymentConfirmed
-                  ? "border-emerald-500/40 bg-emerald-500/10"
-                  : "border-amber-500/40 bg-amber-500/10")
-              }
-            >
-              {payment ? (
+          {payment ? (
+            <div className="space-y-1">
+              <Label className="text-xs">Payment record</Label>
+              <div className="rounded-md border bg-secondary/30 p-2 text-xs">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">
-                      {paymentConfirmed ? "PayFast payment confirmed" : "Payment not confirmed"}
-                    </span>
-                    <Badge
-                      variant={paymentConfirmed ? "default" : "secondary"}
-                      className="text-[10px]"
-                    >
+                    <span className="font-medium">PayFast</span>
+                    <Badge variant="secondary" className="text-[10px]">
                       {payment.provider_status ?? payment.status}
                     </Badge>
                   </div>
@@ -1081,34 +1042,21 @@ function AdminActionsDialog({
                     </span>
                     <span>PayFast reference</span>
                     <span className="break-all text-right font-mono text-foreground">
-                      {payment.provider_payment_id ?? "Awaiting PayFast confirmation"}
+                      {payment.provider_payment_id ?? "—"}
                     </span>
                     <span>Confirmed</span>
                     <span className="text-right text-foreground">
-                      {payment.paid_at ? new Date(payment.paid_at).toLocaleString() : "Not yet"}
+                      {payment.paid_at ? new Date(payment.paid_at).toLocaleString() : "—"}
                     </span>
                     <span>Environment</span>
                     <span className="text-right uppercase text-foreground">
                       {payment.environment ?? "—"}
                     </span>
                   </div>
-                  <p className="pt-1 text-[10px]">
-                    {paymentConfirmed
-                      ? "Payment matches the current trip fare. Admin acceptance is unlocked."
-                      : "Admin acceptance stays locked until PayFast confirms COMPLETE for the current trip fare."}
-                  </p>
                 </div>
-              ) : (
-                <div>
-                  <p className="font-medium">Awaiting passenger payment</p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    This requested trip cannot be accepted or assigned until PayFast confirms
-                    payment.
-                  </p>
-                </div>
-              )}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {/* Contact */}
           <div className="space-y-1">
@@ -1247,13 +1195,7 @@ function AdminActionsDialog({
 
             <Button
               size="sm"
-              disabled={
-                busy ||
-                terminal ||
-                !selectedDriver ||
-                !selectedFleet ||
-                (ride.status === "requested" && !paymentConfirmed)
-              }
+              disabled={busy || terminal || !selectedDriver || !selectedFleet}
               onClick={onAssignResources}
               className="h-8 text-xs"
             >
@@ -1261,9 +1203,7 @@ function AdminActionsDialog({
               Assign resources
             </Button>
             <p className="text-[10px] text-muted-foreground">
-              {ride.status === "requested" && !paymentConfirmed
-                ? "Locked until the passenger payment is confirmed by PayFast."
-                : "Driver and vehicle are validated and written in one protected transaction."}
+              Driver and vehicle are validated and written in one protected transaction.
             </p>
           </div>
 
@@ -1280,16 +1220,7 @@ function AdminActionsDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {STATUS_TRANSITIONS.map((s) => (
-                    <SelectItem
-                      key={s}
-                      value={s}
-                      className="capitalize"
-                      disabled={
-                        ride.status === "requested" &&
-                        ACCEPTANCE_TARGETS.has(s) &&
-                        !paymentConfirmed
-                      }
-                    >
+                    <SelectItem key={s} value={s} className="capitalize">
                       {s.replace(/_/g, " ")}
                     </SelectItem>
                   ))}
@@ -1297,18 +1228,13 @@ function AdminActionsDialog({
               </Select>
               <Button
                 size="sm"
-                disabled={busy || selectedStatus === ride.status || acceptanceBlocked}
+                disabled={busy || selectedStatus === ride.status}
                 onClick={onChangeStatus}
                 className="h-9 text-xs"
               >
                 Apply
               </Button>
             </div>
-            {acceptanceBlocked ? (
-              <p className="text-[10px] text-amber-700 dark:text-amber-300">
-                PayFast confirmation is required before leaving Requested status.
-              </p>
-            ) : null}
           </div>
         </div>
 
@@ -1331,12 +1257,7 @@ function AdminActionsDialog({
           />
           <Button
             size="sm"
-            disabled={
-              busy ||
-              ride.status === "completed" ||
-              ride.status === "cancelled" ||
-              (ride.status === "requested" && !paymentConfirmed)
-            }
+            disabled={busy || ride.status === "completed" || ride.status === "cancelled"}
             onClick={onComplete}
           >
             <Check className="mr-1 h-3 w-3" /> Mark completed
