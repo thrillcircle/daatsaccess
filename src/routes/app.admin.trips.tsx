@@ -1331,12 +1331,7 @@ function AdminActionsDialog({
           />
           <Button
             size="sm"
-            disabled={
-              busy ||
-              ride.status === "completed" ||
-              ride.status === "cancelled" ||
-              (ride.status === "requested" && !paymentConfirmed)
-            }
+            disabled={busy || ride.status === "completed" || ride.status === "cancelled"}
             onClick={onComplete}
           >
             <Check className="mr-1 h-3 w-3" /> Mark completed
