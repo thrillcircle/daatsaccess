@@ -75,6 +75,7 @@ DROP POLICY IF EXISTS "involved sees payment" ON public.payments;
 DROP POLICY IF EXISTS "admin updates payments" ON public.payments;
 DROP POLICY IF EXISTS "admin inserts payments" ON public.payments;
 DROP POLICY IF EXISTS "admin deletes payments" ON public.payments;
+DROP POLICY IF EXISTS "passenger or admin reads payments" ON public.payments;
 
 CREATE POLICY "passenger or admin reads payments"
 ON public.payments FOR SELECT TO authenticated
