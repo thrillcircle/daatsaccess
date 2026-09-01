@@ -13,6 +13,13 @@ const syncedMigration = readFileSync(
   ),
   "utf8",
 );
+const itnStateHardening = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260901163000_phase7_payfast_itn_state_hardening.sql",
+  ),
+  "utf8",
+);
 const shared = readFileSync(join(process.cwd(), "supabase/functions/_shared/payfast.ts"), "utf8");
 const createPayment = readFileSync(
   join(process.cwd(), "supabase/functions/payfast-create-payment/index.ts"),
@@ -95,6 +102,19 @@ describe("Phase 7 PayFast payment foundation", () => {
     expect(migration).toContain("payment_gateway_events");
     expect(migration).toContain("ON CONFLICT (provider, environment, event_key) DO NOTHING");
     expect(migration).toContain("A superseded / already-failed intent must never be resurrected");
+  });
+
+  it("re-applies the guarded ITN state machine after backend synchronisation", () => {
+    expect(itnStateHardening).toContain("CREATE OR REPLACE FUNCTION public.process_payfast_itn");
+    expect(itnStateHardening).toContain("v_payment.status NOT IN ('pending', 'paid')");
+    expect(itnStateHardening).toContain("validation_status = 'ignored'");
+    expect(itnStateHardening).toContain("'payment_state_allowed', false");
+    expect(itnStateHardening).toMatch(
+      /REVOKE ALL ON FUNCTION public\.process_payfast_itn[\s\S]*FROM authenticated/i,
+    );
+    expect(itnStateHardening).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.process_payfast_itn[\s\S]*TO service_role/i,
+    );
   });
 
   it("creates a refund ledger without allowing direct passenger/admin writes", () => {
