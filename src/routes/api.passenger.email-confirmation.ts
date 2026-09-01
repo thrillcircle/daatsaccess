@@ -15,7 +15,13 @@ type BeginResult = {
 
 type VerifyResult = {
   verified: boolean;
-  reason: "confirmed" | "already_confirmed" | "no_challenge" | "expired" | "too_many_attempts" | "invalid_code";
+  reason:
+    | "confirmed"
+    | "already_confirmed"
+    | "no_challenge"
+    | "expired"
+    | "too_many_attempts"
+    | "invalid_code";
   attempts_remaining: number;
 };
 
@@ -114,13 +120,16 @@ export const Route = createFileRoute("/api/passenger/email-confirmation")({
             const challengeId = crypto.randomUUID();
             const codeHash = await hmacCode(apiKey, user.id, user.email, code);
             const expiresAt = new Date(Date.now() + CODE_TTL_MINUTES * 60_000).toISOString();
-            const { data, error } = await rpc<BeginResult>("service_begin_passenger_email_challenge", {
-              p_user_id: user.id,
-              p_email: user.email,
-              p_challenge_id: challengeId,
-              p_code_hash: codeHash,
-              p_expires_at: expiresAt,
-            });
+            const { data, error } = await rpc<BeginResult>(
+              "service_begin_passenger_email_challenge",
+              {
+                p_user_id: user.id,
+                p_email: user.email,
+                p_challenge_id: challengeId,
+                p_code_hash: codeHash,
+                p_expires_at: expiresAt,
+              },
+            );
             if (error) throw new Error(error.message);
             if (!data) throw new Error("Could not create an email confirmation challenge");
             if (data.already_confirmed) return json({ verified: true, alreadyConfirmed: true });
@@ -164,11 +173,14 @@ export const Route = createFileRoute("/api/passenger/email-confirmation")({
             const code = String(body.code ?? "").replace(/\s/g, "");
             if (!/^\d{6}$/.test(code)) return json({ error: "Enter the 6-digit code" }, 400);
             const codeHash = await hmacCode(apiKey, user.id, user.email, code);
-            const { data, error } = await rpc<VerifyResult>("service_verify_passenger_email_challenge", {
-              p_user_id: user.id,
-              p_email: user.email,
-              p_code_hash: codeHash,
-            });
+            const { data, error } = await rpc<VerifyResult>(
+              "service_verify_passenger_email_challenge",
+              {
+                p_user_id: user.id,
+                p_email: user.email,
+                p_code_hash: codeHash,
+              },
+            );
             if (error) throw new Error(error.message);
             if (!data) throw new Error("Could not verify the email confirmation code");
             if (!data.verified) {
