@@ -20,7 +20,9 @@ describe("Phase 7 admin payment-before-acceptance UX", () => {
     expect(adminTrips).toContain('payment.status === "paid"');
     expect(adminTrips).toContain('payment.provider_status?.toUpperCase() === "COMPLETE"');
     expect(adminTrips).toContain("!!payment.paid_at");
-    expect(adminTrips).toContain("Math.abs(Number(payment.amount) - Number(ride.estimated_price)) <= 0.01");
+    expect(adminTrips).toContain(
+      "Math.abs(Number(payment.amount) - Number(ride.estimated_price)) <= 0.01",
+    );
     expect(adminTrips).toContain("payment.pricing_version_id === ride.pricing_version_id");
   });
 
