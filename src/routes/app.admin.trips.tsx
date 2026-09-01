@@ -1280,16 +1280,7 @@ function AdminActionsDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {STATUS_TRANSITIONS.map((s) => (
-                    <SelectItem
-                      key={s}
-                      value={s}
-                      className="capitalize"
-                      disabled={
-                        ride.status === "requested" &&
-                        ACCEPTANCE_TARGETS.has(s) &&
-                        !paymentConfirmed
-                      }
-                    >
+                    <SelectItem key={s} value={s} className="capitalize">
                       {s.replace(/_/g, " ")}
                     </SelectItem>
                   ))}
@@ -1297,18 +1288,13 @@ function AdminActionsDialog({
               </Select>
               <Button
                 size="sm"
-                disabled={busy || selectedStatus === ride.status || acceptanceBlocked}
+                disabled={busy || selectedStatus === ride.status}
                 onClick={onChangeStatus}
                 className="h-9 text-xs"
               >
                 Apply
               </Button>
             </div>
-            {acceptanceBlocked ? (
-              <p className="text-[10px] text-amber-700 dark:text-amber-300">
-                PayFast confirmation is required before leaving Requested status.
-              </p>
-            ) : null}
           </div>
         </div>
 
