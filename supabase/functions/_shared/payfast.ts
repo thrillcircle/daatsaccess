@@ -116,8 +116,13 @@ export function parseItnBody(rawBody: string): {
 } {
   const search = new URLSearchParams(rawBody);
   const allEntries = Array.from(search.entries()) as PayfastEntry[];
+  const signatureIndex = allEntries.findIndex(([key]) => key === "signature");
   const signature = search.get("signature") ?? "";
-  const entries = allEntries.filter(([key]) => key !== "signature");
+
+  // PayFast's specification builds pfParamString from the posted fields in the
+  // order received and stops at the `signature` field. Any field posted after
+  // the signature must be excluded from the signed / server-validated string.
+  const entries = signatureIndex === -1 ? allEntries : allEntries.slice(0, signatureIndex);
 
   return {
     entries,
@@ -126,6 +131,7 @@ export function parseItnBody(rawBody: string): {
     validationBody: payfastParameterString(entries),
   };
 }
+
 
 export function validItnSignature(
   entries: readonly PayfastEntry[],
