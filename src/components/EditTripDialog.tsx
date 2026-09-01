@@ -94,7 +94,6 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
 
-  // Reset when the dialog opens for a fresh ride.
   useEffect(() => {
     if (!open) return;
     setPickup(rideToPick(ride, "pickup"));
@@ -118,7 +117,6 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
   const stopsChanged = !stopsEqual(filledStops, originalStops);
   const dirty = pickupChanged || destChanged || stopsChanged;
 
-  // Recompute pickup -> stops -> destination whenever any leg changes.
   const stopsSignature = stopsKey(filledStops);
   useEffect(() => {
     if (!pickup || !dest || !dirty || !allStopsFilled) return;
@@ -189,8 +187,24 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
           durationMin,
         },
       });
+      const result = res as unknown as {
+        ride: Ride;
+        requires_payment?: boolean;
+        amount_due?: number | string;
+      };
+
+      if (result.requires_payment) {
+        toast.success(
+          `Trip changes prepared. Opening PayFast for ${formatZAR(Number(result.amount_due ?? 0))}.`,
+        );
+        // The global payment boundary watches the staged edit and opens PayFast
+        // automatically. The current ride remains unchanged until trusted ITN.
+        onOpenChange(false);
+        return;
+      }
+
       toast.success("Trip updated — your driver has been notified");
-      onSaved?.((res as unknown as { ride: Ride }).ride);
+      onSaved?.(result.ride);
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to update trip");
@@ -199,7 +213,7 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
     }
   }
 
-  const newPrice = (() => {
+  const currentSnapshotTotal = (() => {
     const estimate = (ride.estimate_snapshot ?? null) as { total?: number } | null;
     return estimate?.total ?? null;
   })();
@@ -211,8 +225,8 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
           <DialogTitle>Edit trip</DialogTitle>
           <DialogDescription>
             {canEditPickup
-              ? "Update your pickup, stops or destination. Your driver will see the change immediately."
-              : "Your driver is already at pickup, so only the stops and destination can be changed."}
+              ? "Update your pickup, stops or destination. If the fare increases, PayFast opens automatically and the change is applied only after payment."
+              : "Your driver is already at pickup, so only stops and destination can be changed. Any additional fare must be paid before the change is applied."}
           </DialogDescription>
         </DialogHeader>
 
@@ -339,13 +353,14 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
                 </span>
               </div>
               <div className="mt-1 flex items-center justify-between">
-                <span className="text-muted-foreground">Current fare</span>
+                <span className="text-muted-foreground">Current paid fare</span>
                 <span className="text-base font-semibold">
-                  {newPrice != null ? formatZAR(newPrice) : formatZAR(originalPrice)}
+                  {formatZAR(currentSnapshotTotal ?? originalPrice)}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                The new fare is calculated on your trip&apos;s locked pricing when you confirm.
+                Access recalculates the edited route on your trip&apos;s locked pricing. Any
+                additional fare is opened automatically in PayFast before the edit is accepted.
               </p>
             </div>
           </div>
@@ -367,7 +382,7 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
             Cancel
           </Button>
           <Button onClick={onConfirm} disabled={!canSave || !allStopsFilled}>
-            {saving ? "Saving…" : "Confirm changes"}
+            {saving ? "Preparing changes…" : "Confirm changes"}
           </Button>
         </DialogFooter>
       </DialogContent>

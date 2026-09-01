@@ -4,6 +4,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import {
+  clearPayfastIdempotencyKey,
+  clearRideEditPayfastIdempotencyKey,
+  startPayfastCheckout,
+} from "@/lib/payfast-checkout";
 import { formatZAR } from "@/lib/pricing";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
@@ -17,83 +22,15 @@ type PaymentRecord = LegacyPayment & {
   provider?: string | null;
   provider_payment_id?: string | null;
   provider_status?: string | null;
-  purpose?: "trip_fare" | "cancellation_charge" | null;
+  purpose?: "trip_fare" | "trip_adjustment" | "cancellation_charge" | null;
 };
 
-type CheckoutResponse = {
-  payment: {
-    payment_id: string;
-    ride_id: string;
-    merchant_payment_id: string;
-    amount: number | string;
-    currency: string;
-    status: string;
-    purpose: "trip_fare" | "cancellation_charge";
-    environment: "sandbox" | "live";
-    idempotent: boolean;
-    already_paid: boolean;
-  };
-  checkout_url: string | null;
-  fields: Record<string, string> | null;
-  mode: "sandbox" | "live";
-  idempotency_key?: string;
-};
-
-const PAYABLE_STATUSES = new Set<Ride["status"]>([
-  "requested",
-  "accepted",
-  "driver_arriving",
-  "arrived",
-  "in_progress",
-  "completed",
-  "cancelled",
-]);
-
-const ALLOWED_PAYFAST_CHECKOUTS = new Set([
-  "https://sandbox.payfast.co.za/eng/process",
-  "https://www.payfast.co.za/eng/process",
-]);
-
-function paymentStorageKey(rideId: string) {
-  return `access:payfast:idempotency:${rideId}`;
-}
-
-function getIdempotencyKey(rideId: string): string {
-  if (typeof window === "undefined") return crypto.randomUUID();
-  const key = paymentStorageKey(rideId);
-  const existing = window.sessionStorage.getItem(key);
-  if (existing) return existing;
-  const value = crypto.randomUUID();
-  window.sessionStorage.setItem(key, value);
-  return value;
-}
-
-function clearIdempotencyKey(rideId: string) {
-  if (typeof window !== "undefined") {
-    window.sessionStorage.removeItem(paymentStorageKey(rideId));
+function paymentLabel(payment: PaymentRecord | null, ride: Ride) {
+  if (payment?.purpose === "trip_adjustment") return "Trip edit payment";
+  if (payment?.purpose === "cancellation_charge" || ride.status === "cancelled") {
+    return "Cancellation charge";
   }
-}
-
-function submitPayfastForm(checkoutUrl: string, fields: Record<string, string>) {
-  if (!ALLOWED_PAYFAST_CHECKOUTS.has(checkoutUrl)) {
-    throw new Error("Unexpected PayFast checkout address");
-  }
-
-  const form = document.createElement("form");
-  form.method = "POST";
-  form.action = checkoutUrl;
-  form.style.display = "none";
-
-  for (const [name, value] of Object.entries(fields)) {
-    const input = document.createElement("input");
-    input.type = "hidden";
-    input.name = name;
-    input.value = value;
-    form.appendChild(input);
-  }
-
-  document.body.appendChild(form);
-  form.submit();
+  return "Trip payment";
 }
 
 export function PassengerPaymentCard({ ride }: { ride: Ride }) {
@@ -117,9 +54,7 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
       return;
     }
 
-    const next = data ? (data as unknown as PaymentRecord) : null;
-    setPayment(next);
-    if (next?.status === "paid") clearIdempotencyKey(ride.id);
+    setPayment(data ? (data as unknown as PaymentRecord) : null);
     setLoading(false);
   }, [ride.id]);
 
@@ -145,9 +80,9 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
     };
   }, [reloadPayment, ride.id]);
 
-  // PayFast redirects back to this exact trip immediately after checkout, while
-  // the trusted ITN can arrive a moment later. Poll briefly as a fallback to
-  // realtime so the passenger sees Paid without leaving or manually refreshing.
+  // PayFast returns before its trusted ITN can finish. Realtime is the primary
+  // update path; this poll is a short fallback so the passenger never needs to
+  // leave Trip Details or press refresh while the secure confirmation arrives.
   useEffect(() => {
     if (returnState !== "success" || payment?.status === "paid") return;
     let attempts = 0;
@@ -160,46 +95,34 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
     return () => window.clearInterval(timer);
   }, [payment?.status, reloadPayment, returnState]);
 
+  // Once the trusted payment row is paid, the database triggers have already
+  // submitted the trip or applied the staged edit in the same transaction.
+  // Reload the clean Trip Details URL so route/status data is also current.
   useEffect(() => {
     if (returnState !== "success" || payment?.status !== "paid" || typeof window === "undefined") {
       return;
     }
+
     const url = new URL(window.location.href);
+    const changeId = url.searchParams.get("change");
+    if (changeId) clearRideEditPayfastIdempotencyKey(changeId);
+    else clearPayfastIdempotencyKey(ride.id);
+
     url.searchParams.delete("payment");
-    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-    setReturnState(null);
-  }, [payment?.status, returnState]);
+    url.searchParams.delete("change");
+    window.location.replace(`${url.pathname}${url.search}${url.hash}`);
+  }, [payment?.status, returnState, ride.id]);
 
   const startCheckout = async () => {
-    if (!PAYABLE_STATUSES.has(ride.status)) return;
     setStartingCheckout(true);
-
     try {
-      const { data, error } = await supabase.functions.invoke("payfast-create-payment", {
-        body: {
-          ride_id: ride.id,
-          idempotency_key: getIdempotencyKey(ride.id),
-        },
-      });
-
-      if (error) throw error;
-      const checkout = data as CheckoutResponse;
-
-      if (checkout.payment.already_paid || checkout.payment.status === "paid") {
-        clearIdempotencyKey(ride.id);
+      const result = await startPayfastCheckout(ride.id);
+      if (result === "already_paid") {
         await reloadPayment();
         toast.success("Payment is already confirmed");
-        return;
       }
-
-      if (!checkout.checkout_url || !checkout.fields) {
-        throw new Error("PayFast checkout is unavailable");
-      }
-
-      submitPayfastForm(checkout.checkout_url, checkout.fields);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to start PayFast checkout";
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : "Unable to start PayFast checkout");
       setStartingCheckout(false);
     }
   };
@@ -218,7 +141,17 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
   const refunded = payment?.status === "refunded";
   const failed = payment?.status === "failed";
   const pending = payment?.status === "pending";
-  const isCancellation = payment?.purpose === "cancellation_charge" || ride.status === "cancelled";
+  const pendingEditPayment = payment?.purpose === "trip_adjustment" && pending;
+  const rideStatus = ride.status as string;
+  const unpaidDraft = rideStatus === "payment_pending";
+  const legacyUnpaidRequest =
+    rideStatus === "requested" && !paid && payment?.purpose !== "trip_adjustment";
+  const cancelled = rideStatus === "cancelled";
+  const canStartRideCheckout =
+    !pendingEditPayment &&
+    !paid &&
+    !refunded &&
+    (unpaidDraft || legacyUnpaidRequest || cancelled || payment?.purpose === "cancellation_charge");
   const displayAmount =
     payment?.amount != null ? Number(payment.amount) : Number(ride.estimated_price);
 
@@ -231,40 +164,35 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
           <LoaderCircle className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
           <span>
             PayFast returned you to this trip. We are confirming the payment securely from the
-            PayFast notification before marking it paid. You can stay on this screen.
+            PayFast notification. This page will update automatically.
           </span>
         </div>
       ) : null}
 
       {returnState === "cancelled" && !paid ? (
         <div className="mb-3 rounded-xl border bg-muted/40 px-3 py-2 text-sm">
-          PayFast checkout was not completed. You can continue the payment when ready.
+          PayFast checkout was not completed. Your trip or pending edit has not been changed.
         </div>
       ) : null}
 
-      {ride.status === "requested" && !paid ? (
+      {unpaidDraft ? (
         <div className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm">
-          Payment is required before DAATS can accept this trip request. Once PayFast confirms your
-          payment, the request will be ready for admin acceptance.
+          This trip has not been submitted yet. Complete the PayFast payment to request it.
         </div>
       ) : null}
 
-      {ride.status === "requested" && paid ? (
+      {rideStatus === "requested" && payment?.purpose === "trip_fare" && paid ? (
         <div className="mb-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm">
-          Payment confirmed. Your trip is now waiting for DAATS admin acceptance.
+          Payment confirmed. Your trip request has been submitted to Access.
         </div>
       ) : null}
 
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs text-muted-foreground">
-              {isCancellation ? "Cancellation charge" : "Trip payment"}
-            </p>
+            <p className="text-xs text-muted-foreground">{paymentLabel(payment, ride)}</p>
             <p className="text-xl font-semibold">
-              {payment || ride.status !== "cancelled"
-                ? formatZAR(displayAmount)
-                : "Calculated securely"}
+              {payment || !cancelled ? formatZAR(displayAmount) : "Calculated securely"}
             </p>
           </div>
           <PaymentStatus status={payment?.status ?? null} />
@@ -298,49 +226,55 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
           </div>
         ) : refunded ? (
           <p className="text-sm text-muted-foreground">
-            This payment has been refunded. Refund details remain available in your payment record.
+            This payment has been refunded. The payment record remains available for your history.
+          </p>
+        ) : pendingEditPayment ? (
+          <p className="text-sm text-muted-foreground">
+            Your edited route is waiting for its additional PayFast payment. The current trip stays
+            unchanged until PayFast confirms it.
           </p>
         ) : (
           <>
-            {ride.status === "cancelled" && !payment ? (
+            {cancelled && !payment ? (
               <p className="text-sm text-muted-foreground">
-                If a passenger-requested cancellation charge applies, Access will use the locked
-                trip pricing and recorded driver travel distance. Operational or driver/vehicle
+                If a passenger-requested cancellation charge applies, Access calculates it from the
+                locked trip pricing and recorded driver travel. Operational or driver/vehicle
                 failure cancellations remain R0.
               </p>
             ) : null}
 
             {failed ? (
               <p className="text-sm text-muted-foreground">
-                The previous payment was not completed. Starting again creates or reuses a secure
-                PayFast payment for the current authoritative amount.
+                The previous PayFast payment was not completed. You can safely try again.
               </p>
             ) : null}
 
             {pending ? (
               <p className="text-sm text-muted-foreground">
-                A PayFast payment is pending. You may safely continue the same payment.
+                A PayFast payment is pending. You can safely continue the same payment.
               </p>
             ) : null}
 
-            <Button className="w-full" onClick={startCheckout} disabled={startingCheckout}>
-              {startingCheckout ? (
-                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-              ) : pending || failed ? (
-                <RotateCcw className="mr-2 h-4 w-4" />
-              ) : (
-                <CreditCard className="mr-2 h-4 w-4" />
-              )}
-              {startingCheckout
-                ? "Opening PayFast…"
-                : pending
-                  ? "Continue with PayFast"
-                  : failed
-                    ? "Try PayFast again"
-                    : ride.status === "cancelled"
-                      ? "Check & pay cancellation charge"
-                      : "Pay securely with PayFast"}
-            </Button>
+            {canStartRideCheckout ? (
+              <Button className="w-full" onClick={startCheckout} disabled={startingCheckout}>
+                {startingCheckout ? (
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                ) : pending || failed ? (
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                ) : (
+                  <CreditCard className="mr-2 h-4 w-4" />
+                )}
+                {startingCheckout
+                  ? "Opening PayFast…"
+                  : pending
+                    ? "Continue with PayFast"
+                    : failed
+                      ? "Try PayFast again"
+                      : cancelled
+                        ? "Check & pay cancellation charge"
+                        : "Continue to PayFast"}
+              </Button>
+            ) : null}
           </>
         )}
       </div>

@@ -30,9 +30,7 @@ function publishableKey(): string {
     }
   }
 
-  const fallback =
-    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
-    Deno.env.get("SUPABASE_ANON_KEY");
+  const fallback = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
   if (!fallback) throw new Error("Supabase publishable key is unavailable");
   return fallback;
 }
@@ -51,11 +49,15 @@ type PaymentIntent = {
   amount: number | string;
   currency: string;
   status: string;
-  purpose: "trip_fare" | "cancellation_charge";
+  purpose: "trip_fare" | "trip_adjustment" | "cancellation_charge";
   environment: "sandbox" | "live";
   idempotent: boolean;
   already_paid: boolean;
 };
+
+function validUuid(value: string | undefined): value is string {
+  return !!value && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value);
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -77,43 +79,43 @@ Deno.serve(async (req: Request) => {
     });
 
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !userData.user) {
-      return json({ error: "Invalid or expired session" }, 401);
-    }
+    if (userError || !userData.user) return json({ error: "Invalid or expired session" }, 401);
 
     const body = (await req.json()) as {
       ride_id?: string;
+      ride_change_request_id?: string;
       idempotency_key?: string;
     };
-    const rideId = body.ride_id?.trim();
-    if (!rideId || !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(rideId)) {
-      return json({ error: "A valid ride_id is required" }, 400);
+    const rideIdInput = body.ride_id?.trim();
+    const changeRequestId = body.ride_change_request_id?.trim();
+    const hasRide = validUuid(rideIdInput);
+    const hasChange = validUuid(changeRequestId);
+    if (hasRide === hasChange) {
+      return json({ error: "Provide either ride_id or ride_change_request_id" }, 400);
     }
 
     const config = getPayfastConfig();
     const idempotencyKey = body.idempotency_key?.trim() || crypto.randomUUID();
 
-    const { data: intentData, error: intentError } = await supabase.rpc(
-      "create_ride_payment",
-      {
-        p_ride_id: rideId,
-        p_environment: config.mode,
-        p_idempotency_key: idempotencyKey,
-      },
-    );
+    const rpcName = hasChange ? "create_ride_change_payment" : "create_ride_payment";
+    const rpcArgs = hasChange
+      ? {
+          p_change_request_id: changeRequestId!,
+          p_environment: config.mode,
+          p_idempotency_key: idempotencyKey,
+        }
+      : {
+          p_ride_id: rideIdInput!,
+          p_environment: config.mode,
+          p_idempotency_key: idempotencyKey,
+        };
 
-    if (intentError) {
-      return json({ error: intentError.message }, 400);
-    }
+    const { data: intentData, error: intentError } = await supabase.rpc(rpcName, rpcArgs);
+    if (intentError) return json({ error: intentError.message }, 400);
 
     const intent = intentData as PaymentIntent;
     if (intent.already_paid || intent.status === "paid") {
-      return json({
-        payment: intent,
-        checkout_url: null,
-        fields: null,
-        mode: config.mode,
-      });
+      return json({ payment: intent, checkout_url: null, fields: null, mode: config.mode });
     }
 
     const { data: profile } = await supabase
@@ -124,17 +126,23 @@ Deno.serve(async (req: Request) => {
 
     const name = splitName(profile?.full_name);
     const appUrl = (Deno.env.get("ACCESS_APP_URL") ?? "https://daats.app").replace(/\/$/, "");
-    const returnUrl = `${appUrl}/app/trip/${rideId}?payment=success`;
-    const cancelUrl = `${appUrl}/app/trip/${rideId}?payment=cancelled`;
+    const returnQuery = hasChange
+      ? `payment=success&change=${encodeURIComponent(changeRequestId!)}`
+      : "payment=success";
+    const cancelQuery = hasChange
+      ? `payment=cancelled&change=${encodeURIComponent(changeRequestId!)}`
+      : "payment=cancelled";
+    const returnUrl = `${appUrl}/app/trip/${intent.ride_id}?${returnQuery}`;
+    const cancelUrl = `${appUrl}/app/trip/${intent.ride_id}?${cancelQuery}`;
     const notifyUrl = `${supabaseUrl}/functions/v1/payfast-itn`;
     const amount = Number(intent.amount).toFixed(2);
     const description =
       intent.purpose === "cancellation_charge"
         ? "Access trip cancellation charge"
-        : "Access wheelchair-accessible transport trip";
+        : intent.purpose === "trip_adjustment"
+          ? "Access trip edit adjustment"
+          : "Access wheelchair-accessible transport trip";
 
-    // IMPORTANT: PayFast custom-integration signatures use documentation order,
-    // not the alphabetic API-signature order.
     const entries: PayfastEntry[] = [
       ["merchant_id", config.merchantId],
       ["merchant_key", config.merchantKey],

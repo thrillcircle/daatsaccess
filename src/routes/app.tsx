@@ -8,6 +8,7 @@ import {
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentAccountStatus } from "@/lib/architecture-closeout";
+import { AutomaticPayfastCheckout } from "@/components/payments/AutomaticPayfastCheckout";
 
 export const Route = createFileRoute("/app")({
   ssr: false,
@@ -59,5 +60,10 @@ function AppLayout() {
       </div>
     );
   }
-  return <Outlet />;
+  return (
+    <>
+      <AutomaticPayfastCheckout />
+      <Outlet />
+    </>
+  );
 }
