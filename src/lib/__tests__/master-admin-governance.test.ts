@@ -5,13 +5,21 @@ const migration = readFileSync(
   new URL("../../../supabase/migrations/20260901225500_master_admin_governance.sql", import.meta.url),
   "utf8",
 );
+const signupMigration = readFileSync(
+  new URL(
+    "../../../supabase/migrations/20260623183609_245b6007-56bf-4f79-bc5e-cdf517ed4aff.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const usersPage = readFileSync(new URL("../../routes/app.admin.users.tsx", import.meta.url), "utf8");
 const authPage = readFileSync(new URL("../../routes/auth.tsx", import.meta.url), "utf8");
 const architecture = readFileSync(new URL("../architecture-closeout.ts", import.meta.url), "utf8");
 
 describe("master admin governance", () => {
   it("keeps public registration passenger-only and removes driver self-enrolment messaging", () => {
-    expect(migration).toContain("VALUES (NEW.id, 'passenger')");
+    expect(signupMigration).toContain("auto-create profile + default passenger role on signup");
+    expect(signupMigration).toContain("VALUES (NEW.id, 'passenger')");
     expect(authPage).toContain("Create your passenger account");
     expect(authPage).toContain("Driver and Admin access is assigned internally by DAATS");
     expect(authPage).not.toContain("Sign up to request rides or drive");
