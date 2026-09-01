@@ -26,6 +26,7 @@ import {
   lockedRatesFromSnapshot,
   type CancellationCategory,
 } from "@/lib/cancellation";
+import { listRideRefunds, processPayfastRefund } from "@/lib/phase7-commercial";
 import { formatZAR } from "@/lib/pricing";
 
 type Props = {
@@ -59,6 +60,22 @@ export function AdminCancelTripDialog({
     ? computeCancellationCharge(category, Number(distance) || 0, rates)
     : null;
 
+  async function processAutomaticRefunds() {
+    try {
+      const refunds = await listRideRefunds(rideId);
+      const queued = refunds.filter(
+        (refund) => refund.automatic && ["requested", "failed"].includes(refund.status),
+      );
+      for (const refund of queued) {
+        await processPayfastRefund(refund.id);
+      }
+      if (queued.length) toast.success("Unused prepaid balance sent for refund processing");
+    } catch (error) {
+      console.error("Automatic cancellation refund processing did not complete", error);
+      toast.warning("Trip cancelled. Any queued refund remains available in Commercial Readiness.");
+    }
+  }
+
   async function submit() {
     if (!category || !reason.trim()) return;
     setBusy(true);
@@ -71,6 +88,7 @@ export function AdminCancelTripDialog({
       });
       if (error) throw new Error(error.message);
       toast.success("Trip cancelled");
+      await processAutomaticRefunds();
       onOpenChange(false);
       onCancelled?.();
     } catch (e) {
@@ -87,7 +105,7 @@ export function AdminCancelTripDialog({
           <DialogTitle>Cancel this trip</DialogTitle>
           <DialogDescription>
             A category and reason are required. The charge is calculated on the trip&apos;s locked
-            pricing.
+            pricing. Any prepaid fare is applied before a refund or additional balance is created.
           </DialogDescription>
         </DialogHeader>
 
@@ -151,9 +169,13 @@ export function AdminCancelTripDialog({
                 <span>{formatZAR(preview.serviceFee)}</span>
               </div>
               <div className="mt-1 flex justify-between border-t pt-1 text-sm font-semibold">
-                <span>Passenger charge</span>
+                <span>Cancellation charge</span>
                 <span>{formatZAR(preview.total)}</span>
               </div>
+              <p className="mt-2 text-muted-foreground">
+                If this trip was prepaid, Access settles this amount against the prepaid balance
+                before creating any refund or additional payment.
+              </p>
             </div>
           )}
         </div>
@@ -167,7 +189,7 @@ export function AdminCancelTripDialog({
             onClick={submit}
             disabled={busy || !category || reason.trim().length < 3}
           >
-            {busy ? "Cancelling…" : "Confirm cancellation"}
+            {busy ? "Cancelling & settling…" : "Confirm cancellation"}
           </Button>
         </DialogFooter>
       </DialogContent>

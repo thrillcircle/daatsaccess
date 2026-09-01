@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Car, Loader2, Wrench } from "lucide-react";
+import { Car, Loader2, Scale, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,7 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { AdminSupportCaseMetadata } from "@/components/support/AdminSupportCaseMetadata";
+import { supabase } from "@/integrations/supabase/client";
 import { fleetDb, type CanonicalVehicle } from "@/lib/fleet";
+import type { SupportTicket } from "@/lib/support";
 import { toast } from "sonner";
 
 export function AdminSupportVehicleActions({
@@ -34,9 +37,65 @@ export function AdminSupportVehicleActions({
           </Link>
         </Button>
       ) : null}
+      <CaseAssessmentDialog ticketId={ticketId} />
       <LinkVehicleDialog ticketId={ticketId} currentVehicleId={vehicleId} />
       {vehicleId ? <CreateMaintenanceDialog ticketId={ticketId} description={description} /> : null}
     </div>
+  );
+}
+
+function CaseAssessmentDialog({ ticketId }: { ticketId: string }) {
+  const [open, setOpen] = useState(false);
+  const [ticket, setTicket] = useState<SupportTicket | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLoading(true);
+    void supabase
+      .from("support_tickets")
+      .select("*")
+      .eq("id", ticketId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) toast.error(error.message);
+        setTicket((data ?? null) as SupportTicket | null);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, ticketId]);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline">
+          <Scale className="mr-1 h-4 w-4" /> Case assessment
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Case assessment</DialogTitle>
+          <DialogDescription>
+            Record severity, evidence and any approved financial or operational decision.
+          </DialogDescription>
+        </DialogHeader>
+        {loading ? (
+          <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading case…
+          </p>
+        ) : ticket ? (
+          <AdminSupportCaseMetadata ticket={ticket} />
+        ) : (
+          <p className="py-6 text-sm text-muted-foreground">
+            The support case could not be loaded.
+          </p>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

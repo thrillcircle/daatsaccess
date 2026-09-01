@@ -1,7 +1,13 @@
 export type SupportRole = "passenger" | "driver" | "admin";
 export type SupportPriority = "low" | "normal" | "high" | "urgent";
 export type SupportStatus =
-  "open" | "triage" | "assigned" | "waiting_for_user" | "in_progress" | "resolved" | "closed";
+  | "open"
+  | "triage"
+  | "assigned"
+  | "waiting_for_user"
+  | "in_progress"
+  | "resolved"
+  | "closed";
 export type SupportCategory =
   | "trip_issue"
   | "scheduled_trip"
@@ -13,6 +19,17 @@ export type SupportCategory =
   | "accessibility_assistance"
   | "complaint"
   | "lost_property"
+  | "payment_dispute"
+  | "cancellation_dispute"
+  | "passenger_complaint"
+  | "safety_incident"
+  | "other";
+export type SupportCaseSeverity = "low" | "normal" | "high" | "critical";
+export type SupportDecisionType =
+  | "refund"
+  | "charge"
+  | "no_adjustment"
+  | "operational_resolution"
   | "other";
 
 export type SupportTicket = {
@@ -26,8 +43,14 @@ export type SupportTicket = {
   ride_id: string | null;
   service_booking_id: string | null;
   vehicle_id: string | null;
+  safety_incident_id?: string | null;
   category: SupportCategory;
   priority: SupportPriority;
+  case_severity?: SupportCaseSeverity;
+  decision_type?: SupportDecisionType | null;
+  decision_amount?: number | string | null;
+  evidence?: unknown[];
+  escalated_at?: string | null;
   status: SupportStatus;
   subject: string;
   description: string;
@@ -68,6 +91,10 @@ export const SUPPORT_CATEGORIES: { value: SupportCategory; label: string }[] = [
   { value: "account_profile", label: "Account or profile" },
   { value: "accessibility_assistance", label: "Accessibility assistance" },
   { value: "complaint", label: "Complaint" },
+  { value: "passenger_complaint", label: "Passenger complaint" },
+  { value: "payment_dispute", label: "Payment dispute" },
+  { value: "cancellation_dispute", label: "Cancellation dispute" },
+  { value: "safety_incident", label: "Safety incident" },
   { value: "lost_property", label: "Lost property" },
   { value: "other", label: "Other" },
 ];
@@ -87,6 +114,21 @@ export const SUPPORT_PRIORITIES: { value: SupportPriority; label: string }[] = [
   { value: "normal", label: "Normal" },
   { value: "high", label: "High" },
   { value: "urgent", label: "Urgent" },
+];
+
+export const SUPPORT_CASE_SEVERITIES: { value: SupportCaseSeverity; label: string }[] = [
+  { value: "low", label: "Low" },
+  { value: "normal", label: "Normal" },
+  { value: "high", label: "High" },
+  { value: "critical", label: "Critical" },
+];
+
+export const SUPPORT_DECISIONS: { value: SupportDecisionType; label: string }[] = [
+  { value: "refund", label: "Refund" },
+  { value: "charge", label: "Charge" },
+  { value: "no_adjustment", label: "No financial adjustment" },
+  { value: "operational_resolution", label: "Operational resolution" },
+  { value: "other", label: "Other" },
 ];
 
 export const SUPPORT_FAQS = [
@@ -116,7 +158,7 @@ export const SUPPORT_FAQS = [
     category: "scheduled_trip" as SupportCategory,
     subject: "Scheduled trip question",
     answer:
-      "Scheduled rides appear under My Trips. Access Operations will add automated late-trip monitoring in the reliability phase.",
+      "Scheduled rides appear under My Trips. Access Operations monitors scheduled-trip reliability and assignment exceptions.",
   },
   {
     question: "Where do I find my quote?",
@@ -130,7 +172,7 @@ export const SUPPORT_FAQS = [
     category: "quote_question" as SupportCategory,
     subject: "Accept service quote",
     answer:
-      "Open the quoted service request in My Trips and use the quote acceptance action when it is available. Payments are not yet active.",
+      "Open the quoted service request in My Trips and use the quote acceptance action when it is available.",
   },
   {
     question: "How do I update my profile?",
@@ -146,6 +188,13 @@ export const SUPPORT_FAQS = [
     answer:
       "Create a vehicle issue ticket and state whether the vehicle is safe to continue. Access Operations will review it; drivers cannot change maintenance status themselves.",
   },
+  {
+    question: "How do I dispute a payment or cancellation charge?",
+    category: "payment_dispute" as SupportCategory,
+    subject: "Payment or cancellation charge dispute",
+    answer:
+      "Create a trip-linked dispute ticket. Access Operations can review the payment, cancellation calculation, evidence and any refund or charge decision from the same case.",
+  },
 ] as const;
 
 export function supportCategoryLabel(value: string): string {
@@ -160,6 +209,17 @@ export function supportStatusLabel(value: string): string {
 
 export function supportPriorityLabel(value: string): string {
   return SUPPORT_PRIORITIES.find((item) => item.value === value)?.label ?? value;
+}
+
+export function supportCaseSeverityLabel(value: string): string {
+  return SUPPORT_CASE_SEVERITIES.find((item) => item.value === value)?.label ?? value;
+}
+
+export function supportDecisionLabel(value: string | null | undefined): string {
+  if (!value) return "No decision";
+  return (
+    SUPPORT_DECISIONS.find((item) => item.value === value)?.label ?? value.replaceAll("_", " ")
+  );
 }
 
 export function containsUrgentSupportLanguage(value: string): boolean {
