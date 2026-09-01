@@ -8,7 +8,7 @@ type CheckoutResponse = {
     amount: number | string;
     currency: string;
     status: string;
-    purpose: "trip_fare" | "cancellation_charge";
+    purpose: "trip_fare" | "trip_adjustment" | "cancellation_charge";
     environment: "sandbox" | "live";
     idempotent: boolean;
     already_paid: boolean;
@@ -24,13 +24,13 @@ const ALLOWED_PAYFAST_CHECKOUTS = new Set([
   "https://www.payfast.co.za/eng/process",
 ]);
 
-function paymentStorageKey(rideId: string) {
-  return `access:payfast:idempotency:${rideId}`;
+function paymentStorageKey(kind: "ride" | "edit", id: string) {
+  return `access:payfast:${kind}:idempotency:${id}`;
 }
 
-export function getPayfastIdempotencyKey(rideId: string): string {
+function getIdempotencyKey(kind: "ride" | "edit", id: string): string {
   if (typeof window === "undefined") return crypto.randomUUID();
-  const key = paymentStorageKey(rideId);
+  const key = paymentStorageKey(kind, id);
   const existing = window.sessionStorage.getItem(key);
   if (existing) return existing;
   const value = crypto.randomUUID();
@@ -38,10 +38,18 @@ export function getPayfastIdempotencyKey(rideId: string): string {
   return value;
 }
 
-export function clearPayfastIdempotencyKey(rideId: string) {
+function clearIdempotencyKey(kind: "ride" | "edit", id: string) {
   if (typeof window !== "undefined") {
-    window.sessionStorage.removeItem(paymentStorageKey(rideId));
+    window.sessionStorage.removeItem(paymentStorageKey(kind, id));
   }
+}
+
+export function getPayfastIdempotencyKey(rideId: string): string {
+  return getIdempotencyKey("ride", rideId);
+}
+
+export function clearPayfastIdempotencyKey(rideId: string) {
+  clearIdempotencyKey("ride", rideId);
 }
 
 export function submitPayfastForm(checkoutUrl: string, fields: Record<string, string>) {
@@ -66,26 +74,46 @@ export function submitPayfastForm(checkoutUrl: string, fields: Record<string, st
   form.submit();
 }
 
-export async function startPayfastCheckout(rideId: string): Promise<"submitted" | "already_paid"> {
-  const { data, error } = await supabase.functions.invoke("payfast-create-payment", {
-    body: {
-      ride_id: rideId,
-      idempotency_key: getPayfastIdempotencyKey(rideId),
-    },
-  });
-
+async function openCheckout(
+  body: Record<string, string>,
+  kind: "ride" | "edit",
+  id: string,
+): Promise<"submitted" | "already_paid"> {
+  const { data, error } = await supabase.functions.invoke("payfast-create-payment", { body });
   if (error) throw error;
   const checkout = data as CheckoutResponse;
 
   if (checkout.payment.already_paid || checkout.payment.status === "paid") {
-    clearPayfastIdempotencyKey(rideId);
+    clearIdempotencyKey(kind, id);
     return "already_paid";
   }
-
   if (!checkout.checkout_url || !checkout.fields) {
     throw new Error("PayFast checkout is unavailable");
   }
-
   submitPayfastForm(checkout.checkout_url, checkout.fields);
   return "submitted";
+}
+
+export async function startPayfastCheckout(rideId: string): Promise<"submitted" | "already_paid"> {
+  return openCheckout(
+    {
+      ride_id: rideId,
+      idempotency_key: getIdempotencyKey("ride", rideId),
+    },
+    "ride",
+    rideId,
+  );
+}
+
+export async function startRideEditPayfastCheckout(
+  changeRequestId: string,
+): Promise<"submitted" | "already_paid"> {
+  return openCheckout(
+    {
+      ride_change_request_id: changeRequestId,
+      idempotency_key: getIdempotencyKey("edit", changeRequestId),
+    },
+    "edit",
+    changeRequestId,
+  );
 }
