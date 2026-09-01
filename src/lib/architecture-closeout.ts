@@ -15,6 +15,15 @@ export type ManagedUser = {
   roles: AppRole[];
   status: "active" | "suspended";
   created_at: string;
+  is_master_admin: boolean;
+};
+
+export type AdminCapabilities = {
+  is_admin: boolean;
+  is_master_admin: boolean;
+  can_manage_admins: boolean;
+  can_manage_drivers: boolean;
+  can_manage_passengers: boolean;
 };
 
 export type AppSetting = {
@@ -74,7 +83,11 @@ function unwrap<T>(result: { data: T | null; error: RpcError }): T {
 }
 
 export async function listManagedUsers(): Promise<ManagedUser[]> {
-  return unwrap(await rpc<ManagedUser[]>("admin_list_users"));
+  return unwrap(await rpc<ManagedUser[]>("admin_list_users_v2"));
+}
+
+export async function getAdminCapabilities(): Promise<AdminCapabilities> {
+  return unwrap(await rpc<AdminCapabilities>("current_admin_capabilities"));
 }
 
 export async function getCurrentAccountStatus(): Promise<"active" | "suspended"> {
