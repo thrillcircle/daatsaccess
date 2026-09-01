@@ -47,7 +47,9 @@ describe("passenger onboarding gate", () => {
     expect(simplifiedMigration).toContain("/ 3.0");
     expect(simplifiedMigration).not.toContain("array_append(v_missing, 'travel_preferences')");
     expect(simplifiedMigration).not.toContain("array_append(v_missing, 'emergency_contact')");
-    expect(simplifiedMigration).not.toContain("array_append(v_missing, 'notification_preferences')");
+    expect(simplifiedMigration).not.toContain(
+      "array_append(v_missing, 'notification_preferences')",
+    );
   });
 
   it("keeps Google and Apple verified email ownership frictionless", () => {
@@ -57,7 +59,9 @@ describe("passenger onboarding gate", () => {
   });
 
   it("removes the former long completion RPC instead of leaving an overload behind", () => {
-    expect(simplifiedMigration).toContain("DROP FUNCTION IF EXISTS public.passenger_complete_onboarding(");
+    expect(simplifiedMigration).toContain(
+      "DROP FUNCTION IF EXISTS public.passenger_complete_onboarding(",
+    );
     expect(simplifiedMigration).toContain("p_full_name text");
     expect(simplifiedMigration).toContain("p_longitude double precision");
     expect(simplifiedMigration).not.toContain("p_emergency_contact_name");
@@ -66,7 +70,9 @@ describe("passenger onboarding gate", () => {
 
   it("keeps the original server-side Ride and Service booking backstops", () => {
     expect(originalMigration).toContain("CREATE TRIGGER rides_require_passenger_onboarding");
-    expect(originalMigration).toContain("CREATE TRIGGER service_bookings_require_passenger_onboarding");
+    expect(originalMigration).toContain(
+      "CREATE TRIGGER service_bookings_require_passenger_onboarding",
+    );
     expect(originalMigration).toContain("private.passenger_onboarding_complete");
     expect(simplifiedMigration).toContain("private.passenger_onboarding_complete");
   });
@@ -80,7 +86,7 @@ describe("passenger onboarding gate", () => {
   });
 
   it("sends only a server-side digest while noreply sends the raw verification code", () => {
-    expect(emailConfirmationRoute).toContain('Access by DAATS <noreply@daats.app>');
+    expect(emailConfirmationRoute).toContain("Access by DAATS <noreply@daats.app>");
     expect(emailConfirmationRoute).toContain('const SENDER_DOMAIN = "notify.daats.app"');
     expect(emailConfirmationRoute).toContain('purpose: "transactional"');
     expect(emailConfirmationRoute).toContain('name: "HMAC", hash: "SHA-256"');
