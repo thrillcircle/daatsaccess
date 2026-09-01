@@ -16,27 +16,6 @@ export type OnboardingAddress = {
   is_default: boolean;
 };
 
-export type OnboardingPreferences = {
-  preferred_contact_method: "in_app" | "phone" | "email";
-  wheelchair_user: boolean;
-  mobility_device_notes: string | null;
-  communication_support_notes: string | null;
-  general_assistance_notes: string | null;
-  emergency_contact_name: string | null;
-  emergency_contact_phone: string | null;
-  emergency_contact_relationship: string | null;
-  preferences_confirmed_at: string | null;
-};
-
-export type OnboardingNotifications = {
-  in_app: boolean;
-  push: boolean;
-  sms: boolean;
-  whatsapp: boolean;
-  email: boolean;
-  confirmed_at: string | null;
-};
-
 export type PassengerOnboardingStatus = {
   complete: boolean;
   missing: string[];
@@ -47,11 +26,15 @@ export type PassengerOnboardingStatus = {
     email: string | null;
   };
   saved_address: OnboardingAddress | null;
-  preferences: OnboardingPreferences | null;
-  notifications: OnboardingNotifications | null;
+  email_confirmation: {
+    confirmed: boolean;
+    confirmed_at: string | null;
+    method: "email_code" | "oauth_google" | "oauth_apple" | null;
+    last_sent_at: string | null;
+  };
 };
 
-export type CompletePassengerOnboardingInput = {
+export type SavePassengerOnboardingInput = {
   fullName: string;
   phone: string;
   savedAddressId?: string | null;
@@ -60,18 +43,6 @@ export type CompletePassengerOnboardingInput = {
   placeId?: string | null;
   latitude: number;
   longitude: number;
-  preferredContactMethod: OnboardingPreferences["preferred_contact_method"];
-  wheelchairUser: boolean;
-  mobilityDeviceNotes?: string | null;
-  communicationSupportNotes?: string | null;
-  generalAssistanceNotes?: string | null;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  emergencyContactRelationship: string;
-  push: boolean;
-  sms: boolean;
-  whatsapp: boolean;
-  email: boolean;
 };
 
 function unwrap<T>(result: { data: T | null; error: RpcError }): T {
@@ -85,7 +56,7 @@ export async function getPassengerOnboardingStatus(): Promise<PassengerOnboardin
 }
 
 export async function completePassengerOnboarding(
-  input: CompletePassengerOnboardingInput,
+  input: SavePassengerOnboardingInput,
 ): Promise<PassengerOnboardingStatus> {
   return unwrap(
     await rpc<PassengerOnboardingStatus>("passenger_complete_onboarding", {
@@ -97,18 +68,39 @@ export async function completePassengerOnboarding(
       p_place_id: input.placeId ?? null,
       p_latitude: input.latitude,
       p_longitude: input.longitude,
-      p_preferred_contact_method: input.preferredContactMethod,
-      p_wheelchair_user: input.wheelchairUser,
-      p_mobility_device_notes: input.mobilityDeviceNotes ?? null,
-      p_communication_support_notes: input.communicationSupportNotes ?? null,
-      p_general_assistance_notes: input.generalAssistanceNotes ?? null,
-      p_emergency_contact_name: input.emergencyContactName,
-      p_emergency_contact_phone: input.emergencyContactPhone,
-      p_emergency_contact_relationship: input.emergencyContactRelationship,
-      p_push: input.push,
-      p_sms: input.sms,
-      p_whatsapp: input.whatsapp,
-      p_email: input.email,
     }),
   );
+}
+
+async function emailConfirmationRequest(body: { action: "request" | "verify"; code?: string }) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Sign in again to confirm your email");
+
+  const response = await fetch("/api/passenger/email-confirmation", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const result = (await response.json().catch(() => ({}))) as {
+    error?: string;
+    sent?: boolean;
+    verified?: boolean;
+    expiresInMinutes?: number;
+    retryAfterSeconds?: number;
+    attemptsRemaining?: number;
+  };
+  if (!response.ok) throw new Error(result.error ?? "Email confirmation failed");
+  return result;
+}
+
+export function requestPassengerEmailConfirmation() {
+  return emailConfirmationRequest({ action: "request" });
+}
+
+export function verifyPassengerEmailConfirmation(code: string) {
+  return emailConfirmationRequest({ action: "verify", code });
 }

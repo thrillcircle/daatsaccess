@@ -1,32 +1,23 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-  BellRing,
-  CheckCircle2,
-  HeartHandshake,
-  Loader2,
-  MapPin,
-  Shield,
-  UserRound,
-} from "lucide-react";
+import { CheckCircle2, Loader2, MailCheck, MapPin, UserRound } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   completePassengerOnboarding,
   getPassengerOnboardingStatus,
+  requestPassengerEmailConfirmation,
+  verifyPassengerEmailConfirmation,
   type OnboardingAddress,
-  type OnboardingPreferences,
   type PassengerOnboardingStatus,
 } from "@/lib/passenger-onboarding";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/passenger/onboarding")({
-  head: () => ({ meta: [{ title: "Complete your profile — Access" }] }),
+  head: () => ({ meta: [{ title: "Finish setting up Access" }] }),
   component: PassengerOnboardingPage,
 });
 
@@ -44,63 +35,45 @@ function PassengerOnboardingPage() {
   const [snapshot, setSnapshot] = useState<PassengerOnboardingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [code, setCode] = useState("");
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [addressId, setAddressId] = useState<string | null>(null);
   const [addressLabel, setAddressLabel] = useState<OnboardingAddress["label"]>("Home");
   const [address, setAddress] = useState<AddressPick | null>(null);
-  const [preferredContact, setPreferredContact] =
-    useState<OnboardingPreferences["preferred_contact_method"]>("in_app");
-  const [wheelchairUser, setWheelchairUser] = useState(false);
-  const [mobilityNotes, setMobilityNotes] = useState("");
-  const [communicationNotes, setCommunicationNotes] = useState("");
-  const [assistanceNotes, setAssistanceNotes] = useState("");
-  const [emergencyName, setEmergencyName] = useState("");
-  const [emergencyPhone, setEmergencyPhone] = useState("");
-  const [emergencyRelationship, setEmergencyRelationship] = useState("");
-  const [push, setPush] = useState(true);
-  const [sms, setSms] = useState(false);
-  const [whatsapp, setWhatsapp] = useState(false);
-  const [emailNotifications, setEmailNotifications] = useState(true);
+
+  async function loadStatus(prefill = false) {
+    const current = await getPassengerOnboardingStatus();
+    setSnapshot(current);
+    if (prefill) {
+      setFullName(current.profile.full_name ?? "");
+      setPhone(current.profile.phone ?? "");
+      if (current.saved_address) {
+        setAddressId(current.saved_address.id);
+        setAddressLabel(current.saved_address.label);
+        setAddress({
+          address: current.saved_address.formatted_address,
+          placeId: current.saved_address.place_id,
+          lat: current.saved_address.latitude,
+          lng: current.saved_address.longitude,
+        });
+      }
+    }
+    return current;
+  }
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const current = await getPassengerOnboardingStatus();
         if (cancelled) return;
-        setSnapshot(current);
-        setFullName(current.profile.full_name ?? "");
-        setPhone(current.profile.phone ?? "");
-        if (current.saved_address) {
-          setAddressId(current.saved_address.id);
-          setAddressLabel(current.saved_address.label);
-          setAddress({
-            address: current.saved_address.formatted_address,
-            placeId: current.saved_address.place_id,
-            lat: current.saved_address.latitude,
-            lng: current.saved_address.longitude,
-          });
-        }
-        if (current.preferences) {
-          setPreferredContact(current.preferences.preferred_contact_method);
-          setWheelchairUser(current.preferences.wheelchair_user);
-          setMobilityNotes(current.preferences.mobility_device_notes ?? "");
-          setCommunicationNotes(current.preferences.communication_support_notes ?? "");
-          setAssistanceNotes(current.preferences.general_assistance_notes ?? "");
-          setEmergencyName(current.preferences.emergency_contact_name ?? "");
-          setEmergencyPhone(current.preferences.emergency_contact_phone ?? "");
-          setEmergencyRelationship(current.preferences.emergency_contact_relationship ?? "");
-        }
-        if (current.notifications) {
-          setPush(current.notifications.push);
-          setSms(current.notifications.sms);
-          setWhatsapp(current.notifications.whatsapp);
-          setEmailNotifications(current.notifications.email);
-        }
+        await loadStatus(true);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not load onboarding");
+        toast.error(error instanceof Error ? error.message : "Could not load account setup");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -110,90 +83,132 @@ function PassengerOnboardingPage() {
     };
   }, []);
 
-  async function submit() {
+  function validateBasics() {
     const name = fullName.trim();
     const nextPhone = phone.trim();
-    const emergencyContactName = emergencyName.trim();
-    const emergencyContactPhone = emergencyPhone.trim();
-    const relationship = emergencyRelationship.trim();
-
     if (name.length < 2 || name.length > 80) {
       toast.error("Enter your full name");
-      return;
+      return null;
     }
     if (!PHONE_RE.test(nextPhone)) {
       toast.error("Enter a valid phone number");
-      return;
+      return null;
     }
     if (!snapshot?.profile.email) {
-      toast.error("Your account needs an email address before onboarding can be completed");
-      return;
+      toast.error("Your account needs an email address");
+      return null;
     }
     if (!address) {
-      toast.error("Choose and save a complete address");
-      return;
+      toast.error("Choose your primary address from address search");
+      return null;
     }
-    if (emergencyContactName.length < 2) {
-      toast.error("Enter your emergency contact name");
-      return;
-    }
-    if (!PHONE_RE.test(emergencyContactPhone)) {
-      toast.error("Enter a valid emergency contact phone number");
-      return;
-    }
-    if (relationship.length < 2) {
-      toast.error("Tell us your relationship to the emergency contact");
-      return;
-    }
+    return { name, nextPhone };
+  }
 
+  async function saveBasics(options?: { quiet?: boolean }) {
+    const basics = validateBasics();
+    if (!basics || !address) return null;
     setSaving(true);
     try {
       const next = await completePassengerOnboarding({
-        fullName: name,
-        phone: nextPhone,
+        fullName: basics.name,
+        phone: basics.nextPhone,
         savedAddressId: addressId,
         addressLabel,
         formattedAddress: address.address,
         placeId: address.placeId,
         latitude: address.lat,
         longitude: address.lng,
-        preferredContactMethod: preferredContact,
-        wheelchairUser,
-        mobilityDeviceNotes: mobilityNotes.trim() || null,
-        communicationSupportNotes: communicationNotes.trim() || null,
-        generalAssistanceNotes: assistanceNotes.trim() || null,
-        emergencyContactName,
-        emergencyContactPhone,
-        emergencyContactRelationship: relationship,
-        push,
-        sms,
-        whatsapp,
-        email: emailNotifications,
       });
       setSnapshot(next);
-      toast.success("Your Access passenger profile is ready");
-      navigate({ to: "/app/passenger" });
+      setAddressId(next.saved_address?.id ?? addressId);
+      if (!options?.quiet) toast.success("Your details are saved");
+      return next;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not complete onboarding");
+      toast.error(error instanceof Error ? error.message : "Could not save your details");
+      return null;
     } finally {
       setSaving(false);
     }
   }
 
+  async function sendCode() {
+    const saved = await saveBasics({ quiet: true });
+    if (!saved) return;
+    if (saved.email_confirmation.confirmed) {
+      if (saved.complete) {
+        toast.success("Your Access account is ready");
+        navigate({ to: "/app/passenger" });
+      }
+      return;
+    }
+
+    setSendingCode(true);
+    try {
+      await requestPassengerEmailConfirmation();
+      setCodeSent(true);
+      setCode("");
+      toast.success(`Verification code sent to ${saved.profile.email}`);
+      await loadStatus();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not send verification code");
+    } finally {
+      setSendingCode(false);
+    }
+  }
+
+  async function verifyCode() {
+    const normalized = code.replace(/\s/g, "");
+    if (!/^\d{6}$/.test(normalized)) {
+      toast.error("Enter the 6-digit code from your email");
+      return;
+    }
+    setVerifyingCode(true);
+    try {
+      await verifyPassengerEmailConfirmation(normalized);
+      const next = await loadStatus();
+      setCode("");
+      toast.success("Email confirmed — your Access account is ready");
+      if (next.complete) navigate({ to: "/app/passenger" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not confirm your email");
+    } finally {
+      setVerifyingCode(false);
+    }
+  }
+
+  async function saveAndContinue() {
+    const next = await saveBasics({ quiet: true });
+    if (!next) return;
+    if (!next.email_confirmation.confirmed) {
+      toast.error("Confirm your email to finish setting up your account");
+      return;
+    }
+    if (!next.complete) {
+      toast.error("Finish the three setup steps before continuing");
+      return;
+    }
+    toast.success("Your Access account is ready");
+    navigate({ to: "/app/passenger" });
+  }
+
   if (loading) {
     return (
-      <AppShell title="Passenger setup">
+      <AppShell title="Account setup">
         <div className="grid min-h-[55vh] place-items-center">
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Preparing your profile…
+            <Loader2 className="h-4 w-4 animate-spin" /> Preparing your account…
           </p>
         </div>
       </AppShell>
     );
   }
 
+  const emailConfirmed = snapshot?.email_confirmation.confirmed === true;
+  const confirmationMethod = snapshot?.email_confirmation.method;
+
   return (
-    <AppShell title="Passenger setup">
+    <AppShell title="Account setup">
       <section className="rounded-2xl border bg-card p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
@@ -204,18 +219,22 @@ function PassengerOnboardingPage() {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold tracking-tight">
-              {snapshot?.complete ? "Your passenger profile is complete" : "Complete your profile"}
+            <p className="text-xs font-medium uppercase tracking-wide text-primary">
+              3 quick steps
+            </p>
+            <h1 className="mt-1 text-xl font-semibold tracking-tight">
+              {snapshot?.complete ? "Your Access account is ready" : "Finish setting up Access"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Access needs these details before a new ride or service can be booked. This helps us
-              know who is travelling and prepare appropriate assistance.
+              We only ask for the essentials needed to identify you and prepare a booking. Travel
+              preferences, emergency contacts and notification choices can be added later in
+              Profile.
             </p>
           </div>
         </div>
         <div className="mt-4">
           <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-            <span>Onboarding progress</span>
+            <span>Setup progress</span>
             <span>{snapshot?.completion_percent ?? 0}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-secondary">
@@ -232,7 +251,7 @@ function PassengerOnboardingPage() {
           number={1}
           icon={<UserRound className="h-4 w-4" />}
           title="Personal details"
-          description="Your email comes from your Access sign-in. Google or Apple details are pre-filled where available."
+          description="Your name, mobile number and the email linked to your Access account."
         />
         <div className="space-y-3">
           <div className="space-y-1.5">
@@ -243,7 +262,7 @@ function PassengerOnboardingPage() {
               onChange={(event) => setFullName(event.target.value)}
               autoComplete="name"
               maxLength={80}
-              placeholder="Your full legal or commonly used name"
+              placeholder="Your full name"
             />
           </div>
           <div className="space-y-1.5">
@@ -261,9 +280,6 @@ function PassengerOnboardingPage() {
           <div className="space-y-1.5">
             <Label htmlFor="onboarding-email">Email address</Label>
             <Input id="onboarding-email" value={snapshot?.profile.email ?? ""} readOnly />
-            <p className="text-xs text-muted-foreground">
-              This is linked to your sign-in account and cannot be changed during onboarding.
-            </p>
           </div>
         </div>
       </section>
@@ -273,7 +289,7 @@ function PassengerOnboardingPage() {
           number={2}
           icon={<MapPin className="h-4 w-4" />}
           title="Primary saved address"
-          description="Save at least one address. You can add Home, Work, family and medical-facility addresses later."
+          description="Save one useful address now. You can add Home, Work, family or medical addresses later."
         />
         <div className="space-y-1.5">
           <Label htmlFor="onboarding-address-label">Address label</Label>
@@ -303,145 +319,87 @@ function PassengerOnboardingPage() {
       <section className="mt-4 space-y-4 rounded-2xl border bg-card p-4 shadow-sm">
         <StepHeading
           number={3}
-          icon={<HeartHandshake className="h-4 w-4" />}
-          title="Travel & assistance preferences"
-          description="Tell us what normally helps you travel comfortably. You can still specify exact requirements for each booking."
+          icon={<MailCheck className="h-4 w-4" />}
+          title="Confirm your account"
+          description="One final check confirms that the email belongs to you."
         />
-        <div className="space-y-1.5">
-          <Label htmlFor="onboarding-contact-method">Preferred contact method</Label>
-          <select
-            id="onboarding-contact-method"
-            value={preferredContact}
-            onChange={(event) =>
-              setPreferredContact(
-                event.target.value as OnboardingPreferences["preferred_contact_method"],
-              )
-            }
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-          >
-            <option value="in_app">In-app</option>
-            <option value="phone">Phone call</option>
-            <option value="email">Email</option>
-          </select>
-        </div>
-        <label className="flex items-start gap-3 rounded-xl border p-3 text-sm">
-          <Checkbox
-            checked={wheelchairUser}
-            onCheckedChange={(value) => setWheelchairUser(value === true)}
-          />
-          <span>
-            <span className="font-medium">I use a wheelchair</span>
-            <span className="block text-xs text-muted-foreground">
-              This helps Access prepare suitable transport. Exact wheelchair and transfer details
-              can still be confirmed for each trip.
-            </span>
-          </span>
-        </label>
-        <div className="space-y-1.5">
-          <Label htmlFor="onboarding-mobility">Mobility device details (optional)</Label>
-          <Textarea
-            id="onboarding-mobility"
-            value={mobilityNotes}
-            onChange={(event) => setMobilityNotes(event.target.value)}
-            rows={3}
-            placeholder="Wheelchair type, walker, folding needs, dimensions or other equipment…"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="onboarding-communication">Communication support (optional)</Label>
-          <Textarea
-            id="onboarding-communication"
-            value={communicationNotes}
-            onChange={(event) => setCommunicationNotes(event.target.value)}
-            rows={3}
-            placeholder="Preferred communication approach or assistance…"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="onboarding-assistance">General travel assistance (optional)</Label>
-          <Textarea
-            id="onboarding-assistance"
-            value={assistanceNotes}
-            onChange={(event) => setAssistanceNotes(event.target.value)}
-            rows={3}
-            placeholder="Door-to-door help, boarding preferences or other useful information…"
-          />
-          <p className="text-xs text-muted-foreground">
-            If you have no special requirements, leave these notes blank. Completing onboarding
-            confirms that choice.
-          </p>
-        </div>
+
+        {emailConfirmed ? (
+          <div className="flex items-start gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-medium">Email confirmed</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {confirmationMethod === "oauth_google"
+                  ? "Google confirmed this email for your Access sign-in."
+                  : confirmationMethod === "oauth_apple"
+                    ? "Apple confirmed this email for your Access sign-in."
+                    : "Your Access verification code was confirmed."}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              We will send a 6-digit code to{" "}
+              <strong className="text-foreground">{snapshot?.profile.email}</strong> from Access by
+              DAATS. The code expires after 10 minutes.
+            </p>
+            <Button
+              type="button"
+              variant={codeSent ? "outline" : "default"}
+              className="w-full"
+              disabled={saving || sendingCode}
+              onClick={() => void sendCode()}
+            >
+              {sendingCode || saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {codeSent ? "Send another code" : "Save details & send verification code"}
+            </Button>
+
+            {codeSent ? (
+              <div className="rounded-xl border bg-background p-3">
+                <Label htmlFor="onboarding-code">Verification code</Label>
+                <Input
+                  id="onboarding-code"
+                  className="mt-2 text-center text-lg tracking-[0.35em]"
+                  value={code}
+                  onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder="000000"
+                />
+                <Button
+                  type="button"
+                  className="mt-3 w-full"
+                  disabled={verifyingCode || code.length !== 6}
+                  onClick={() => void verifyCode()}
+                >
+                  {verifyingCode ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Confirm email & finish
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        )}
       </section>
 
-      <section className="mt-4 space-y-4 rounded-2xl border bg-card p-4 shadow-sm">
-        <StepHeading
-          number={4}
-          icon={<Shield className="h-4 w-4" />}
-          title="Emergency contact"
-          description="Provide someone Access can contact if an urgent situation occurs during your journey."
-        />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="onboarding-emergency-name">Contact full name</Label>
-            <Input
-              id="onboarding-emergency-name"
-              value={emergencyName}
-              onChange={(event) => setEmergencyName(event.target.value)}
-              autoComplete="name"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="onboarding-emergency-phone">Phone number</Label>
-            <Input
-              id="onboarding-emergency-phone"
-              value={emergencyPhone}
-              onChange={(event) => setEmergencyPhone(event.target.value)}
-              inputMode="tel"
-              placeholder="+27 71 234 5678"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="onboarding-emergency-relationship">Relationship</Label>
-            <Input
-              id="onboarding-emergency-relationship"
-              value={emergencyRelationship}
-              onChange={(event) => setEmergencyRelationship(event.target.value)}
-              placeholder="e.g. spouse, parent, sibling, caregiver"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-4 space-y-4 rounded-2xl border bg-card p-4 shadow-sm">
-        <StepHeading
-          number={5}
-          icon={<BellRing className="h-4 w-4" />}
-          title="Notification preferences"
-          description="Choose how Access may send updates. In-app safety and operational notifications always remain available."
-        />
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <NotificationChoice label="Push" checked={push} onChange={setPush} />
-          <NotificationChoice label="SMS" checked={sms} onChange={setSms} />
-          <NotificationChoice label="WhatsApp" checked={whatsapp} onChange={setWhatsapp} />
-          <NotificationChoice
-            label="Email"
-            checked={emailNotifications}
-            onChange={setEmailNotifications}
-          />
-        </div>
-      </section>
-
-      <section className="mt-4 rounded-2xl border border-primary/30 bg-primary/5 p-4">
-        <h2 className="font-semibold">Before you continue</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          By completing this setup, you confirm that the contact, address and assistance information
-          above is current. You can update it later from Profile.
-        </p>
-        <Button className="mt-4 w-full" size="lg" disabled={saving} onClick={() => void submit()}>
+      {emailConfirmed ? (
+        <Button
+          className="mt-4 w-full"
+          size="lg"
+          disabled={saving}
+          onClick={() => void saveAndContinue()}
+        >
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {snapshot?.complete ? "Save profile & continue" : "Complete onboarding & continue"}
+          {snapshot?.complete ? "Continue to Access" : "Save details & continue"}
         </Button>
-      </section>
+      ) : null}
+
+      <p className="mt-4 px-2 text-center text-xs text-muted-foreground">
+        You can complete mobility and assistance preferences, emergency contacts and notification
+        settings later from Profile. They do not block booking.
+      </p>
     </AppShell>
   );
 }
@@ -470,22 +428,5 @@ function StepHeading({
         <p className="mt-1 text-xs text-muted-foreground">{description}</p>
       </div>
     </div>
-  );
-}
-
-function NotificationChoice({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label className="flex items-center gap-2 rounded-xl border p-3">
-      <Checkbox checked={checked} onCheckedChange={(value) => onChange(value === true)} />
-      {label}
-    </label>
   );
 }
