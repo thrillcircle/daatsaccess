@@ -18,6 +18,7 @@ export const DRIVER_SAFE_RIDE_FIELDS = [
   "pickup_lng",
   "destination_lat",
   "destination_lng",
+  "route_stops",
   "distance_km",
   "actual_distance_km",
   "estimated_duration_seconds",
