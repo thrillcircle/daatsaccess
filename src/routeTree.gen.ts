@@ -37,6 +37,7 @@ import { Route as AppAdminTripHistoryRouteImport } from './routes/app.admin.trip
 import { Route as AppAdminSupportRouteImport } from './routes/app.admin.support'
 import { Route as AppAdminSettingsRouteImport } from './routes/app.admin.settings'
 import { Route as AppAdminScheduleRouteImport } from './routes/app.admin.schedule'
+import { Route as AppAdminSafetyRouteImport } from './routes/app.admin.safety'
 import { Route as AppAdminReliabilityRouteImport } from './routes/app.admin.reliability'
 import { Route as AppAdminPricingServicesRouteImport } from './routes/app.admin.pricing-services'
 import { Route as AppAdminPassengersRouteImport } from './routes/app.admin.passengers'
@@ -47,12 +48,15 @@ import { Route as AppAdminFleetRouteImport } from './routes/app.admin.fleet'
 import { Route as AppAdminDriversRouteImport } from './routes/app.admin.drivers'
 import { Route as AppAdminDriverAssignmentsRouteImport } from './routes/app.admin.driver-assignments'
 import { Route as AppAdminDispatchRouteImport } from './routes/app.admin.dispatch'
+import { Route as AppAdminCommercialRouteImport } from './routes/app.admin.commercial'
 import { Route as AppAdminBookingsRouteImport } from './routes/app.admin.bookings'
 import { Route as AppAdminAuditLogsRouteImport } from './routes/app.admin.audit-logs'
 import { Route as AppPassengerBookingsIndexRouteImport } from './routes/app.passenger.bookings.index'
 import { Route as AppPassengerBookIndexRouteImport } from './routes/app.passenger.book.index'
 import { Route as AppAdminOperationsIndexRouteImport } from './routes/app.admin.operations.index'
 import { Route as AppAdminBookingsIndexRouteImport } from './routes/app.admin.bookings.index'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as AppPassengerBookTransportRouteImport } from './routes/app.passenger.book.transport'
 import { Route as AppPassengerBookExtendedRouteImport } from './routes/app.passenger.book.extended'
 import { Route as AppPassengerBookAssistedRouteImport } from './routes/app.passenger.book.assisted'
@@ -204,6 +208,11 @@ const AppAdminScheduleRoute = AppAdminScheduleRouteImport.update({
   path: '/schedule',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AppAdminSafetyRoute = AppAdminSafetyRouteImport.update({
+  id: '/safety',
+  path: '/safety',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppAdminReliabilityRoute = AppAdminReliabilityRouteImport.update({
   id: '/reliability',
   path: '/reliability',
@@ -255,6 +264,11 @@ const AppAdminDispatchRoute = AppAdminDispatchRouteImport.update({
   path: '/dispatch',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AppAdminCommercialRoute = AppAdminCommercialRouteImport.update({
+  id: '/commercial',
+  path: '/commercial',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppAdminBookingsRoute = AppAdminBookingsRouteImport.update({
   id: '/bookings',
   path: '/bookings',
@@ -285,6 +299,16 @@ const AppAdminBookingsIndexRoute = AppAdminBookingsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppAdminBookingsRoute,
+} as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppPassengerBookTransportRoute =
   AppPassengerBookTransportRouteImport.update({
@@ -357,6 +381,7 @@ export interface FileRoutesByFullPath {
   '/app/support': typeof AppSupportRouteWithChildren
   '/app/admin/audit-logs': typeof AppAdminAuditLogsRoute
   '/app/admin/bookings': typeof AppAdminBookingsRouteWithChildren
+  '/app/admin/commercial': typeof AppAdminCommercialRoute
   '/app/admin/dispatch': typeof AppAdminDispatchRoute
   '/app/admin/driver-assignments': typeof AppAdminDriverAssignmentsRoute
   '/app/admin/drivers': typeof AppAdminDriversRoute
@@ -367,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/app/admin/passengers': typeof AppAdminPassengersRouteWithChildren
   '/app/admin/pricing-services': typeof AppAdminPricingServicesRoute
   '/app/admin/reliability': typeof AppAdminReliabilityRoute
+  '/app/admin/safety': typeof AppAdminSafetyRoute
   '/app/admin/schedule': typeof AppAdminScheduleRoute
   '/app/admin/settings': typeof AppAdminSettingsRoute
   '/app/admin/support': typeof AppAdminSupportRouteWithChildren
@@ -394,6 +420,8 @@ export interface FileRoutesByFullPath {
   '/app/passenger/book/assisted': typeof AppPassengerBookAssistedRoute
   '/app/passenger/book/extended': typeof AppPassengerBookExtendedRoute
   '/app/passenger/book/transport': typeof AppPassengerBookTransportRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/app/admin/bookings/': typeof AppAdminBookingsIndexRoute
   '/app/admin/operations/': typeof AppAdminOperationsIndexRoute
   '/app/passenger/book/': typeof AppPassengerBookIndexRoute
@@ -409,6 +437,7 @@ export interface FileRoutesByTo {
   '/app/profile': typeof AppProfileRoute
   '/app/support': typeof AppSupportRouteWithChildren
   '/app/admin/audit-logs': typeof AppAdminAuditLogsRoute
+  '/app/admin/commercial': typeof AppAdminCommercialRoute
   '/app/admin/dispatch': typeof AppAdminDispatchRoute
   '/app/admin/driver-assignments': typeof AppAdminDriverAssignmentsRoute
   '/app/admin/drivers': typeof AppAdminDriversRoute
@@ -418,6 +447,7 @@ export interface FileRoutesByTo {
   '/app/admin/passengers': typeof AppAdminPassengersRouteWithChildren
   '/app/admin/pricing-services': typeof AppAdminPricingServicesRoute
   '/app/admin/reliability': typeof AppAdminReliabilityRoute
+  '/app/admin/safety': typeof AppAdminSafetyRoute
   '/app/admin/schedule': typeof AppAdminScheduleRoute
   '/app/admin/settings': typeof AppAdminSettingsRoute
   '/app/admin/support': typeof AppAdminSupportRouteWithChildren
@@ -443,6 +473,8 @@ export interface FileRoutesByTo {
   '/app/passenger/book/assisted': typeof AppPassengerBookAssistedRoute
   '/app/passenger/book/extended': typeof AppPassengerBookExtendedRoute
   '/app/passenger/book/transport': typeof AppPassengerBookTransportRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/app/admin/bookings': typeof AppAdminBookingsIndexRoute
   '/app/admin/operations': typeof AppAdminOperationsIndexRoute
   '/app/passenger/book': typeof AppPassengerBookIndexRoute
@@ -463,6 +495,7 @@ export interface FileRoutesById {
   '/app/support': typeof AppSupportRouteWithChildren
   '/app/admin/audit-logs': typeof AppAdminAuditLogsRoute
   '/app/admin/bookings': typeof AppAdminBookingsRouteWithChildren
+  '/app/admin/commercial': typeof AppAdminCommercialRoute
   '/app/admin/dispatch': typeof AppAdminDispatchRoute
   '/app/admin/driver-assignments': typeof AppAdminDriverAssignmentsRoute
   '/app/admin/drivers': typeof AppAdminDriversRoute
@@ -473,6 +506,7 @@ export interface FileRoutesById {
   '/app/admin/passengers': typeof AppAdminPassengersRouteWithChildren
   '/app/admin/pricing-services': typeof AppAdminPricingServicesRoute
   '/app/admin/reliability': typeof AppAdminReliabilityRoute
+  '/app/admin/safety': typeof AppAdminSafetyRoute
   '/app/admin/schedule': typeof AppAdminScheduleRoute
   '/app/admin/settings': typeof AppAdminSettingsRoute
   '/app/admin/support': typeof AppAdminSupportRouteWithChildren
@@ -500,6 +534,8 @@ export interface FileRoutesById {
   '/app/passenger/book/assisted': typeof AppPassengerBookAssistedRoute
   '/app/passenger/book/extended': typeof AppPassengerBookExtendedRoute
   '/app/passenger/book/transport': typeof AppPassengerBookTransportRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/app/admin/bookings/': typeof AppAdminBookingsIndexRoute
   '/app/admin/operations/': typeof AppAdminOperationsIndexRoute
   '/app/passenger/book/': typeof AppPassengerBookIndexRoute
@@ -521,6 +557,7 @@ export interface FileRouteTypes {
     | '/app/support'
     | '/app/admin/audit-logs'
     | '/app/admin/bookings'
+    | '/app/admin/commercial'
     | '/app/admin/dispatch'
     | '/app/admin/driver-assignments'
     | '/app/admin/drivers'
@@ -531,6 +568,7 @@ export interface FileRouteTypes {
     | '/app/admin/passengers'
     | '/app/admin/pricing-services'
     | '/app/admin/reliability'
+    | '/app/admin/safety'
     | '/app/admin/schedule'
     | '/app/admin/settings'
     | '/app/admin/support'
@@ -558,6 +596,8 @@ export interface FileRouteTypes {
     | '/app/passenger/book/assisted'
     | '/app/passenger/book/extended'
     | '/app/passenger/book/transport'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/app/admin/bookings/'
     | '/app/admin/operations/'
     | '/app/passenger/book/'
@@ -573,6 +613,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/support'
     | '/app/admin/audit-logs'
+    | '/app/admin/commercial'
     | '/app/admin/dispatch'
     | '/app/admin/driver-assignments'
     | '/app/admin/drivers'
@@ -582,6 +623,7 @@ export interface FileRouteTypes {
     | '/app/admin/passengers'
     | '/app/admin/pricing-services'
     | '/app/admin/reliability'
+    | '/app/admin/safety'
     | '/app/admin/schedule'
     | '/app/admin/settings'
     | '/app/admin/support'
@@ -607,6 +649,8 @@ export interface FileRouteTypes {
     | '/app/passenger/book/assisted'
     | '/app/passenger/book/extended'
     | '/app/passenger/book/transport'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/app/admin/bookings'
     | '/app/admin/operations'
     | '/app/passenger/book'
@@ -626,6 +670,7 @@ export interface FileRouteTypes {
     | '/app/support'
     | '/app/admin/audit-logs'
     | '/app/admin/bookings'
+    | '/app/admin/commercial'
     | '/app/admin/dispatch'
     | '/app/admin/driver-assignments'
     | '/app/admin/drivers'
@@ -636,6 +681,7 @@ export interface FileRouteTypes {
     | '/app/admin/passengers'
     | '/app/admin/pricing-services'
     | '/app/admin/reliability'
+    | '/app/admin/safety'
     | '/app/admin/schedule'
     | '/app/admin/settings'
     | '/app/admin/support'
@@ -663,6 +709,8 @@ export interface FileRouteTypes {
     | '/app/passenger/book/assisted'
     | '/app/passenger/book/extended'
     | '/app/passenger/book/transport'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/app/admin/bookings/'
     | '/app/admin/operations/'
     | '/app/passenger/book/'
@@ -676,6 +724,8 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
+  LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -876,6 +926,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminScheduleRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/app/admin/safety': {
+      id: '/app/admin/safety'
+      path: '/safety'
+      fullPath: '/app/admin/safety'
+      preLoaderRoute: typeof AppAdminSafetyRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
     '/app/admin/reliability': {
       id: '/app/admin/reliability'
       path: '/reliability'
@@ -946,6 +1003,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminDispatchRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/app/admin/commercial': {
+      id: '/app/admin/commercial'
+      path: '/commercial'
+      fullPath: '/app/admin/commercial'
+      preLoaderRoute: typeof AppAdminCommercialRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
     '/app/admin/bookings': {
       id: '/app/admin/bookings'
       path: '/bookings'
@@ -987,6 +1051,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/admin/bookings/'
       preLoaderRoute: typeof AppAdminBookingsIndexRouteImport
       parentRoute: typeof AppAdminBookingsRoute
+    }
+    '/lovable/email/auth/webhook': {
+      id: '/lovable/email/auth/webhook'
+      path: '/lovable/email/auth/webhook'
+      fullPath: '/lovable/email/auth/webhook'
+      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/app/passenger/book/transport': {
       id: '/app/passenger/book/transport'
@@ -1128,6 +1206,7 @@ const AppAdminVehicleProfilesRouteWithChildren =
 interface AppAdminRouteChildren {
   AppAdminAuditLogsRoute: typeof AppAdminAuditLogsRoute
   AppAdminBookingsRoute: typeof AppAdminBookingsRouteWithChildren
+  AppAdminCommercialRoute: typeof AppAdminCommercialRoute
   AppAdminDispatchRoute: typeof AppAdminDispatchRoute
   AppAdminDriverAssignmentsRoute: typeof AppAdminDriverAssignmentsRoute
   AppAdminDriversRoute: typeof AppAdminDriversRoute
@@ -1138,6 +1217,7 @@ interface AppAdminRouteChildren {
   AppAdminPassengersRoute: typeof AppAdminPassengersRouteWithChildren
   AppAdminPricingServicesRoute: typeof AppAdminPricingServicesRoute
   AppAdminReliabilityRoute: typeof AppAdminReliabilityRoute
+  AppAdminSafetyRoute: typeof AppAdminSafetyRoute
   AppAdminScheduleRoute: typeof AppAdminScheduleRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
   AppAdminSupportRoute: typeof AppAdminSupportRouteWithChildren
@@ -1153,6 +1233,7 @@ interface AppAdminRouteChildren {
 const AppAdminRouteChildren: AppAdminRouteChildren = {
   AppAdminAuditLogsRoute: AppAdminAuditLogsRoute,
   AppAdminBookingsRoute: AppAdminBookingsRouteWithChildren,
+  AppAdminCommercialRoute: AppAdminCommercialRoute,
   AppAdminDispatchRoute: AppAdminDispatchRoute,
   AppAdminDriverAssignmentsRoute: AppAdminDriverAssignmentsRoute,
   AppAdminDriversRoute: AppAdminDriversRoute,
@@ -1163,6 +1244,7 @@ const AppAdminRouteChildren: AppAdminRouteChildren = {
   AppAdminPassengersRoute: AppAdminPassengersRouteWithChildren,
   AppAdminPricingServicesRoute: AppAdminPricingServicesRoute,
   AppAdminReliabilityRoute: AppAdminReliabilityRoute,
+  AppAdminSafetyRoute: AppAdminSafetyRoute,
   AppAdminScheduleRoute: AppAdminScheduleRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
   AppAdminSupportRoute: AppAdminSupportRouteWithChildren,
@@ -1283,6 +1365,8 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
+  LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
