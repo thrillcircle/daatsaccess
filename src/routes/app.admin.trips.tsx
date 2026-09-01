@@ -1247,13 +1247,7 @@ function AdminActionsDialog({
 
             <Button
               size="sm"
-              disabled={
-                busy ||
-                terminal ||
-                !selectedDriver ||
-                !selectedFleet ||
-                (ride.status === "requested" && !paymentConfirmed)
-              }
+              disabled={busy || terminal || !selectedDriver || !selectedFleet}
               onClick={onAssignResources}
               className="h-8 text-xs"
             >
@@ -1261,9 +1255,7 @@ function AdminActionsDialog({
               Assign resources
             </Button>
             <p className="text-[10px] text-muted-foreground">
-              {ride.status === "requested" && !paymentConfirmed
-                ? "Locked until the passenger payment is confirmed by PayFast."
-                : "Driver and vehicle are validated and written in one protected transaction."}
+              Driver and vehicle are validated and written in one protected transaction.
             </p>
           </div>
 
