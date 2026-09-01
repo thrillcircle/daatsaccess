@@ -14,14 +14,29 @@ export const isFarFutureScheduled = (r: {
   r.scheduled_at != null &&
   new Date(r.scheduled_at).getTime() - Date.now() > PICKUP_WINDOW_MS;
 
-export function mapsNavUrl(lat: number, lng: number) {
-  return `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${lat},${lng}`;
+/** Google Maps navigation, optionally routed through ordered stop waypoints. */
+export function mapsNavUrl(
+  lat: number,
+  lng: number,
+  waypoints: Array<{ lat: number; lng: number }> = [],
+) {
+  const base = `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${lat},${lng}`;
+  if (!waypoints.length) return base;
+  const wp = waypoints
+    .slice(0, 5)
+    .map((w) => `${w.lat},${w.lng}`)
+    .join("|");
+  return `${base}&waypoints=${encodeURIComponent(wp)}`;
 }
 
-export function openMapsNav(lat: number, lng: number): Window | null {
+export function openMapsNav(
+  lat: number,
+  lng: number,
+  waypoints: Array<{ lat: number; lng: number }> = [],
+): Window | null {
   // Called synchronously inside the click handler to satisfy popup-blockers.
   return typeof window !== "undefined"
-    ? window.open(mapsNavUrl(lat, lng), "_blank", "noopener,noreferrer")
+    ? window.open(mapsNavUrl(lat, lng, waypoints), "_blank", "noopener,noreferrer")
     : null;
 }
 
