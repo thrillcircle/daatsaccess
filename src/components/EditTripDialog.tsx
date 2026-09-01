@@ -377,7 +377,7 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
           </div>
         )}
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <DialogFooter className="flex-row justify-end gap-2 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
