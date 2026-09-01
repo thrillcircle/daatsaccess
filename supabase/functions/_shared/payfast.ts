@@ -1,4 +1,5 @@
 import md5 from "npm:blueimp-md5@2.19.0";
+import { parsePayfastItnEntries } from "./payfast-itn-parser.ts";
 
 export type PayfastMode = "sandbox" | "live";
 
@@ -114,20 +115,13 @@ export function parseItnBody(rawBody: string): {
   signature: string;
   validationBody: string;
 } {
-  const search = new URLSearchParams(rawBody);
-  const allEntries = Array.from(search.entries()) as PayfastEntry[];
-  const signature = search.get("signature") ?? "";
-  const signatureIndex = allEntries.findIndex(([key]) => key === "signature");
-  // PayFast's ITN reference implementation builds the validation parameter
-  // string only from fields posted before `signature`, then stops. Fields that
-  // follow `signature` are still useful payload data, but including them in the
-  // signature/server-validation body makes a genuine ITN fail validation.
-  const entries = signatureIndex === -1 ? allEntries : allEntries.slice(0, signatureIndex);
+  const parsed = parsePayfastItnEntries(rawBody);
+  const entries = parsed.signedEntries as PayfastEntry[];
 
   return {
     entries,
-    data: Object.fromEntries(allEntries),
-    signature,
+    data: parsed.data,
+    signature: parsed.signature,
     validationBody: payfastParameterString(entries),
   };
 }
