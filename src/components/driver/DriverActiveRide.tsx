@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LiveTripMap } from "@/components/LiveTripMap";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
+import { SafetySOSButton } from "@/components/safety/SafetySOSButton";
 import type { Database } from "@/integrations/supabase/types";
 
 type RideStatus = Database["public"]["Enums"]["ride_status"];
@@ -205,7 +206,6 @@ export function ActiveRideCard({
   const [pinOpen, setPinOpen] = useState(false);
   const [navBlocked, setNavBlocked] = useState(false);
 
-  // Stops are only waypoints once the passenger is on board.
   const stops = parseRideStops(ride.route_stops);
   const stopWaypoints = stops.map((s) => ({ lat: s.lat, lng: s.lng }));
 
@@ -423,6 +423,9 @@ export function ActiveRideCard({
           Complete trip
         </Button>
       )}
+
+      <SafetySOSButton rideId={ride.id} role="driver" />
+
       <p className="mt-3 text-center text-xs text-muted-foreground">
         Need to stop or change the service? Use the operational decline, no-show, incident, or
         support actions so Operations can keep the Ride and operation run synchronized.
