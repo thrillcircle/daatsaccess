@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.payfast-itn]
 verify_jwt = false
+
+[functions.payfast-refund]
+verify_jwt = true
