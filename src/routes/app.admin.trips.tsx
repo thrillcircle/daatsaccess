@@ -1047,26 +1047,14 @@ function AdminActionsDialog({
             ) : null}
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-xs">Payment confirmation</Label>
-            <div
-              className={
-                "rounded-md border p-2 text-xs " +
-                (paymentConfirmed
-                  ? "border-emerald-500/40 bg-emerald-500/10"
-                  : "border-amber-500/40 bg-amber-500/10")
-              }
-            >
-              {payment ? (
+          {payment ? (
+            <div className="space-y-1">
+              <Label className="text-xs">Payment record</Label>
+              <div className="rounded-md border bg-secondary/30 p-2 text-xs">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">
-                      {paymentConfirmed ? "PayFast payment confirmed" : "Payment not confirmed"}
-                    </span>
-                    <Badge
-                      variant={paymentConfirmed ? "default" : "secondary"}
-                      className="text-[10px]"
-                    >
+                    <span className="font-medium">PayFast</span>
+                    <Badge variant="secondary" className="text-[10px]">
                       {payment.provider_status ?? payment.status}
                     </Badge>
                   </div>
@@ -1081,34 +1069,21 @@ function AdminActionsDialog({
                     </span>
                     <span>PayFast reference</span>
                     <span className="break-all text-right font-mono text-foreground">
-                      {payment.provider_payment_id ?? "Awaiting PayFast confirmation"}
+                      {payment.provider_payment_id ?? "—"}
                     </span>
                     <span>Confirmed</span>
                     <span className="text-right text-foreground">
-                      {payment.paid_at ? new Date(payment.paid_at).toLocaleString() : "Not yet"}
+                      {payment.paid_at ? new Date(payment.paid_at).toLocaleString() : "—"}
                     </span>
                     <span>Environment</span>
                     <span className="text-right uppercase text-foreground">
                       {payment.environment ?? "—"}
                     </span>
                   </div>
-                  <p className="pt-1 text-[10px]">
-                    {paymentConfirmed
-                      ? "Payment matches the current trip fare. Admin acceptance is unlocked."
-                      : "Admin acceptance stays locked until PayFast confirms COMPLETE for the current trip fare."}
-                  </p>
                 </div>
-              ) : (
-                <div>
-                  <p className="font-medium">Awaiting passenger payment</p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    This requested trip cannot be accepted or assigned until PayFast confirms
-                    payment.
-                  </p>
-                </div>
-              )}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {/* Contact */}
           <div className="space-y-1">
