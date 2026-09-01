@@ -40,9 +40,7 @@ describe("Phase 7 passenger PayFast UX", () => {
 
   it("makes requested trips payable before admin acceptance", () => {
     expect(paymentCard).toContain('"requested",\n  "accepted"');
-    expect(paymentCard).toContain(
-      "Payment is required before DAATS can accept this trip request.",
-    );
+    expect(paymentCard).toContain("Payment is required before DAATS can accept this trip request.");
     expect(paymentCard).toContain(
       "Payment confirmed. Your trip is now waiting for DAATS admin acceptance.",
     );
@@ -69,10 +67,10 @@ describe("Phase 7 passenger PayFast UX", () => {
 
   it("returns from PayFast to the exact trip window and waits for trusted ITN confirmation", () => {
     expect(createPayment).toContain(
-      'const returnUrl = `${appUrl}/app/trip/${rideId}?payment=success`',
+      "const returnUrl = `${appUrl}/app/trip/${rideId}?payment=success`",
     );
     expect(createPayment).toContain(
-      'const cancelUrl = `${appUrl}/app/trip/${rideId}?payment=cancelled`',
+      "const cancelUrl = `${appUrl}/app/trip/${rideId}?payment=cancelled`",
     );
     expect(paymentCard).toContain('returnState === "success" && !paid');
     expect(paymentCard).toContain("confirming the payment securely from the");
