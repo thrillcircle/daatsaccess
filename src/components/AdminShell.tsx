@@ -60,6 +60,8 @@ const SECTIONS: NavSection[] = [
       { to: "/app/admin/drivers", label: "Drivers", icon: Users },
       { to: "/app/admin/bookings", label: "Service Bookings", icon: CalendarRange },
       { to: "/app/admin/support", label: "Support", icon: LifeBuoy },
+      { to: "/app/admin/safety", label: "Safety & SOS", icon: ShieldAlert },
+      { to: "/app/admin/commercial", label: "Commercial Readiness", icon: CircleDollarSign },
     ],
   },
   {
