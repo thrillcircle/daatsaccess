@@ -158,9 +158,7 @@ export function AutomaticPayfastCheckout() {
           (payload) => {
             const next = payload.new as Record<string, unknown>;
             if (next.status !== "payment_pending") {
-              setPendingRide((current) =>
-                current?.id === String(next.id) ? null : current,
-              );
+              setPendingRide((current) => (current?.id === String(next.id) ? null : current));
               starting.current = null;
             }
           },
@@ -200,9 +198,7 @@ export function AutomaticPayfastCheckout() {
           (payload) => {
             const next = payload.new as Record<string, unknown>;
             if (next.status !== "awaiting_payment") {
-              setPendingEdit((current) =>
-                current?.id === String(next.id) ? null : current,
-              );
+              setPendingEdit((current) => (current?.id === String(next.id) ? null : current));
               starting.current = null;
             }
           },
@@ -253,8 +249,7 @@ export function AutomaticPayfastCheckout() {
     window.location.assign(`/app/trip/${rideId}`);
   };
 
-  const cancelledEdit =
-    !!pendingEdit && paymentReturn === "cancelled" && returnChangeId === pendingEdit.id;
+  const cancelledEdit = !!pendingEdit && paymentReturn === "cancelled" && returnChangeId === pendingEdit.id;
   const editIsStarting = !!pendingEdit && starting.current === `edit:${pendingEdit.id}`;
   const rideIsStarting = !!pendingRide && starting.current === `ride:${pendingRide.id}`;
   const showEditRecovery =
