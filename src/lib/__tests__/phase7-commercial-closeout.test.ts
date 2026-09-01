@@ -62,7 +62,7 @@ describe("Phase 7 commercial readiness closeout", () => {
     expect(migration).toMatch(/finalize_payment_refund[\s\S]*TO service_role/i);
     expect(refundFunction).toContain("prepare_payment_refund");
     expect(refundFunction).toContain("finalize_payment_refund");
-    expect(refundFunction).toContain("PAYFAST");
+    expect(refundFunction).toContain("https://api.payfast.co.za");
     expect(refundFunction).toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(refundFunction).not.toContain("body.amount");
   });
