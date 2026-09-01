@@ -6,6 +6,13 @@ const migration = readFileSync(
   join(process.cwd(), "supabase/migrations/20260901153000_phase7_payment_foundation.sql"),
   "utf8",
 );
+const syncedMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260901140524_2649f6c2-3650-4716-ad2c-1255d321ee87.sql",
+  ),
+  "utf8",
+);
 const shared = readFileSync(join(process.cwd(), "supabase/functions/_shared/payfast.ts"), "utf8");
 const createPayment = readFileSync(
   join(process.cwd(), "supabase/functions/payfast-create-payment/index.ts"),
@@ -57,6 +64,16 @@ describe("Phase 7 PayFast payment foundation", () => {
     expect(migration).not.toMatch(
       /passenger_id = auth\.uid\(\)[\s\S]{0,120}driver_id = auth\.uid\(\)/i,
     );
+  });
+
+  it("replays safely after the Lovable-synchronised payment migration", () => {
+    const policyName = '"passenger or admin reads payments"';
+    const policyDrop = `DROP POLICY IF EXISTS ${policyName} ON public.payments;`;
+    const policyCreate = `CREATE POLICY ${policyName}`;
+
+    expect(syncedMigration).toContain(policyCreate);
+    expect(migration).toContain(policyDrop);
+    expect(migration.indexOf(policyDrop)).toBeLessThan(migration.indexOf(policyCreate));
   });
 
   it("requires all PayFast ITN security checks before reconciliation", () => {
