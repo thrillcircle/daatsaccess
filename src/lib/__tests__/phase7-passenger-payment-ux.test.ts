@@ -6,7 +6,15 @@ const paymentCard = readFileSync(
   join(process.cwd(), "src/components/payments/PassengerPaymentCard.tsx"),
   "utf8",
 );
+const adminPaymentSummary = readFileSync(
+  join(process.cwd(), "src/components/admin/AdminTripPaymentSummary.tsx"),
+  "utf8",
+);
 const tripPage = readFileSync(join(process.cwd(), "src/routes/app.trip.$rideId.tsx"), "utf8");
+const createPayment = readFileSync(
+  join(process.cwd(), "supabase/functions/payfast-create-payment/index.ts"),
+  "utf8",
+);
 
 describe("Phase 7 passenger PayFast UX", () => {
   it("submits only the ride reference and idempotency key to the payment initializer", () => {
@@ -30,15 +38,20 @@ describe("Phase 7 passenger PayFast UX", () => {
     expect(paymentCard).toContain("form.submit()");
   });
 
-  it("keeps requested trips non-payable until admin acceptance", () => {
-    expect(paymentCard).toContain('if (ride.status === "requested")');
+  it("makes requested trips payable before admin acceptance", () => {
+    expect(paymentCard).toContain('"requested",\n  "accepted"');
     expect(paymentCard).toContain(
+      "Payment is required before DAATS can accept this trip request.",
+    );
+    expect(paymentCard).toContain(
+      "Payment confirmed. Your trip is now waiting for DAATS admin acceptance.",
+    );
+    expect(paymentCard).not.toContain(
       "Payment becomes available after DAATS accepts your trip request.",
     );
-    expect(paymentCard).not.toContain('"requested",\n  "accepted"');
   });
 
-  it("supports accepted through completed trips and cancellation-charge checkout", () => {
+  it("supports the remaining trip states and cancellation-charge checkout", () => {
     for (const status of [
       '"accepted"',
       '"driver_arriving"',
@@ -54,21 +67,43 @@ describe("Phase 7 passenger PayFast UX", () => {
     expect(paymentCard).toContain("failure cancellations remain R0.");
   });
 
-  it("does not trust the browser return redirect as payment confirmation", () => {
+  it("returns from PayFast to the exact trip window and waits for trusted ITN confirmation", () => {
+    expect(createPayment).toContain(
+      'const returnUrl = `${appUrl}/app/trip/${rideId}?payment=success`',
+    );
+    expect(createPayment).toContain(
+      'const cancelUrl = `${appUrl}/app/trip/${rideId}?payment=cancelled`',
+    );
     expect(paymentCard).toContain('returnState === "success" && !paid');
-    expect(paymentCard).toContain("confirming the payment securely from the PayFast");
+    expect(paymentCard).toContain("confirming the payment securely from the");
+    expect(paymentCard).toContain("You can stay on this screen.");
+    expect(paymentCard).toContain("window.setInterval");
+    expect(paymentCard).toContain("void reloadPayment()");
     expect(paymentCard).toContain('payment?.status === "paid"');
   });
 
-  it("listens for server-confirmed payment changes and offers a receipt state", () => {
+  it("listens for server-confirmed payment changes and offers both PayFast references", () => {
     expect(paymentCard).toContain('table: "payments"');
     expect(paymentCard).toContain("postgres_changes");
     expect(paymentCard).toContain("Payment confirmed");
     expect(paymentCard).toContain("merchant_payment_id");
+    expect(paymentCard).toContain("provider_payment_id");
     expect(paymentCard).toContain("paid_at");
   });
 
-  it("renders payment controls only for the passenger in the existing trip page", () => {
+  it("shows confirmed PayFast references to admins without exposing them to drivers", () => {
+    expect(adminPaymentSummary).toContain('roles?.includes("admin")');
+    expect(adminPaymentSummary).toContain("if (rolesLoading || !isAdmin) return null");
+    expect(adminPaymentSummary).toContain("PayFast payment confirmed");
+    expect(adminPaymentSummary).toContain("Access reference");
+    expect(adminPaymentSummary).toContain("PayFast reference");
+    expect(adminPaymentSummary).toContain("provider_payment_id");
+    expect(adminPaymentSummary).toContain("provider_status");
+    expect(adminPaymentSummary).toContain("This trip is eligible for admin acceptance.");
+    expect(tripPage).toContain("<AdminTripPaymentSummary rideId={ride.id} />");
+  });
+
+  it("keeps passenger payment controls scoped to the passenger in the existing trip page", () => {
     expect(tripPage).toContain(
       "const isPassenger = !!user && !!ride && ride.passenger_id === user.id",
     );
