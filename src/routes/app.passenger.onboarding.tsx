@@ -81,7 +81,6 @@ function PassengerOnboardingPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function validateBasics() {
@@ -220,13 +219,16 @@ function PassengerOnboardingPage() {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-primary">3 quick steps</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-primary">
+              3 quick steps
+            </p>
             <h1 className="mt-1 text-xl font-semibold tracking-tight">
               {snapshot?.complete ? "Your Access account is ready" : "Finish setting up Access"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               We only ask for the essentials needed to identify you and prepare a booking. Travel
-              preferences, emergency contacts and notification choices can be added later in Profile.
+              preferences, emergency contacts and notification choices can be added later in
+              Profile.
             </p>
           </div>
         </div>
@@ -339,8 +341,9 @@ function PassengerOnboardingPage() {
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              We will send a 6-digit code to <strong className="text-foreground">{snapshot?.profile.email}</strong>{" "}
-              from Access by DAATS. The code expires after 10 minutes.
+              We will send a 6-digit code to{" "}
+              <strong className="text-foreground">{snapshot?.profile.email}</strong> from Access by
+              DAATS. The code expires after 10 minutes.
             </p>
             <Button
               type="button"
