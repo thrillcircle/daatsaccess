@@ -103,7 +103,7 @@ function PassengerPage() {
       <PassengerOperationsTimeline userId={user?.id} />
       <RatePrompt userId={user?.id} />
       <ScheduledTrips userId={user?.id} />
-      <BecomeDriver userId={user?.id} hasDriverRole={!!roles?.includes("driver")} />
+      <ActiveTripShortcut userId={user?.id} />
       <RideHistory
         userId={user?.id}
         title="Completed trips"
