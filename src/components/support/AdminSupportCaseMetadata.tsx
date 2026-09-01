@@ -40,7 +40,7 @@ export function AdminSupportCaseMetadata({ ticket }: { ticket: SupportTicket }) 
   }, [amount]);
 
   const save = async () => {
-    if (Number.isNaN(amountValue)) {
+    if (amountValue !== null && Number.isNaN(amountValue)) {
       toast.error("Decision amount must be zero or more");
       return;
     }
