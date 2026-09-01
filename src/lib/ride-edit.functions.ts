@@ -15,11 +15,13 @@ const InputSchema = z
     rideId: z.string().uuid(),
     pickup: PointSchema.nullable().optional(),
     destination: PointSchema.nullable().optional(),
+    /** Ordered intermediate stops, maximum five. `null` leaves stops untouched. */
+    stops: z.array(PointSchema).max(5).nullable().optional(),
     distanceKm: z.number().positive().lte(2000),
     durationMin: z.number().int().nonnegative().nullable().optional(),
   })
-  .refine((value) => value.pickup || value.destination, {
-    message: "At least one of pickup or destination is required",
+  .refine((value) => value.pickup || value.destination || value.stops, {
+    message: "At least one of pickup, destination or stops is required",
   });
 
 export type RideEditInput = z.infer<typeof InputSchema>;
