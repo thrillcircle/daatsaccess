@@ -125,9 +125,12 @@ export const Route = createFileRoute("/api/internal/notification-email-worker")(
           if (validation.error) throw new Error(validation.error.message);
           if (validation.data !== true) return json({ error: "Not found" }, 404);
 
-          const claimed = await rpc<EmailDelivery[]>("service_claim_email_notification_deliveries", {
-            p_limit: 25,
-          });
+          const claimed = await rpc<EmailDelivery[]>(
+            "service_claim_email_notification_deliveries",
+            {
+              p_limit: 25,
+            },
+          );
           if (claimed.error) throw new Error(claimed.error.message);
           const deliveries = claimed.data ?? [];
           if (!deliveries.length) return json({ processed: 0, delivered: 0, failed: 0 });
