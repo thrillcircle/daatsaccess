@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { AppShell, NAV_ICONS } from "@/components/AppShell";
 import { RouteMap } from "@/components/RouteMap";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
+import { PassengerPaymentCard } from "@/components/payments/PassengerPaymentCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { formatZAR } from "@/lib/pricing";
@@ -181,6 +182,8 @@ function TripDetailsPage() {
               />
             </div>
           </section>
+
+          {isPassenger ? <PassengerPaymentCard ride={ride} /> : null}
 
           <section className="rounded-2xl border bg-card p-4">
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
