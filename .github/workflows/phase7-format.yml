@@ -1,0 +1,51 @@
+name: Phase 7 Format
+
+on:
+  push:
+    branches:
+      - phase7/commercial-readiness-closeout-2
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: ${{ !contains(github.event.head_commit.message, '[skip format]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase7/commercial-readiness-closeout-2
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Format Phase 7 source
+        run: |
+          bunx prettier --write \
+            src/components/AdminShell.tsx \
+            src/components/admin/AdminCancelTripDialog.tsx \
+            src/components/driver/DriverActiveRide.tsx \
+            src/components/payments/PassengerPaymentCard.tsx \
+            src/components/profile/CompliancePrivacyCard.tsx \
+            src/components/safety/SafetySOSButton.tsx \
+            src/components/support/AdminSupportCaseMetadata.tsx \
+            src/components/support/AdminSupportVehicleActions.tsx \
+            src/lib/__tests__/phase7-commercial-closeout.test.ts \
+            src/lib/phase7-commercial.ts \
+            src/lib/support.ts \
+            src/routes/app.admin.commercial.tsx \
+            src/routes/app.admin.safety.tsx \
+            src/routes/app.profile.tsx \
+            'src/routes/app.trip.$rideId.tsx'
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then
+            echo 'Already formatted.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src
+          git commit -m 'Format Phase 7 source [skip format]'
+          git push origin HEAD:phase7/commercial-readiness-closeout-2
