@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { PersonalProfileCard } from "@/components/profile/PersonalProfileCard";
 import { PassengerProfileSections } from "@/components/profile/PassengerProfileSections";
+import { PassengerPaymentsCard } from "@/components/profile/PassengerPaymentsCard";
 import { DriverProfileSections } from "@/components/profile/DriverProfileSections";
 
 export const Route = createFileRoute("/app/profile")({
@@ -42,7 +43,14 @@ function ProfilePage() {
     <AppShell title="Profile">
       <PersonalProfileCard user={user} readOnly={driverOnly} roleLabel={primaryRole} />
 
-      {isPassenger ? <PassengerProfileSections userId={user.id} /> : null}
+      {isPassenger ? (
+        <>
+          <PassengerProfileSections userId={user.id} />
+          <div className="mt-4">
+            <PassengerPaymentsCard userId={user.id} />
+          </div>
+        </>
+      ) : null}
       {isDriver ? <DriverProfileSections userId={user.id} /> : null}
 
       {isAdmin ? (
