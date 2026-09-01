@@ -27,8 +27,7 @@ export function AutomaticPayfastCheckout() {
   const [cancelling, setCancelling] = useState(false);
   const starting = useRef<string | null>(null);
 
-  const params =
-    typeof window === "undefined" ? null : new URLSearchParams(window.location.search);
+  const params = typeof window === "undefined" ? null : new URLSearchParams(window.location.search);
   const paymentReturn = params?.get("payment") ?? null;
   const returnChangeId = params?.get("change") ?? null;
 
@@ -74,17 +73,14 @@ export function AutomaticPayfastCheckout() {
     let active = true;
     let rideChannel: ReturnType<typeof supabase.channel> | null = null;
     let editChannel: ReturnType<typeof supabase.channel> | null = null;
+    let fallbackTimer: number | null = null;
 
-    (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const user = auth.user;
-      if (!user || !active) return;
-
+    const refreshPending = async (userId: string) => {
       const [{ data: rideData }, { data: editData }] = await Promise.all([
         supabase
           .from("rides")
           .select("id,destination_address")
-          .eq("passenger_id", user.id)
+          .eq("passenger_id", userId)
           .eq("status", "payment_pending" as never)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -92,33 +88,54 @@ export function AutomaticPayfastCheckout() {
         supabase
           .from("ride_change_requests" as never)
           .select("id,ride_id,amount_due" as never)
-          .eq("passenger_id" as never, user.id as never)
+          .eq("passenger_id" as never, userId as never)
           .eq("status" as never, "awaiting_payment" as never)
           .order("created_at" as never, { ascending: false })
           .limit(1)
           .maybeSingle(),
       ]);
 
-      if (rideData && active) {
+      if (!active) return;
+
+      if (rideData) {
         const ride = rideData as unknown as PendingRide;
         setPendingRide(ride);
-        if (paymentReturn !== "success" && paymentReturn !== "cancelled") void launchRide(ride);
+        if (paymentReturn !== "success" && paymentReturn !== "cancelled") {
+          void launchRide(ride);
+        }
       }
 
-      if (editData && active) {
+      if (editData) {
         const edit = editData as unknown as PendingEdit;
         setPendingEdit(edit);
         const returningFromThisEdit = returnChangeId === edit.id;
-        if (!returningFromThisEdit && paymentReturn !== "success" && paymentReturn !== "cancelled") {
+        if (
+          !returningFromThisEdit &&
+          paymentReturn !== "success" &&
+          paymentReturn !== "cancelled"
+        ) {
           void launchEdit(edit);
         }
       }
+    };
+
+    (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth.user;
+      if (!user || !active) return;
+
+      await refreshPending(user.id);
 
       rideChannel = supabase
         .channel(`automatic-payfast-rides:${user.id}`)
         .on(
           "postgres_changes",
-          { event: "INSERT", schema: "public", table: "rides", filter: `passenger_id=eq.${user.id}` },
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "rides",
+            filter: `passenger_id=eq.${user.id}`,
+          },
           (payload) => {
             const next = payload.new as Record<string, unknown>;
             if (next.status !== "payment_pending") return;
@@ -132,12 +149,18 @@ export function AutomaticPayfastCheckout() {
         )
         .on(
           "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "rides", filter: `passenger_id=eq.${user.id}` },
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "rides",
+            filter: `passenger_id=eq.${user.id}`,
+          },
           (payload) => {
             const next = payload.new as Record<string, unknown>;
-            if (pendingRide?.id === String(next.id) && next.status !== "payment_pending") {
-              setPendingRide(null);
-              setError(null);
+            if (next.status !== "payment_pending") {
+              setPendingRide((current) =>
+                current?.id === String(next.id) ? null : current,
+              );
               starting.current = null;
             }
           },
@@ -148,7 +171,12 @@ export function AutomaticPayfastCheckout() {
         .channel(`automatic-payfast-edits:${user.id}`)
         .on(
           "postgres_changes",
-          { event: "INSERT", schema: "public", table: "ride_change_requests", filter: `passenger_id=eq.${user.id}` },
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "ride_change_requests",
+            filter: `passenger_id=eq.${user.id}`,
+          },
           (payload) => {
             const next = payload.new as Record<string, unknown>;
             if (next.status !== "awaiting_payment") return;
@@ -163,25 +191,38 @@ export function AutomaticPayfastCheckout() {
         )
         .on(
           "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "ride_change_requests", filter: `passenger_id=eq.${user.id}` },
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "ride_change_requests",
+            filter: `passenger_id=eq.${user.id}`,
+          },
           (payload) => {
             const next = payload.new as Record<string, unknown>;
-            if (pendingEdit?.id === String(next.id) && next.status !== "awaiting_payment") {
-              setPendingEdit(null);
-              setError(null);
+            if (next.status !== "awaiting_payment") {
+              setPendingEdit((current) =>
+                current?.id === String(next.id) ? null : current,
+              );
               starting.current = null;
             }
           },
         )
         .subscribe();
+
+      // Realtime is the fast path. This small fallback poll prevents a dropped
+      // websocket event from ever leaving a newly-created unpaid draft stranded.
+      if (paymentReturn !== "success" && paymentReturn !== "cancelled") {
+        fallbackTimer = window.setInterval(() => void refreshPending(user.id), 1500);
+      }
     })();
 
     return () => {
       active = false;
+      if (fallbackTimer != null) window.clearInterval(fallbackTimer);
       if (rideChannel) void supabase.removeChannel(rideChannel);
       if (editChannel) void supabase.removeChannel(editChannel);
     };
-  }, [launchEdit, launchRide, paymentReturn, pendingEdit?.id, pendingRide?.id, returnChangeId]);
+  }, [launchEdit, launchRide, paymentReturn, returnChangeId]);
 
   const cancelRideDraft = async () => {
     if (!pendingRide) return;
@@ -214,16 +255,38 @@ export function AutomaticPayfastCheckout() {
 
   const cancelledEdit =
     !!pendingEdit && paymentReturn === "cancelled" && returnChangeId === pendingEdit.id;
-  const showEditRecovery = !!pendingEdit && (cancelledEdit || (!!error && starting.current?.startsWith("edit:") !== false));
+  const editIsStarting = !!pendingEdit && starting.current === `edit:${pendingEdit.id}`;
+  const rideIsStarting = !!pendingRide && starting.current === `ride:${pendingRide.id}`;
+  const showEditRecovery =
+    !!pendingEdit &&
+    (cancelledEdit || (!!error && starting.current?.startsWith("ride:") !== true));
   const showRideRecovery =
     !!pendingRide && !showEditRecovery && (paymentReturn === "cancelled" || !!error);
+  const showOpeningEdit = editIsStarting && !showEditRecovery;
+  const showOpeningRide = rideIsStarting && !showRideRecovery && !showOpeningEdit;
 
-  if (!showEditRecovery && !showRideRecovery) return null;
+  if (!showEditRecovery && !showRideRecovery && !showOpeningEdit && !showOpeningRide) return null;
 
   return (
     <div className="fixed inset-0 z-[100] grid place-items-center bg-background/85 p-4 backdrop-blur-sm">
       <section className="w-full max-w-sm rounded-2xl border bg-card p-5 shadow-xl">
-        {showEditRecovery && pendingEdit ? (
+        {showOpeningEdit && pendingEdit ? (
+          <div className="text-center">
+            <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-primary" />
+            <h2 className="mt-3 text-lg font-semibold">Opening PayFast</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your trip changes are waiting for the additional fare payment.
+            </p>
+          </div>
+        ) : showOpeningRide && pendingRide ? (
+          <div className="text-center">
+            <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-primary" />
+            <h2 className="mt-3 text-lg font-semibold">Opening PayFast</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Complete payment before this trip is submitted to Access.
+            </p>
+          </div>
+        ) : showEditRecovery && pendingEdit ? (
           <>
             <h2 className="text-lg font-semibold">Complete payment to apply trip changes</h2>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -238,7 +301,12 @@ export function AutomaticPayfastCheckout() {
                 ) : null}
                 Continue to PayFast
               </Button>
-              <Button className="w-full" variant="outline" disabled={cancelling} onClick={() => void cancelEditDraft()}>
+              <Button
+                className="w-full"
+                variant="outline"
+                disabled={cancelling}
+                onClick={() => void cancelEditDraft()}
+              >
                 {cancelling ? "Cancelling…" : "Cancel trip edit"}
               </Button>
             </div>
@@ -258,7 +326,12 @@ export function AutomaticPayfastCheckout() {
                 ) : null}
                 Continue to PayFast
               </Button>
-              <Button className="w-full" variant="outline" disabled={cancelling} onClick={() => void cancelRideDraft()}>
+              <Button
+                className="w-full"
+                variant="outline"
+                disabled={cancelling}
+                onClick={() => void cancelRideDraft()}
+              >
                 {cancelling ? "Cancelling…" : "Cancel trip"}
               </Button>
             </div>
