@@ -5057,6 +5057,7 @@ export type Database = {
         | "superseded"
         | "cancelled"
       ride_status:
+        | "payment_pending"
         | "requested"
         | "accepted"
         | "driver_arriving"
@@ -5256,6 +5257,7 @@ export const Constants = {
         "cancelled",
       ],
       ride_status: [
+        "payment_pending",
         "requested",
         "accepted",
         "driver_arriving",
