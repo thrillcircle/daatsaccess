@@ -114,13 +114,6 @@ const ACTIVE_STATUSES = [
   "arrived",
   "in_progress",
 ] as const;
-const ACCEPTANCE_TARGETS = new Set<RideStatus>([
-  "accepted",
-  "driver_arriving",
-  "arrived",
-  "in_progress",
-  "completed",
-]);
 const PIN_LOCK_WINDOW_MIN = 15;
 const PIN_LOCK_THRESHOLD = 5;
 const PAGE_SIZE = 6;
