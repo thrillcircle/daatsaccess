@@ -8,6 +8,7 @@ import { RouteMap } from "@/components/RouteMap";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
 import { AdminTripPaymentSummary } from "@/components/admin/AdminTripPaymentSummary";
 import { PassengerPaymentCard } from "@/components/payments/PassengerPaymentCard";
+import { SafetySOSButton } from "@/components/safety/SafetySOSButton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { formatZAR } from "@/lib/pricing";
@@ -90,6 +91,10 @@ function TripDetailsPage() {
   }, [rideId]);
 
   const isPassenger = !!user && !!ride && ride.passenger_id === user.id;
+  const safetyAvailable =
+    isPassenger &&
+    !!ride &&
+    ["accepted", "driver_arriving", "arrived", "in_progress"].includes(ride.status);
 
   const nav = [
     { to: "/app/passenger", label: "Ride", icon: NAV_ICONS.Passenger },
@@ -160,6 +165,7 @@ function TripDetailsPage() {
             ) : (
               <p className="text-sm text-muted-foreground">No driver was assigned.</p>
             )}
+            {safetyAvailable ? <SafetySOSButton rideId={ride.id} role="passenger" /> : null}
           </section>
 
           <section className="rounded-2xl border bg-card p-4">
