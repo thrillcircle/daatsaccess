@@ -202,8 +202,7 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
   const refunded = payment?.status === "refunded";
   const failed = payment?.status === "failed";
   const pending = payment?.status === "pending";
-  const isCancellation =
-    payment?.purpose === "cancellation_charge" || ride.status === "cancelled";
+  const isCancellation = payment?.purpose === "cancellation_charge" || ride.status === "cancelled";
   const displayAmount =
     payment?.amount != null ? Number(payment.amount) : Number(ride.estimated_price);
 
