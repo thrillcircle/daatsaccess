@@ -249,12 +249,12 @@ export function AutomaticPayfastCheckout() {
     window.location.assign(`/app/trip/${rideId}`);
   };
 
-  const cancelledEdit = !!pendingEdit && paymentReturn === "cancelled" && returnChangeId === pendingEdit.id;
+  const cancelledEdit =
+    !!pendingEdit && paymentReturn === "cancelled" && returnChangeId === pendingEdit.id;
   const editIsStarting = !!pendingEdit && starting.current === `edit:${pendingEdit.id}`;
   const rideIsStarting = !!pendingRide && starting.current === `ride:${pendingRide.id}`;
   const showEditRecovery =
-    !!pendingEdit &&
-    (cancelledEdit || (!!error && starting.current?.startsWith("ride:") !== true));
+    !!pendingEdit && (cancelledEdit || (!!error && starting.current?.startsWith("ride:") !== true));
   const showRideRecovery =
     !!pendingRide && !showEditRecovery && (paymentReturn === "cancelled" || !!error);
   const showOpeningEdit = editIsStarting && !showEditRecovery;
