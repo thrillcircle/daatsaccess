@@ -15,6 +15,7 @@ type PaymentRecord = LegacyPayment & {
   merchant_payment_id?: string | null;
   paid_at?: string | null;
   provider?: string | null;
+  provider_payment_id?: string | null;
   provider_status?: string | null;
   purpose?: "trip_fare" | "cancellation_charge" | null;
 };
@@ -39,6 +40,7 @@ type CheckoutResponse = {
 };
 
 const PAYABLE_STATUSES = new Set<Ride["status"]>([
+  "requested",
   "accepted",
   "driver_arriving",
   "arrived",
@@ -143,6 +145,31 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
     };
   }, [reloadPayment, ride.id]);
 
+  // PayFast redirects back to this exact trip immediately after checkout, while
+  // the trusted ITN can arrive a moment later. Poll briefly as a fallback to
+  // realtime so the passenger sees Paid without leaving or manually refreshing.
+  useEffect(() => {
+    if (returnState !== "success" || payment?.status === "paid") return;
+    let attempts = 0;
+    void reloadPayment();
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      void reloadPayment();
+      if (attempts >= 30) window.clearInterval(timer);
+    }, 1_000);
+    return () => window.clearInterval(timer);
+  }, [payment?.status, reloadPayment, returnState]);
+
+  useEffect(() => {
+    if (returnState !== "success" || payment?.status !== "paid" || typeof window === "undefined") {
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete("payment");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    setReturnState(null);
+  }, [payment?.status, returnState]);
+
   const startCheckout = async () => {
     if (!PAYABLE_STATUSES.has(ride.status)) return;
     setStartingCheckout(true);
@@ -187,17 +214,6 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
     );
   }
 
-  if (ride.status === "requested") {
-    return (
-      <section className="rounded-2xl border bg-card p-4">
-        <PaymentHeading />
-        <p className="text-sm text-muted-foreground">
-          Payment becomes available after DAATS accepts your trip request.
-        </p>
-      </section>
-    );
-  }
-
   const paid = payment?.status === "paid";
   const refunded = payment?.status === "refunded";
   const failed = payment?.status === "failed";
@@ -211,15 +227,31 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
       <PaymentHeading />
 
       {returnState === "success" && !paid ? (
-        <div className="mb-3 rounded-xl border bg-muted/40 px-3 py-2 text-sm">
-          PayFast returned you to Access. We are confirming the payment securely from the PayFast
-          notification before marking it paid.
+        <div className="mb-3 flex items-start gap-2 rounded-xl border bg-muted/40 px-3 py-2 text-sm">
+          <LoaderCircle className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+          <span>
+            PayFast returned you to this trip. We are confirming the payment securely from the
+            PayFast notification before marking it paid. You can stay on this screen.
+          </span>
         </div>
       ) : null}
 
       {returnState === "cancelled" && !paid ? (
         <div className="mb-3 rounded-xl border bg-muted/40 px-3 py-2 text-sm">
           PayFast checkout was not completed. You can continue the payment when ready.
+        </div>
+      ) : null}
+
+      {ride.status === "requested" && !paid ? (
+        <div className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm">
+          Payment is required before DAATS can accept this trip request. Once PayFast confirms your
+          payment, the request will be ready for admin acceptance.
+        </div>
+      ) : null}
+
+      {ride.status === "requested" && paid ? (
+        <div className="mb-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm">
+          Payment confirmed. Your trip is now waiting for DAATS admin acceptance.
         </div>
       ) : null}
 
@@ -246,10 +278,18 @@ export function PassengerPaymentCard({ ride }: { ride: Ride }) {
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
               <span>Method</span>
               <span className="text-right">PayFast</span>
-              <span>Reference</span>
-              <span className="text-right font-mono">
-                {(payment.merchant_payment_id ?? payment.id).slice(-12)}
+              <span>Access reference</span>
+              <span className="break-all text-right font-mono">
+                {payment.merchant_payment_id ?? payment.id}
               </span>
+              {payment.provider_payment_id ? (
+                <>
+                  <span>PayFast reference</span>
+                  <span className="break-all text-right font-mono">
+                    {payment.provider_payment_id}
+                  </span>
+                </>
+              ) : null}
               <span>Confirmed</span>
               <span className="text-right">
                 {new Date(payment.paid_at ?? payment.created_at).toLocaleString()}

@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { AppShell, NAV_ICONS } from "@/components/AppShell";
 import { RouteMap } from "@/components/RouteMap";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
+import { AdminTripPaymentSummary } from "@/components/admin/AdminTripPaymentSummary";
 import { PassengerPaymentCard } from "@/components/payments/PassengerPaymentCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -184,6 +185,7 @@ function TripDetailsPage() {
           </section>
 
           {isPassenger ? <PassengerPaymentCard ride={ride} /> : null}
+          <AdminTripPaymentSummary rideId={ride.id} />
 
           <section className="rounded-2xl border bg-card p-4">
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">

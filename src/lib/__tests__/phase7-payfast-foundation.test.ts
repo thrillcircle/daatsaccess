@@ -17,6 +17,10 @@ const itnStateHardening = readFileSync(
   join(process.cwd(), "supabase/migrations/20260901163000_phase7_payfast_itn_state_hardening.sql"),
   "utf8",
 );
+const payBeforeAcceptance = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260901180000_phase7_pay_before_admin_acceptance.sql"),
+  "utf8",
+);
 const shared = readFileSync(join(process.cwd(), "supabase/functions/_shared/payfast.ts"), "utf8");
 const createPayment = readFileSync(
   join(process.cwd(), "supabase/functions/payfast-create-payment/index.ts"),
@@ -37,19 +41,51 @@ describe("Phase 7 PayFast payment foundation", () => {
   });
 
   it("never accepts a browser-provided authoritative payment amount", () => {
-    const start = migration.indexOf("CREATE OR REPLACE FUNCTION public.create_ride_payment");
-    const end = migration.indexOf("REVOKE ALL ON FUNCTION public.create_ride_payment", start);
-    const functionBody = migration.slice(start, end);
+    const start = payBeforeAcceptance.indexOf(
+      "CREATE OR REPLACE FUNCTION public.create_ride_payment",
+    );
+    const end = payBeforeAcceptance.indexOf(
+      "REVOKE ALL ON FUNCTION public.create_ride_payment",
+      start,
+    );
+    const functionBody = payBeforeAcceptance.slice(start, end);
     expect(functionBody).toContain("v_ride.estimated_price");
     expect(functionBody).toContain("v_charge.total_amount");
     expect(functionBody).not.toMatch(/p_amount\s+numeric/i);
     expect(createPayment).not.toMatch(/body\.amount/);
   });
 
-  it("keeps requested trips unpaid until administrator acceptance", () => {
-    expect(migration).toContain("This trip must be accepted before payment can be made");
-    expect(migration).toContain("'cancellation_charge'");
-    expect(migration).toContain("ride_cancellation_charges");
+  it("allows requested trips to be paid before administrator acceptance", () => {
+    expect(payBeforeAcceptance).toContain(
+      "v_ride.status IN ('requested', 'accepted', 'driver_arriving', 'arrived', 'in_progress', 'completed')",
+    );
+    expect(payBeforeAcceptance).toContain("v_ride.estimated_price");
+    expect(payBeforeAcceptance).toContain("'trip_fare'");
+    expect(payBeforeAcceptance).toContain("'cancellation_charge'");
+  });
+
+  it("blocks admin acceptance until PayFast has securely confirmed the current fare", () => {
+    expect(payBeforeAcceptance).toContain("rides_payment_before_acceptance_trigger");
+    expect(payBeforeAcceptance).toContain("private.ride_has_confirmed_trip_payment");
+    expect(payBeforeAcceptance).toContain("p.provider = 'payfast'");
+    expect(payBeforeAcceptance).toContain("p.status = 'paid'");
+    expect(payBeforeAcceptance).toContain("upper(COALESCE(p.provider_status, '')) = 'COMPLETE'");
+    expect(payBeforeAcceptance).toContain("p.paid_at IS NOT NULL");
+    expect(payBeforeAcceptance).toContain(
+      "Payment must be confirmed by PayFast before this trip can be accepted",
+    );
+  });
+
+  it("locks fare-affecting edits after requested-trip payment confirmation", () => {
+    expect(payBeforeAcceptance).toContain("rides_lock_paid_requested_route_trigger");
+    expect(payBeforeAcceptance).toContain("OLD.status = 'requested'");
+    expect(payBeforeAcceptance).toContain("OLD.stops IS DISTINCT FROM NEW.stops");
+    expect(payBeforeAcceptance).toContain(
+      "OLD.estimated_price IS DISTINCT FROM NEW.estimated_price",
+    );
+    expect(payBeforeAcceptance).toContain(
+      "This trip is already paid. Contact support to change the route before acceptance",
+    );
   });
 
   it("protects payment mutation behind RPC/service-role boundaries", () => {
