@@ -22,12 +22,30 @@ export const geocodeAddress = createServerFn({ method: "POST" })
 
 export const computeRoute = createServerFn({ method: "POST" })
   .validator(
-    (input: { originLat: number; originLng: number; destLat: number; destLng: number }) => {
+    (input: {
+      originLat: number;
+      originLng: number;
+      destLat: number;
+      destLng: number;
+      waypoints?: Array<{ lat: number; lng: number }>;
+    }) => {
       const nums = [input?.originLat, input?.originLng, input?.destLat, input?.destLng];
       if (nums.some((n) => typeof n !== "number" || Number.isNaN(n))) {
         throw new Error("Invalid coordinates");
       }
-      return input;
+      const waypoints = Array.isArray(input.waypoints) ? input.waypoints : [];
+      if (waypoints.length > 5) throw new Error("A trip can have at most 5 stops");
+      for (const w of waypoints) {
+        if (
+          typeof w?.lat !== "number" ||
+          typeof w?.lng !== "number" ||
+          Number.isNaN(w.lat) ||
+          Number.isNaN(w.lng)
+        ) {
+          throw new Error("Invalid stop coordinates");
+        }
+      }
+      return { ...input, waypoints };
     },
   )
   .handler(async ({ data }): Promise<RouteEstimate> => route(data));

@@ -15,11 +15,13 @@ const InputSchema = z
     rideId: z.string().uuid(),
     pickup: PointSchema.nullable().optional(),
     destination: PointSchema.nullable().optional(),
+    /** Ordered intermediate stops, maximum five. `null` leaves stops untouched. */
+    stops: z.array(PointSchema).max(5).nullable().optional(),
     distanceKm: z.number().positive().lte(2000),
     durationMin: z.number().int().nonnegative().nullable().optional(),
   })
-  .refine((value) => value.pickup || value.destination, {
-    message: "At least one of pickup or destination is required",
+  .refine((value) => value.pickup || value.destination || value.stops, {
+    message: "At least one of pickup, destination or stops is required",
   });
 
 export type RideEditInput = z.infer<typeof InputSchema>;
@@ -48,6 +50,11 @@ export const updateRideTrip = createServerFn({ method: "POST" })
         p_ride_id: data.rideId,
         p_pickup: rpcNullable(data.pickup as unknown as JsonValue),
         p_destination: rpcNullable(data.destination as unknown as JsonValue),
+        p_stops: rpcNullable(
+          (data.stops == null
+            ? null
+            : data.stops.map((stop, index) => ({ ...stop, sequence: index }))) as JsonValue,
+        ),
         p_distance_km: data.distanceKm,
         p_duration_seconds: rpcNullable(data.durationMin != null ? data.durationMin * 60 : null),
         p_expected_route_version: ride.route_version ?? 1,

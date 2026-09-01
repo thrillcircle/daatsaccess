@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
@@ -13,9 +13,10 @@ import { Button } from "@/components/ui/button";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { computeRoute } from "@/lib/maps.functions";
 import { updateRideTrip } from "@/lib/ride-edit.functions";
-import { estimatePrice, formatZAR } from "@/lib/pricing";
+import { parseRideStops } from "@/lib/driver-ride-projection";
+import { formatZAR } from "@/lib/pricing";
 import type { Database } from "@/integrations/supabase/types";
-import { ArrowRight, AlertCircle } from "lucide-react";
+import { ArrowRight, AlertCircle, ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
@@ -27,6 +28,7 @@ type Props = {
 };
 
 const PICKUP_EDITABLE = new Set(["requested", "accepted", "driver_arriving"]);
+export const MAX_TRIP_STOPS = 5;
 
 function rideToPick(ride: Ride, kind: "pickup" | "destination"): AddressPick {
   return kind === "pickup"
@@ -44,6 +46,15 @@ function rideToPick(ride: Ride, kind: "pickup" | "destination"): AddressPick {
       };
 }
 
+function rideToStops(ride: Ride): AddressPick[] {
+  return parseRideStops(ride.route_stops).map((stop) => ({
+    address: stop.address,
+    placeId: stop.placeId,
+    lat: stop.lat,
+    lng: stop.lng,
+  }));
+}
+
 function pickEquals(a: AddressPick, b: AddressPick) {
   return (
     a.lat === b.lat &&
@@ -53,6 +64,14 @@ function pickEquals(a: AddressPick, b: AddressPick) {
   );
 }
 
+function stopsEqual(a: AddressPick[], b: AddressPick[]) {
+  return a.length === b.length && a.every((stop, index) => pickEquals(stop, b[index]));
+}
+
+function stopsKey(stops: AddressPick[]) {
+  return stops.map((s) => `${s.lat.toFixed(6)},${s.lng.toFixed(6)}`).join("|");
+}
+
 export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
   const route = useServerFn(computeRoute);
   const save = useServerFn(updateRideTrip);
@@ -60,9 +79,11 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
   const canEditPickup = PICKUP_EDITABLE.has(ride.status);
   const originalPickup = rideToPick(ride, "pickup");
   const originalDest = rideToPick(ride, "destination");
+  const originalStops = rideToStops(ride);
 
   const [pickup, setPickup] = useState<AddressPick | null>(originalPickup);
   const [dest, setDest] = useState<AddressPick | null>(originalDest);
+  const [stops, setStops] = useState<(AddressPick | null)[]>(originalStops);
   const [distanceKm, setDistanceKm] = useState<number | null>(Number(ride.distance_km));
   const [durationMin, setDurationMin] = useState<number | null>(
     ride.estimated_duration_seconds != null
@@ -76,8 +97,9 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
   // Reset when the dialog opens for a fresh ride.
   useEffect(() => {
     if (!open) return;
-    setPickup(originalPickup);
-    setDest(originalDest);
+    setPickup(rideToPick(ride, "pickup"));
+    setDest(rideToPick(ride, "destination"));
+    setStops(rideToStops(ride));
     setDistanceKm(Number(ride.distance_km));
     setDurationMin(
       ride.estimated_duration_seconds != null
@@ -88,13 +110,18 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, ride.id]);
 
+  const filledStops = stops.filter((s): s is AddressPick => s !== null);
+  const allStopsFilled = stops.every((s) => s !== null);
+
   const pickupChanged = !!pickup && !pickEquals(pickup, originalPickup);
   const destChanged = !!dest && !pickEquals(dest, originalDest);
-  const dirty = pickupChanged || destChanged;
+  const stopsChanged = !stopsEqual(filledStops, originalStops);
+  const dirty = pickupChanged || destChanged || stopsChanged;
 
-  // Recompute the route preview whenever either endpoint changes.
+  // Recompute pickup -> stops -> destination whenever any leg changes.
+  const stopsSignature = stopsKey(filledStops);
   useEffect(() => {
-    if (!pickup || !dest || !dirty) return;
+    if (!pickup || !dest || !dirty || !allStopsFilled) return;
     let cancelled = false;
     setEstimating(true);
     setRouteError(null);
@@ -104,6 +131,7 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
         originLng: pickup.lng,
         destLat: dest.lat,
         destLng: dest.lng,
+        waypoints: filledStops.map((s) => ({ lat: s.lat, lng: s.lng })),
       },
     })
       .then((r) => {
@@ -120,12 +148,25 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [pickup, dest, dirty, route]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickup, dest, stopsSignature, allStopsFilled, dirty]);
 
-  const newPrice = distanceKm != null ? estimatePrice(distanceKm) : null;
   const originalPrice = Number(ride.estimated_price);
-  const priceDelta = newPrice != null ? newPrice - originalPrice : null;
-  const canSave = dirty && !estimating && !saving && newPrice != null && !routeError;
+  const canSave = dirty && !estimating && !saving && distanceKm != null && !routeError;
+
+  const setStopAt = useCallback((index: number, value: AddressPick | null) => {
+    setStops((prev) => prev.map((stop, i) => (i === index ? value : stop)));
+  }, []);
+
+  const moveStop = useCallback((index: number, direction: -1 | 1) => {
+    setStops((prev) => {
+      const next = [...prev];
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }, []);
 
   async function onConfirm() {
     if (!canSave || !pickup || !dest || distanceKm == null) return;
@@ -136,6 +177,14 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
           rideId: ride.id,
           pickup: pickupChanged ? pickup : null,
           destination: destChanged ? dest : null,
+          stops: stopsChanged
+            ? filledStops.map((s) => ({
+                address: s.address,
+                placeId: s.placeId ?? null,
+                lat: s.lat,
+                lng: s.lng,
+              }))
+            : null,
           distanceKm,
           durationMin,
         },
@@ -150,6 +199,11 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
     }
   }
 
+  const newPrice = (() => {
+    const estimate = (ride.estimate_snapshot ?? null) as { total?: number } | null;
+    return estimate?.total ?? null;
+  })();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -157,8 +211,8 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
           <DialogTitle>Edit trip</DialogTitle>
           <DialogDescription>
             {canEditPickup
-              ? "Update your pickup or destination. Your driver will see the change immediately."
-              : "Your driver is already at pickup, so only the destination can be changed."}
+              ? "Update your pickup, stops or destination. Your driver will see the change immediately."
+              : "Your driver is already at pickup, so only the stops and destination can be changed."}
           </DialogDescription>
         </DialogHeader>
 
@@ -179,6 +233,67 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
               <p className="truncate">{originalPickup.address}</p>
             </div>
           )}
+
+          {stops.map((stop, index) => (
+            <div key={`stop-${index}`} className="space-y-1">
+              <AddressAutocomplete
+                id={`edit-stop-${index}`}
+                label={`Stop ${index + 1}`}
+                value={stop}
+                onChange={(value) => setStopAt(index, value)}
+                bias={pickup ?? dest}
+              />
+              <div className="flex justify-end gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2"
+                  aria-label={`Move stop ${index + 1} up`}
+                  disabled={index === 0}
+                  onClick={() => moveStop(index, -1)}
+                >
+                  <ArrowUp className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2"
+                  aria-label={`Move stop ${index + 1} down`}
+                  disabled={index === stops.length - 1}
+                  onClick={() => moveStop(index, 1)}
+                >
+                  <ArrowDown className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-destructive"
+                  aria-label={`Remove stop ${index + 1}`}
+                  onClick={() => setStops((prev) => prev.filter((_, i) => i !== index))}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            disabled={stops.length >= MAX_TRIP_STOPS}
+            onClick={() => setStops((prev) => [...prev, null])}
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" />
+            {stops.length >= MAX_TRIP_STOPS
+              ? `Maximum ${MAX_TRIP_STOPS} stops`
+              : `Add a stop (${stops.length}/${MAX_TRIP_STOPS})`}
+          </Button>
+
           <AddressAutocomplete
             id="edit-dest"
             label="Destination"
@@ -192,6 +307,22 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
           <div className="space-y-2 rounded-xl border bg-secondary/40 p-3 text-sm">
             {pickupChanged && (
               <DiffRow label="Pickup" from={originalPickup.address} to={pickup!.address} />
+            )}
+            {stopsChanged && (
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Stops</p>
+                {filledStops.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No stops</p>
+                ) : (
+                  <ol className="list-decimal space-y-0.5 pl-4 text-sm">
+                    {filledStops.map((stop, index) => (
+                      <li key={`diff-stop-${index}`} className="truncate">
+                        {stop.address}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
             )}
             {destChanged && (
               <DiffRow label="Destination" from={originalDest.address} to={dest!.address} />
@@ -208,23 +339,20 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
                 </span>
               </div>
               <div className="mt-1 flex items-center justify-between">
-                <span className="text-muted-foreground">New fare</span>
+                <span className="text-muted-foreground">Current fare</span>
                 <span className="text-base font-semibold">
-                  {newPrice != null ? formatZAR(newPrice) : "—"}
+                  {newPrice != null ? formatZAR(newPrice) : formatZAR(originalPrice)}
                 </span>
               </div>
-              {priceDelta != null && Math.abs(priceDelta) >= 0.01 && (
-                <p
-                  className={
-                    "text-xs " + (priceDelta > 0 ? "text-destructive" : "text-emerald-600")
-                  }
-                >
-                  {priceDelta > 0 ? "+" : "−"}
-                  {formatZAR(Math.abs(priceDelta))} vs original {formatZAR(originalPrice)}
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                The new fare is calculated on your trip&apos;s locked pricing when you confirm.
+              </p>
             </div>
           </div>
+        )}
+
+        {!allStopsFilled && (
+          <p className="text-xs text-muted-foreground">Choose an address for every stop.</p>
         )}
 
         {routeError && (
@@ -238,7 +366,7 @@ export function EditTripDialog({ ride, open, onOpenChange, onSaved }: Props) {
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={onConfirm} disabled={!canSave}>
+          <Button onClick={onConfirm} disabled={!canSave || !allStopsFilled}>
             {saving ? "Saving…" : "Confirm changes"}
           </Button>
         </DialogFooter>

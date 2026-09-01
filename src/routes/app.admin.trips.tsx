@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminCancelTripDialog } from "@/components/admin/AdminCancelTripDialog";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AdminShell } from "@/components/AdminShell";
 import { NAV_ICONS } from "@/components/AppShell";
@@ -938,9 +939,7 @@ function AdminActionsDialog({
     await runUpdate(patch, `Status changed to ${selectedStatus.replace("_", " ")}`);
   }
 
-  async function onCancel() {
-    await runUpdate({ status: "cancelled" }, "Trip cancelled");
-  }
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   async function onComplete() {
     await runUpdate(
@@ -1211,9 +1210,22 @@ function AdminActionsDialog({
         </div>
 
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
-          <Button variant="destructive" size="sm" disabled={busy || terminal} onClick={onCancel}>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={busy || terminal}
+            onClick={() => setCancelOpen(true)}
+          >
             Cancel trip
           </Button>
+          <AdminCancelTripDialog
+            rideId={ride.id}
+            estimateSnapshot={ride.estimate_snapshot}
+            actualDistanceKm={ride.distance_km != null ? Number(ride.distance_km) : null}
+            open={cancelOpen}
+            onOpenChange={setCancelOpen}
+            onCancelled={onChanged}
+          />
           <Button
             size="sm"
             disabled={busy || ride.status === "completed" || ride.status === "cancelled"}

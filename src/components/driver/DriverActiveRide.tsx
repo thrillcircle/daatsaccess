@@ -34,6 +34,7 @@ import {
   type DriverSafeRide,
 } from "@/components/driver/driver-utils";
 import { fetchDriverRide } from "@/lib/driver-rides";
+import { parseRideStops } from "@/lib/driver-ride-projection";
 
 export function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -204,13 +205,21 @@ export function ActiveRideCard({
   const [pinOpen, setPinOpen] = useState(false);
   const [navBlocked, setNavBlocked] = useState(false);
 
+  // Stops are only waypoints once the passenger is on board.
+  const stops = parseRideStops(ride.route_stops);
+  const stopWaypoints = stops.map((s) => ({ lat: s.lat, lng: s.lng }));
+
   const navTarget: { lat: number; lng: number; label: string } =
     ride.status === "in_progress"
       ? { lat: ride.destination_lat, lng: ride.destination_lng, label: "destination" }
       : { lat: ride.pickup_lat, lng: ride.pickup_lng, label: "pickup" };
 
   function launchNav() {
-    const win = openMapsNav(navTarget.lat, navTarget.lng);
+    const win = openMapsNav(
+      navTarget.lat,
+      navTarget.lng,
+      ride.status === "in_progress" ? stopWaypoints : [],
+    );
     setNavBlocked(!win);
     return win;
   }
@@ -228,7 +237,7 @@ export function ActiveRideCard({
   }
 
   async function onPinStarted() {
-    openMapsNav(ride.destination_lat, ride.destination_lng);
+    openMapsNav(ride.destination_lat, ride.destination_lng, stopWaypoints);
     const fresh = await fetchDriverRide(ride.id).catch(() => null);
     if (fresh) onUpdate(fresh);
   }
@@ -320,6 +329,14 @@ export function ActiveRideCard({
           <MapPin className="mt-0.5 h-4 w-4 text-primary" />
           <span className="truncate">{ride.pickup_address}</span>
         </p>
+        {stops.map((stop) => (
+          <p key={`stop-${stop.sequence}`} className="flex items-start gap-2">
+            <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
+            <span className="truncate">
+              Stop {stop.sequence + 1}: {stop.address}
+            </span>
+          </p>
+        ))}
         <p className="flex items-start gap-2">
           <Navigation className="mt-0.5 h-4 w-4 text-primary" />
           <span className="truncate">{ride.destination_address}</span>

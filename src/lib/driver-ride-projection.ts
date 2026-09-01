@@ -18,6 +18,7 @@ export const DRIVER_SAFE_RIDE_FIELDS = [
   "pickup_lng",
   "destination_lat",
   "destination_lng",
+  "route_stops",
   "distance_km",
   "actual_distance_km",
   "estimated_duration_seconds",
@@ -60,6 +61,39 @@ export const DRIVER_PROHIBITED_RIDE_KEYS = [
   "fare",
 ] as const;
 
+/** An ordered intermediate stop on a trip. Never carries pricing data. */
+export type RideStop = {
+  sequence: number;
+  address: string;
+  lat: number;
+  lng: number;
+  placeId: string | null;
+};
+
+/** Parse and order stops from an arbitrary payload; invalid entries are dropped. */
+export function parseRideStops(raw: unknown): RideStop[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item, index) => {
+      const s = (item ?? {}) as Record<string, unknown>;
+      const lat = Number(s.lat);
+      const lng = Number(s.lng);
+      const address = typeof s.address === "string" ? s.address.trim() : "";
+      if (!address || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return {
+        sequence: Number.isFinite(Number(s.sequence)) ? Number(s.sequence) : index,
+        address,
+        lat,
+        lng,
+        placeId: typeof s.placeId === "string" && s.placeId ? s.placeId : null,
+      } satisfies RideStop;
+    })
+    .filter((s): s is RideStop => s !== null)
+    .sort((a, b) => a.sequence - b.sequence)
+    .slice(0, 5)
+    .map((s, index) => ({ ...s, sequence: index }));
+}
+
 export type DriverSafeRide = {
   id: string;
   status: string;
@@ -71,6 +105,7 @@ export type DriverSafeRide = {
   pickup_lng: number;
   destination_lat: number;
   destination_lng: number;
+  route_stops: RideStop[];
   distance_km: number;
   actual_distance_km: number | null;
   estimated_duration_seconds: number | null;
@@ -102,6 +137,7 @@ export function sanitizeDriverRide(raw: unknown): DriverSafeRide {
   for (const key of DRIVER_SAFE_RIDE_FIELDS) {
     out[key] = src[key] ?? null;
   }
+  out.route_stops = parseRideStops(src.route_stops);
   return out as unknown as DriverSafeRide;
 }
 
