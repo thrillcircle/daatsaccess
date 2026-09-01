@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
-  new URL("../../../supabase/migrations/20260901225500_master_admin_governance.sql", import.meta.url),
+  new URL(
+    "../../../supabase/migrations/20260901225500_master_admin_governance.sql",
+    import.meta.url,
+  ),
   "utf8",
 );
 const signupMigration = readFileSync(
@@ -12,7 +15,10 @@ const signupMigration = readFileSync(
   ),
   "utf8",
 );
-const usersPage = readFileSync(new URL("../../routes/app.admin.users.tsx", import.meta.url), "utf8");
+const usersPage = readFileSync(
+  new URL("../../routes/app.admin.users.tsx", import.meta.url),
+  "utf8",
+);
 const authPage = readFileSync(new URL("../../routes/auth.tsx", import.meta.url), "utf8");
 const architecture = readFileSync(new URL("../architecture-closeout.ts", import.meta.url), "utf8");
 
@@ -73,7 +79,9 @@ describe("master admin governance", () => {
     expect(migration).toContain("cmalatji65@gmail.com");
     expect(migration).toContain("vernon@thrillcircle.tech");
     expect(migration).toContain("routetest1785534664@example.com");
-    expect(migration).toContain("Build/test account retired at production role-governance closeout");
+    expect(migration).toContain(
+      "Build/test account retired at production role-governance closeout",
+    );
     expect(migration).not.toContain("DELETE FROM auth.users");
   });
 });
