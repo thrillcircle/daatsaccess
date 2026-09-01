@@ -137,6 +137,7 @@ export function sanitizeDriverRide(raw: unknown): DriverSafeRide {
   for (const key of DRIVER_SAFE_RIDE_FIELDS) {
     out[key] = src[key] ?? null;
   }
+  out.route_stops = parseRideStops(src.route_stops);
   return out as unknown as DriverSafeRide;
 }
 
