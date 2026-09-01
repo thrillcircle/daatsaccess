@@ -1006,10 +1006,6 @@ function AdminActionsDialog({
   const [cancelOpen, setCancelOpen] = useState(false);
 
   async function onComplete() {
-    if (ride.status === "requested" && !paymentConfirmed) {
-      toast.error("PayFast payment must be confirmed before this trip can leave requested status");
-      return;
-    }
     await runUpdate(
       { status: "completed", completed_at: ride.completed_at ?? new Date().toISOString() },
       "Trip marked completed",
