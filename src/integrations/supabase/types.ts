@@ -917,6 +917,27 @@ export type Database = {
         }
         Relationships: []
       }
+      master_admin_entitlement: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          singleton: boolean
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          singleton?: boolean
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          singleton?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_channel_deliveries: {
         Row: {
           attempt_count: number
@@ -1875,6 +1896,48 @@ export type Database = {
         }
         Relationships: []
       }
+      passenger_email_confirmations: {
+        Row: {
+          attempt_count: number
+          challenge_id: string | null
+          code_expires_at: string | null
+          code_hash: string | null
+          confirmed_at: string | null
+          confirmed_via: string | null
+          created_at: string
+          email: string
+          last_sent_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          challenge_id?: string | null
+          code_expires_at?: string | null
+          code_hash?: string | null
+          confirmed_at?: string | null
+          confirmed_via?: string | null
+          created_at?: string
+          email: string
+          last_sent_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempt_count?: number
+          challenge_id?: string | null
+          code_expires_at?: string | null
+          code_hash?: string | null
+          confirmed_at?: string | null
+          confirmed_via?: string | null
+          created_at?: string
+          email?: string
+          last_sent_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       passenger_preferences: {
         Row: {
           communication_support_notes: string | null
@@ -1885,6 +1948,7 @@ export type Database = {
           general_assistance_notes: string | null
           mobility_device_notes: string | null
           passenger_id: string
+          preferences_confirmed_at: string | null
           preferred_contact_method: string
           updated_at: string
           wheelchair_user: boolean
@@ -1898,6 +1962,7 @@ export type Database = {
           general_assistance_notes?: string | null
           mobility_device_notes?: string | null
           passenger_id: string
+          preferences_confirmed_at?: string | null
           preferred_contact_method?: string
           updated_at?: string
           wheelchair_user?: boolean
@@ -1911,6 +1976,7 @@ export type Database = {
           general_assistance_notes?: string | null
           mobility_device_notes?: string | null
           passenger_id?: string
+          preferences_confirmed_at?: string | null
           preferred_contact_method?: string
           updated_at?: string
           wheelchair_user?: boolean
@@ -4007,6 +4073,7 @@ export type Database = {
       }
       user_notification_preferences: {
         Row: {
+          confirmed_at: string | null
           email: boolean
           in_app: boolean
           push: boolean
@@ -4016,6 +4083,7 @@ export type Database = {
           whatsapp: boolean
         }
         Insert: {
+          confirmed_at?: string | null
           email?: boolean
           in_app?: boolean
           push?: boolean
@@ -4025,6 +4093,7 @@ export type Database = {
           whatsapp?: boolean
         }
         Update: {
+          confirmed_at?: string | null
           email?: boolean
           in_app?: boolean
           push?: boolean
@@ -4777,6 +4846,19 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_list_users_v2: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          is_master_admin: boolean
+          phone: string
+          roles: Database["public"]["Enums"]["app_role"][]
+          status: string
+          user_id: string
+        }[]
+      }
       admin_list_vehicle_shifts: { Args: never; Returns: Json }
       admin_open_maintenance_work_order: {
         Args: {
@@ -5041,6 +5123,7 @@ export type Database = {
         Returns: Json
       }
       current_account_status: { Args: never; Returns: string }
+      current_admin_capabilities: { Args: never; Returns: Json }
       driver_accept_dispatch_offer: {
         Args: {
           p_expected_offer_version: number
@@ -5251,6 +5334,19 @@ export type Database = {
         Args: { p_ride_id: string }
         Returns: Json
       }
+      passenger_complete_onboarding: {
+        Args: {
+          p_address_label: string
+          p_formatted_address: string
+          p_full_name: string
+          p_latitude: number
+          p_longitude: number
+          p_phone: string
+          p_place_id: string
+          p_saved_address_id: string
+        }
+        Returns: Json
+      }
       passenger_create_priced_ride: {
         Args: {
           p_destination_address: string
@@ -5301,6 +5397,7 @@ export type Database = {
         }
         Returns: Json
       }
+      passenger_onboarding_status: { Args: never; Returns: Json }
       passenger_operation_timeline: {
         Args: { p_ride_id?: string; p_service_booking_id?: string }
         Returns: Json
@@ -5452,6 +5549,41 @@ export type Database = {
           p_longitude?: number
           p_ride_id: string
         }
+        Returns: Json
+      }
+      service_abort_passenger_email_challenge: {
+        Args: { p_challenge_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      service_begin_passenger_email_challenge: {
+        Args: {
+          p_challenge_id: string
+          p_code_hash: string
+          p_email: string
+          p_expires_at: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      service_claim_email_notification_deliveries: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      service_finish_email_notification_delivery: {
+        Args: {
+          p_delivery_id: string
+          p_error?: string
+          p_provider_message_id?: string
+          p_success: boolean
+        }
+        Returns: undefined
+      }
+      service_validate_notification_worker_token: {
+        Args: { p_token: string }
+        Returns: boolean
+      }
+      service_verify_passenger_email_challenge: {
+        Args: { p_code_hash: string; p_email: string; p_user_id: string }
         Returns: Json
       }
       short_addr: { Args: { t: string }; Returns: string }

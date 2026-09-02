@@ -23,6 +23,7 @@ import { Route as AppDriverIndexRouteImport } from './routes/app.driver.index'
 import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
 import { Route as AppTripRideIdRouteImport } from './routes/app.trip.$rideId'
 import { Route as AppSupportTicketIdRouteImport } from './routes/app.support.$ticketId'
+import { Route as AppPassengerOnboardingRouteImport } from './routes/app.passenger.onboarding'
 import { Route as AppPassengerBookingsRouteImport } from './routes/app.passenger.bookings'
 import { Route as AppPassengerBookRouteImport } from './routes/app.passenger.book'
 import { Route as AppDriverVehicleShiftRouteImport } from './routes/app.driver.vehicle-shift'
@@ -51,6 +52,8 @@ import { Route as AppAdminDispatchRouteImport } from './routes/app.admin.dispatc
 import { Route as AppAdminCommercialRouteImport } from './routes/app.admin.commercial'
 import { Route as AppAdminBookingsRouteImport } from './routes/app.admin.bookings'
 import { Route as AppAdminAuditLogsRouteImport } from './routes/app.admin.audit-logs'
+import { Route as ApiPassengerEmailConfirmationRouteImport } from './routes/api.passenger.email-confirmation'
+import { Route as ApiInternalNotificationEmailWorkerRouteImport } from './routes/api.internal.notification-email-worker'
 import { Route as AppPassengerBookingsIndexRouteImport } from './routes/app.passenger.bookings.index'
 import { Route as AppPassengerBookIndexRouteImport } from './routes/app.passenger.book.index'
 import { Route as AppAdminOperationsIndexRouteImport } from './routes/app.admin.operations.index'
@@ -137,6 +140,11 @@ const AppSupportTicketIdRoute = AppSupportTicketIdRouteImport.update({
   id: '/$ticketId',
   path: '/$ticketId',
   getParentRoute: () => AppSupportRoute,
+} as any)
+const AppPassengerOnboardingRoute = AppPassengerOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AppPassengerRoute,
 } as any)
 const AppPassengerBookingsRoute = AppPassengerBookingsRouteImport.update({
   id: '/bookings',
@@ -279,6 +287,18 @@ const AppAdminAuditLogsRoute = AppAdminAuditLogsRouteImport.update({
   path: '/audit-logs',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const ApiPassengerEmailConfirmationRoute =
+  ApiPassengerEmailConfirmationRouteImport.update({
+    id: '/api/passenger/email-confirmation',
+    path: '/api/passenger/email-confirmation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiInternalNotificationEmailWorkerRoute =
+  ApiInternalNotificationEmailWorkerRouteImport.update({
+    id: '/api/internal/notification-email-worker',
+    path: '/api/internal/notification-email-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppPassengerBookingsIndexRoute =
   AppPassengerBookingsIndexRouteImport.update({
     id: '/',
@@ -379,6 +399,8 @@ export interface FileRoutesByFullPath {
   '/app/passenger': typeof AppPassengerRouteWithChildren
   '/app/profile': typeof AppProfileRoute
   '/app/support': typeof AppSupportRouteWithChildren
+  '/api/internal/notification-email-worker': typeof ApiInternalNotificationEmailWorkerRoute
+  '/api/passenger/email-confirmation': typeof ApiPassengerEmailConfirmationRoute
   '/app/admin/audit-logs': typeof AppAdminAuditLogsRoute
   '/app/admin/bookings': typeof AppAdminBookingsRouteWithChildren
   '/app/admin/commercial': typeof AppAdminCommercialRoute
@@ -407,6 +429,7 @@ export interface FileRoutesByFullPath {
   '/app/driver/vehicle-shift': typeof AppDriverVehicleShiftRoute
   '/app/passenger/book': typeof AppPassengerBookRouteWithChildren
   '/app/passenger/bookings': typeof AppPassengerBookingsRouteWithChildren
+  '/app/passenger/onboarding': typeof AppPassengerOnboardingRoute
   '/app/support/$ticketId': typeof AppSupportTicketIdRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
   '/app/admin/': typeof AppAdminIndexRoute
@@ -436,6 +459,8 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/app/profile': typeof AppProfileRoute
   '/app/support': typeof AppSupportRouteWithChildren
+  '/api/internal/notification-email-worker': typeof ApiInternalNotificationEmailWorkerRoute
+  '/api/passenger/email-confirmation': typeof ApiPassengerEmailConfirmationRoute
   '/app/admin/audit-logs': typeof AppAdminAuditLogsRoute
   '/app/admin/commercial': typeof AppAdminCommercialRoute
   '/app/admin/dispatch': typeof AppAdminDispatchRoute
@@ -460,6 +485,7 @@ export interface FileRoutesByTo {
   '/app/driver/history': typeof AppDriverHistoryRoute
   '/app/driver/upcoming': typeof AppDriverUpcomingRoute
   '/app/driver/vehicle-shift': typeof AppDriverVehicleShiftRoute
+  '/app/passenger/onboarding': typeof AppPassengerOnboardingRoute
   '/app/support/$ticketId': typeof AppSupportTicketIdRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
   '/app/admin': typeof AppAdminIndexRoute
@@ -493,6 +519,8 @@ export interface FileRoutesById {
   '/app/passenger': typeof AppPassengerRouteWithChildren
   '/app/profile': typeof AppProfileRoute
   '/app/support': typeof AppSupportRouteWithChildren
+  '/api/internal/notification-email-worker': typeof ApiInternalNotificationEmailWorkerRoute
+  '/api/passenger/email-confirmation': typeof ApiPassengerEmailConfirmationRoute
   '/app/admin/audit-logs': typeof AppAdminAuditLogsRoute
   '/app/admin/bookings': typeof AppAdminBookingsRouteWithChildren
   '/app/admin/commercial': typeof AppAdminCommercialRoute
@@ -521,6 +549,7 @@ export interface FileRoutesById {
   '/app/driver/vehicle-shift': typeof AppDriverVehicleShiftRoute
   '/app/passenger/book': typeof AppPassengerBookRouteWithChildren
   '/app/passenger/bookings': typeof AppPassengerBookingsRouteWithChildren
+  '/app/passenger/onboarding': typeof AppPassengerOnboardingRoute
   '/app/support/$ticketId': typeof AppSupportTicketIdRoute
   '/app/trip/$rideId': typeof AppTripRideIdRoute
   '/app/admin/': typeof AppAdminIndexRoute
@@ -555,6 +584,8 @@ export interface FileRouteTypes {
     | '/app/passenger'
     | '/app/profile'
     | '/app/support'
+    | '/api/internal/notification-email-worker'
+    | '/api/passenger/email-confirmation'
     | '/app/admin/audit-logs'
     | '/app/admin/bookings'
     | '/app/admin/commercial'
@@ -583,6 +614,7 @@ export interface FileRouteTypes {
     | '/app/driver/vehicle-shift'
     | '/app/passenger/book'
     | '/app/passenger/bookings'
+    | '/app/passenger/onboarding'
     | '/app/support/$ticketId'
     | '/app/trip/$rideId'
     | '/app/admin/'
@@ -612,6 +644,8 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/app/profile'
     | '/app/support'
+    | '/api/internal/notification-email-worker'
+    | '/api/passenger/email-confirmation'
     | '/app/admin/audit-logs'
     | '/app/admin/commercial'
     | '/app/admin/dispatch'
@@ -636,6 +670,7 @@ export interface FileRouteTypes {
     | '/app/driver/history'
     | '/app/driver/upcoming'
     | '/app/driver/vehicle-shift'
+    | '/app/passenger/onboarding'
     | '/app/support/$ticketId'
     | '/app/trip/$rideId'
     | '/app/admin'
@@ -668,6 +703,8 @@ export interface FileRouteTypes {
     | '/app/passenger'
     | '/app/profile'
     | '/app/support'
+    | '/api/internal/notification-email-worker'
+    | '/api/passenger/email-confirmation'
     | '/app/admin/audit-logs'
     | '/app/admin/bookings'
     | '/app/admin/commercial'
@@ -696,6 +733,7 @@ export interface FileRouteTypes {
     | '/app/driver/vehicle-shift'
     | '/app/passenger/book'
     | '/app/passenger/bookings'
+    | '/app/passenger/onboarding'
     | '/app/support/$ticketId'
     | '/app/trip/$rideId'
     | '/app/admin/'
@@ -724,6 +762,8 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiInternalNotificationEmailWorkerRoute: typeof ApiInternalNotificationEmailWorkerRoute
+  ApiPassengerEmailConfirmationRoute: typeof ApiPassengerEmailConfirmationRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
@@ -827,6 +867,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/support/$ticketId'
       preLoaderRoute: typeof AppSupportTicketIdRouteImport
       parentRoute: typeof AppSupportRoute
+    }
+    '/app/passenger/onboarding': {
+      id: '/app/passenger/onboarding'
+      path: '/onboarding'
+      fullPath: '/app/passenger/onboarding'
+      preLoaderRoute: typeof AppPassengerOnboardingRouteImport
+      parentRoute: typeof AppPassengerRoute
     }
     '/app/passenger/bookings': {
       id: '/app/passenger/bookings'
@@ -1023,6 +1070,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/admin/audit-logs'
       preLoaderRoute: typeof AppAdminAuditLogsRouteImport
       parentRoute: typeof AppAdminRoute
+    }
+    '/api/passenger/email-confirmation': {
+      id: '/api/passenger/email-confirmation'
+      path: '/api/passenger/email-confirmation'
+      fullPath: '/api/passenger/email-confirmation'
+      preLoaderRoute: typeof ApiPassengerEmailConfirmationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/notification-email-worker': {
+      id: '/api/internal/notification-email-worker'
+      path: '/api/internal/notification-email-worker'
+      fullPath: '/api/internal/notification-email-worker'
+      preLoaderRoute: typeof ApiInternalNotificationEmailWorkerRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/app/passenger/bookings/': {
       id: '/app/passenger/bookings/'
@@ -1315,12 +1376,14 @@ const AppPassengerBookingsRouteWithChildren =
 interface AppPassengerRouteChildren {
   AppPassengerBookRoute: typeof AppPassengerBookRouteWithChildren
   AppPassengerBookingsRoute: typeof AppPassengerBookingsRouteWithChildren
+  AppPassengerOnboardingRoute: typeof AppPassengerOnboardingRoute
   AppPassengerIndexRoute: typeof AppPassengerIndexRoute
 }
 
 const AppPassengerRouteChildren: AppPassengerRouteChildren = {
   AppPassengerBookRoute: AppPassengerBookRouteWithChildren,
   AppPassengerBookingsRoute: AppPassengerBookingsRouteWithChildren,
+  AppPassengerOnboardingRoute: AppPassengerOnboardingRoute,
   AppPassengerIndexRoute: AppPassengerIndexRoute,
 }
 
@@ -1365,6 +1428,9 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiInternalNotificationEmailWorkerRoute:
+    ApiInternalNotificationEmailWorkerRoute,
+  ApiPassengerEmailConfirmationRoute: ApiPassengerEmailConfirmationRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }
