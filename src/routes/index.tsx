@@ -14,7 +14,7 @@ import {
   Phone,
   ShieldCheck,
   Users,
-  Wheelchair,
+  Accessibility as Wheelchair,
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
