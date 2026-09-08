@@ -9,10 +9,14 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
+    "lint:changed": "bash scripts/lint-changed.sh",
+    "routes:generate": "vite build --mode development",
+    "routes:check": "bun run routes:generate && git diff --exit-code -- src/routeTree.gen.ts",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest"
   },
+
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
