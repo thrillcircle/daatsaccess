@@ -55,4 +55,3 @@ jobs:
         # output is the source of truth. Do NOT use the unrelated npm `tsr`
         # package here.
         run: git diff --exit-code -- src/routeTree.gen.ts
-
