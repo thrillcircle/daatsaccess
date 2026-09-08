@@ -328,7 +328,7 @@ function Landing() {
               type="button"
               onClick={previousSlide}
               aria-label="Previous hero image"
-              className="absolute left-3 top-1/2 hidden h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-slate-950/35 text-white backdrop-blur transition hover:bg-slate-950/55 sm:grid"
+              className="absolute left-3 top-1/2 z-20 hidden h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-slate-950/35 text-white backdrop-blur transition hover:bg-slate-950/55 sm:grid"
             >
               <ChevronLeft className="h-6 w-6" />
             </button>
@@ -336,13 +336,13 @@ function Landing() {
               type="button"
               onClick={nextSlide}
               aria-label="Next hero image"
-              className="absolute right-3 top-1/2 hidden h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-slate-950/35 text-white backdrop-blur transition hover:bg-slate-950/55 sm:grid"
+              className="absolute right-3 top-1/2 z-20 hidden h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-slate-950/35 text-white backdrop-blur transition hover:bg-slate-950/55 sm:grid"
             >
               <ChevronRight className="h-6 w-6" />
             </button>
 
             <div
-              className="absolute bottom-32 left-1/2 flex -translate-x-1/2 gap-2"
+              className="absolute bottom-32 left-1/2 z-20 flex -translate-x-1/2 gap-2"
               aria-label="Hero slides"
             >
               {slides.map((item, index) => (
@@ -351,6 +351,7 @@ function Landing() {
                   key={item.image}
                   onClick={() => setSlide(index)}
                   aria-label={`Show slide ${index + 1}`}
+                  aria-current={index === slide}
                   className={`h-2.5 rounded-full transition-all ${index === slide ? "w-9 bg-white" : "w-2.5 bg-white/50"}`}
                 />
               ))}
