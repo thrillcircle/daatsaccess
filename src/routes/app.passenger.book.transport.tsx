@@ -19,6 +19,7 @@ import { usePassengerPricingEstimate } from "@/hooks/use-passenger-pricing-estim
 import { ASSISTANCE_OPTIONS, type AssistanceCode } from "@/lib/booking-types";
 import { toast } from "sonner";
 import { ChevronLeft } from "lucide-react";
+import { clearPublicTripDraft, getPublicTripDraft } from "@/lib/public-trip-estimate";
 
 export const Route = createFileRoute("/app/passenger/book/transport")({
   head: () => ({ meta: [{ title: "Access Transport — Book" }] }),
@@ -68,6 +69,15 @@ function BookTransportPage() {
   const [assistance, setAssistance] = useState<AssistanceCode[]>([]);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const draft = getPublicTripDraft("transport");
+    if (!draft) return;
+    setPickupPt(draft.pickup);
+    setDestPt(draft.destination);
+    setMode("scheduled");
+    setScheduleLocal(draft.travelAt);
+  }, []);
 
   // Auto-fill self traveller name from profile.
   useEffect(() => {
@@ -150,6 +160,7 @@ function BookTransportPage() {
         p_idempotency_key: crypto.randomUUID(),
       });
       if (error) throw error;
+      clearPublicTripDraft();
       toast.success("Access Transport booked");
       navigate({ to: "/app/passenger/bookings" });
     } catch (err) {

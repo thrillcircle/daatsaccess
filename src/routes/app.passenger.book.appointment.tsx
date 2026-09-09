@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AppShell, NAV_ICONS } from "@/components/AppShell";
@@ -19,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { RouteMap } from "@/components/RouteMap";
-import { computeRoute } from "@/lib/maps.functions";
+import { useRouteEstimate } from "@/hooks/use-route-estimate";
 import {
   ASSISTANCE_OPTIONS,
   APPOINTMENT_PATTERN_LABEL,
@@ -31,6 +30,7 @@ import {
 } from "@/lib/booking-types";
 import { toast } from "sonner";
 import { ChevronLeft, Stethoscope } from "lucide-react";
+import { clearPublicTripDraft, getPublicTripDraft } from "@/lib/public-trip-estimate";
 
 export const Route = createFileRoute("/app/passenger/book/appointment")({
   head: () => ({ meta: [{ title: "Access Appointment — Book" }] }),
@@ -101,7 +101,6 @@ function BookAppointmentPage() {
   const { user } = useAuth();
   const { roles } = useUserRoles(user?.id);
   const navigate = useNavigate();
-  const route = useServerFn(computeRoute);
 
   const nav = useMemo(() => {
     const items = [
@@ -150,11 +149,22 @@ function BookAppointmentPage() {
   const [endMode, setEndMode] = useState<"date" | "count">("count");
 
   // Routing estimate (outbound pickup → facility)
-  const [outboundKm, setOutboundKm] = useState<number | null>(null);
-  const [outboundMin, setOutboundMin] = useState<number | null>(null);
-  const [estimating, setEstimating] = useState(false);
+  const {
+    distanceKm: outboundKm,
+    durationMin: outboundMin,
+    estimating,
+  } = useRouteEstimate(pickupPt, facilityPt);
 
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const draft = getPublicTripDraft("appointment");
+    if (!draft) return;
+    setPickupPt(draft.pickup);
+    setFacilityPt(draft.destination);
+    setFacilityName(draft.destination.address);
+    setApptLocal(draft.travelAt);
+  }, []);
 
   // Prefill traveller from profile
   useEffect(() => {
@@ -171,36 +181,6 @@ function BookAppointmentPage() {
       }
     })();
   }, [user, bookFor]);
-
-  useEffect(() => {
-    if (!pickupPt || !facilityPt) {
-      setOutboundKm(null);
-      setOutboundMin(null);
-      return;
-    }
-    let cancelled = false;
-    setEstimating(true);
-    route({
-      data: {
-        originLat: pickupPt.lat,
-        originLng: pickupPt.lng,
-        destLat: facilityPt.lat,
-        destLng: facilityPt.lng,
-      },
-    })
-      .then((r) => {
-        if (cancelled) return;
-        setOutboundKm(r.distanceKm);
-        setOutboundMin(r.durationMin);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) toast.error(err instanceof Error ? err.message : "Could not compute route");
-      })
-      .finally(() => !cancelled && setEstimating(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [pickupPt, facilityPt, route]);
 
   const apptDate = useMemo(() => (apptLocal ? new Date(apptLocal) : null), [apptLocal]);
   const apptValid =
@@ -463,6 +443,7 @@ function BookAppointmentPage() {
         );
       } else {
         await createBookingFor(apptDate.toISOString(), null);
+        clearPublicTripDraft();
         toast.success("Access Appointment booking submitted — awaiting quote");
       }
       navigate({ to: "/app/passenger/bookings" });

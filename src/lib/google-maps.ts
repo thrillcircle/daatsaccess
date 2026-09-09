@@ -54,3 +54,27 @@ export function loadGoogleMaps(): Promise<typeof google> {
 
   return loaderPromise;
 }
+
+export async function computeBrowserRoute(input: {
+  originLat: number;
+  originLng: number;
+  destLat: number;
+  destLng: number;
+}): Promise<{ distanceKm: number; durationMin: number }> {
+  const maps = await loadGoogleMaps();
+  const { DirectionsService, TravelMode } = (await maps.maps.importLibrary(
+    "routes",
+  )) as google.maps.RoutesLibrary;
+  const result = await new DirectionsService().route({
+    origin: { lat: input.originLat, lng: input.originLng },
+    destination: { lat: input.destLat, lng: input.destLng },
+    travelMode: TravelMode.DRIVING,
+    region: "za",
+  });
+  const leg = result.routes[0]?.legs[0];
+  if (!leg?.distance?.value) throw new Error("No driving route found");
+  return {
+    distanceKm: Math.round((leg.distance.value / 1000) * 100) / 100,
+    durationMin: Math.round((leg.duration?.value ?? 0) / 60),
+  };
+}

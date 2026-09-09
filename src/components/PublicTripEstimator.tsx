@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { useRouteEstimate } from "@/hooks/use-route-estimate";
-import { estimatePrice, formatZAR } from "@/lib/pricing";
+import { formatZAR } from "@/lib/pricing";
+import { usePublicTransportPricingEstimate } from "@/hooks/use-public-transport-pricing-estimate";
 import {
   PUBLIC_SERVICE_ROUTE,
   savePublicTripDraft,
@@ -64,9 +65,26 @@ export function PublicTripEstimator({ isAuthenticated }: { isAuthenticated: bool
     pickup,
     destination,
   );
-  const indicativePrice = distanceKm == null ? null : estimatePrice(distanceKm);
+  const travelDate = travelAt ? new Date(travelAt) : null;
+  const {
+    estimate: pricingEstimate,
+    loading: pricingLoading,
+    error: pricingError,
+  } = usePublicTransportPricingEstimate({
+    distanceKm,
+    effectiveAt:
+      travelDate && !Number.isNaN(travelDate.getTime()) ? travelDate.toISOString() : null,
+  });
+  const indicativePrice = pricingEstimate?.total ?? null;
   const specialised = service !== "transport";
-  const ready = Boolean(pickup && destination && travelAt && indicativePrice != null);
+  const ready = Boolean(
+    pickup &&
+    destination &&
+    travelAt &&
+    indicativePrice != null &&
+    !pricingLoading &&
+    !pricingError,
+  );
 
   function requestTrip() {
     if (!ready || !pickup || !destination || distanceKm == null || indicativePrice == null) return;
@@ -161,7 +179,7 @@ export function PublicTripEstimator({ isAuthenticated }: { isAuthenticated: bool
       </div>
 
       <div className="mt-5 grid gap-4 rounded-2xl bg-slate-950 p-5 text-white lg:grid-cols-[1fr_auto] lg:items-center">
-        <div aria-live="polite" aria-busy={estimating}>
+        <div aria-live="polite" aria-busy={estimating || pricingLoading}>
           {!pickup || !destination ? (
             <div className="flex items-center gap-3">
               <MapPin className="h-6 w-6 text-blue-300" />
@@ -172,7 +190,7 @@ export function PublicTripEstimator({ isAuthenticated }: { isAuthenticated: bool
                 </p>
               </div>
             </div>
-          ) : estimating ? (
+          ) : estimating || pricingLoading ? (
             <div className="flex items-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-blue-300" />
               <div>
@@ -182,11 +200,11 @@ export function PublicTripEstimator({ isAuthenticated }: { isAuthenticated: bool
                 </p>
               </div>
             </div>
-          ) : error ? (
+          ) : error || pricingError ? (
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="font-black">We could not calculate that route</p>
-                <p className="text-sm text-slate-300">{error}</p>
+                <p className="text-sm text-slate-300">{error ?? pricingError}</p>
               </div>
               <button
                 type="button"
@@ -224,7 +242,7 @@ export function PublicTripEstimator({ isAuthenticated }: { isAuthenticated: bool
         <button
           type="button"
           onClick={requestTrip}
-          disabled={!ready || estimating}
+          disabled={!ready || estimating || pricingLoading}
           className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 font-extrabold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
         >
           Request this trip <ArrowRight className="h-5 w-5" />

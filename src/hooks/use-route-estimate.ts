@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { computeRoute, type RouteEstimate } from "@/lib/maps.functions";
+import { computeBrowserRoute } from "@/lib/google-maps";
 
 export type RoutePoint = { lat: number; lng: number };
 
@@ -81,9 +82,14 @@ export function useRouteEstimate(
 
     void (async () => {
       try {
-        const result = await runRef.current({
-          data: { originLat, originLng, destLat, destLng },
-        });
+        const routeInput = { originLat, originLng, destLat, destLng };
+        let result: RouteEstimate;
+        try {
+          result = await runRef.current({ data: routeInput });
+        } catch (serverError) {
+          if (computeRouteFn) throw serverError;
+          result = await computeBrowserRoute(routeInput);
+        }
         if (!isCurrent()) return;
         setDistanceKm(result.distanceKm);
         setDurationMin(result.durationMin);

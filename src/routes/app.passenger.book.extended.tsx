@@ -26,6 +26,7 @@ import {
   type ExtendedItineraryItemType,
   type ExtendedJourneyMetadata,
 } from "@/lib/booking-types";
+import { clearPublicTripDraft, getPublicTripDraft } from "@/lib/public-trip-estimate";
 
 export const Route = createFileRoute("/app/passenger/book/extended")({
   head: () => ({ meta: [{ title: "Access Extended Journey — Book" }] }),
@@ -116,6 +117,14 @@ function BookExtendedPage() {
   // Itinerary
   const [itinerary, setItinerary] = useState<ExtendedItineraryItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const draft = getPublicTripDraft("extended");
+    if (!draft) return;
+    setStartingLocation(draft.pickup.address);
+    setMainDestination(draft.destination.address);
+    setStartDate(draft.travelAt.slice(0, 10));
+  }, []);
 
   // Prefill traveller from profile (self)
   useEffect(() => {
@@ -325,6 +334,7 @@ function BookExtendedPage() {
         } as never,
       });
 
+      clearPublicTripDraft();
       toast.success("Extended Journey request submitted — awaiting quote");
       navigate({ to: "/app/passenger/bookings" });
     } catch (err) {

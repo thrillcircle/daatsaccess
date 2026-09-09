@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useUserRoles } from "@/hooks/use-auth";
 import { AppShell, NAV_ICONS } from "@/components/AppShell";
@@ -12,10 +11,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AddressAutocomplete, type AddressPick } from "@/components/AddressAutocomplete";
 import { RouteMap } from "@/components/RouteMap";
-import { computeRoute } from "@/lib/maps.functions";
+import { useRouteEstimate } from "@/hooks/use-route-estimate";
 import { ASSISTANCE_OPTIONS, type AssistanceCode } from "@/lib/booking-types";
 import { toast } from "sonner";
 import { ChevronLeft } from "lucide-react";
+import { clearPublicTripDraft, getPublicTripDraft } from "@/lib/public-trip-estimate";
 
 export const Route = createFileRoute("/app/passenger/book/assisted")({
   head: () => ({ meta: [{ title: "Access Assisted — Book" }] }),
@@ -32,7 +32,6 @@ function BookAssistedPage() {
   const { user } = useAuth();
   const { roles } = useUserRoles(user?.id);
   const navigate = useNavigate();
-  const route = useServerFn(computeRoute);
 
   const nav = useMemo(() => {
     const items = [
@@ -55,14 +54,21 @@ function BookAssistedPage() {
   const [scheduleLocal, setScheduleLocal] = useState("");
   const [pickupPt, setPickupPt] = useState<AddressPick | null>(null);
   const [destPt, setDestPt] = useState<AddressPick | null>(null);
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
-  const [durationMin, setDurationMin] = useState<number | null>(null);
-  const [estimating, setEstimating] = useState(false);
+  const { distanceKm, durationMin, estimating } = useRouteEstimate(pickupPt, destPt);
   const [companionCount, setCompanionCount] = useState<1 | 2 | 3 | 4>(1);
   const [assistance, setAssistance] = useState<AssistanceCode[]>([]);
   const [otherInstructions, setOtherInstructions] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const draft = getPublicTripDraft("assisted");
+    if (!draft) return;
+    setPickupPt(draft.pickup);
+    setDestPt(draft.destination);
+    setMode("scheduled");
+    setScheduleLocal(draft.travelAt);
+  }, []);
 
   useEffect(() => {
     if (!user || bookFor !== "self") return;
@@ -78,36 +84,6 @@ function BookAssistedPage() {
       }
     })();
   }, [user, bookFor]);
-
-  useEffect(() => {
-    if (!pickupPt || !destPt) {
-      setDistanceKm(null);
-      setDurationMin(null);
-      return;
-    }
-    let cancelled = false;
-    setEstimating(true);
-    route({
-      data: {
-        originLat: pickupPt.lat,
-        originLng: pickupPt.lng,
-        destLat: destPt.lat,
-        destLng: destPt.lng,
-      },
-    })
-      .then((r) => {
-        if (cancelled) return;
-        setDistanceKm(r.distanceKm);
-        setDurationMin(r.durationMin);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) toast.error(err instanceof Error ? err.message : "Could not compute route");
-      })
-      .finally(() => !cancelled && setEstimating(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [pickupPt, destPt, route]);
 
   const scheduleDate = mode === "scheduled" && scheduleLocal ? new Date(scheduleLocal) : null;
   const scheduleValid =
@@ -216,6 +192,7 @@ function BookAssistedPage() {
         payload: { service_type: "assisted", companion_count: companionCount },
       });
 
+      clearPublicTripDraft();
       toast.success("Access Assisted booking submitted — awaiting quote");
       navigate({ to: "/app/passenger/bookings" });
     } catch (err) {
