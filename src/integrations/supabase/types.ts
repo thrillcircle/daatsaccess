@@ -5536,6 +5536,10 @@ export type Database = {
         }
         Returns: Json
       }
+      public_transport_pricing_estimate: {
+        Args: { p_distance_km: number; p_effective_at?: string }
+        Returns: Json
+      }
       refresh_vehicle_assignment_compatibility: {
         Args: { p_driver_id?: string; p_vehicle_id: string }
         Returns: undefined
