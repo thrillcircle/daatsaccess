@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getCurrentAccountStatus } from "@/lib/architecture-closeout";
 import { getPassengerOnboardingStatus } from "@/lib/passenger-onboarding";
 import { AutomaticPayfastCheckout } from "@/components/payments/AutomaticPayfastCheckout";
+import { getPublicTripDestination } from "@/lib/public-trip-estimate";
 
 export const Route = createFileRoute("/app")({
   ssr: false,
@@ -59,7 +60,9 @@ function AppLayout() {
           const onboarding = await getPassengerOnboardingStatus();
           if (!mounted) return;
           navigate({
-            to: onboarding.complete ? "/app/passenger" : "/app/passenger/onboarding",
+            to: onboarding.complete
+              ? ((getPublicTripDestination() ?? "/app/passenger") as never)
+              : "/app/passenger/onboarding",
           });
           return;
         } catch {

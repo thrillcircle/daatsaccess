@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Building2,
-  CalendarDays,
   Check,
   CheckCircle2,
   ChevronLeft,
@@ -14,7 +13,6 @@ import {
   MapPin,
   Menu,
   MessageCircle,
-  Navigation,
   Phone,
   ShieldCheck,
   Sparkles,
@@ -24,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { PublicTripEstimator } from "@/components/PublicTripEstimator";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -398,41 +397,7 @@ function Landing() {
           aria-label="Start a booking"
         >
           <div className="mx-auto max-w-7xl -translate-y-8 sm:-translate-y-10">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-950/10 lg:p-6">
-              <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_.72fr_auto] lg:items-end">
-                <div>
-                  <p className="text-xl font-black text-blue-950">Where would you like to go?</p>
-                  <p className="mt-1 text-sm text-slate-500">Start your accessible journey.</p>
-                </div>
-                {(
-                  [
-                    ["Pickup location", "Where are we collecting you?", MapPin],
-                    ["Destination", "Where are you going?", Navigation],
-                    ["Travel date", "Choose a date", CalendarDays],
-                  ] as const
-                ).map(([label, text, Icon]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={openAccess}
-                    className="min-h-14 rounded-xl border border-slate-200 px-4 text-left hover:border-blue-400 hover:bg-blue-50/50"
-                  >
-                    <span className="block text-xs font-bold text-slate-500">{label}</span>
-                    <span className="mt-1 flex items-center gap-2 text-sm font-bold text-slate-800">
-                      <Icon className="h-4 w-4 text-blue-700" />
-                      {text}
-                    </span>
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={openAccess}
-                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-blue-700 px-6 font-extrabold text-white hover:bg-blue-800"
-                >
-                  Get Started <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            <PublicTripEstimator isAuthenticated={isAuthenticated} />
           </div>
         </section>
 

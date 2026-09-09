@@ -15,6 +15,7 @@ import {
   type PassengerOnboardingStatus,
 } from "@/lib/passenger-onboarding";
 import { toast } from "sonner";
+import { getPublicTripDestination } from "@/lib/public-trip-estimate";
 
 export const Route = createFileRoute("/app/passenger/onboarding")({
   head: () => ({ meta: [{ title: "Finish setting up Access" }] }),
@@ -138,7 +139,7 @@ function PassengerOnboardingPage() {
     if (saved.email_confirmation.confirmed) {
       if (saved.complete) {
         toast.success("Your Access account is ready");
-        navigate({ to: "/app/passenger" });
+        navigate({ to: (getPublicTripDestination() ?? "/app/passenger") as never });
       }
       return;
     }
@@ -169,7 +170,8 @@ function PassengerOnboardingPage() {
       const next = await loadStatus();
       setCode("");
       toast.success("Email confirmed — your Access account is ready");
-      if (next.complete) navigate({ to: "/app/passenger" });
+      if (next.complete)
+        navigate({ to: (getPublicTripDestination() ?? "/app/passenger") as never });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not confirm your email");
     } finally {
@@ -189,7 +191,7 @@ function PassengerOnboardingPage() {
       return;
     }
     toast.success("Your Access account is ready");
-    navigate({ to: "/app/passenger" });
+    navigate({ to: (getPublicTripDestination() ?? "/app/passenger") as never });
   }
 
   if (loading) {
