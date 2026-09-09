@@ -6,10 +6,18 @@ import {
   type PassengerEstimate,
 } from "@/lib/pricing-api";
 
-const publicPricingRpc = pricingDb.rpc as unknown as (
+type PublicPricingRpc = (
   name: "public_transport_pricing_estimate",
   args: { p_distance_km: number; p_effective_at?: string },
 ) => PromiseLike<{ data: JsonValue | null; error: { message: string } | null }>;
+
+/**
+ * The Supabase client's `rpc` reads `this.rest`, so it must stay bound to the
+ * client. Detaching it (`const rpc = supabase.rpc`) throws
+ * "Cannot read properties of undefined (reading 'rest')".
+ */
+const publicPricingRpc: PublicPricingRpc = (name, args) =>
+  (pricingDb.rpc as unknown as PublicPricingRpc).call(pricingDb, name, args);
 
 const PRICE_CACHE_TTL_MS = 5 * 60_000;
 const priceCache = new Map<string, { estimate: PassengerEstimate; expiresAt: number }>();
