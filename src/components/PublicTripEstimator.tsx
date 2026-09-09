@@ -123,7 +123,7 @@ function PublicTripEstimatorForm({ isAuthenticated }: { isAuthenticated: boolean
     !pricingError,
   );
 
-  function requestTrip() {
+  function requestTrip(mode?: "signin" | "signup") {
     if (!ready || !pickup || !destination || distanceKm == null || indicativePrice == null) return;
     savePublicTripDraft({
       service,
@@ -138,7 +138,7 @@ function PublicTripEstimatorForm({ isAuthenticated }: { isAuthenticated: boolean
     if (isAuthenticated) {
       navigate({ to: PUBLIC_SERVICE_ROUTE[service] as never });
     } else {
-      navigate({ to: "/auth", search: { mode: "signup" } });
+      navigate({ to: "/auth", search: { mode: mode ?? "signin" } });
     }
   }
 
