@@ -277,14 +277,27 @@ function PublicTripEstimatorForm({ isAuthenticated }: { isAuthenticated: boolean
             </div>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={requestTrip}
-          disabled={!ready || estimating || pricingLoading}
-          className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 font-extrabold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-        >
-          Request this trip <ArrowRight className="h-5 w-5" />
-        </button>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => requestTrip(isAuthenticated ? undefined : "signin")}
+            disabled={!ready || estimating || pricingLoading}
+            className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 font-extrabold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+          >
+            {isAuthenticated ? "Book this trip" : "Sign in & book this trip"}
+            <ArrowRight className="h-5 w-5" />
+          </button>
+          {!isAuthenticated ? (
+            <button
+              type="button"
+              onClick={() => requestTrip("signup")}
+              disabled={!ready || estimating || pricingLoading}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/30 px-6 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:border-slate-700 disabled:text-slate-500"
+            >
+              New customer? Create account
+            </button>
+          ) : null}
+        </div>
       </div>
       <p className="mt-3 text-xs leading-5 text-slate-500">
         Estimates are not confirmed quotations. Tolls, parking, waiting time, additional stops,
