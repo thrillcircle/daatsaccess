@@ -23,6 +23,7 @@ type Props = {
   bias?: { lat: number; lng: number } | null;
   placeholder?: string;
   enableCurrentLocation?: boolean;
+  savedAddressesPlacement?: "before-input" | "after-input";
 };
 
 type Suggestion = {
@@ -53,6 +54,7 @@ export function AddressAutocomplete({
   bias,
   placeholder,
   enableCurrentLocation,
+  savedAddressesPlacement = "before-input",
 }: Props) {
   const { user } = useAuth();
   const [text, setText] = useState(value?.address ?? "");
@@ -362,7 +364,7 @@ export function AddressAutocomplete({
           </button>
         ) : null}
       </div>
-      {savedAddresses.length ? (
+      {savedAddresses.length && savedAddressesPlacement === "before-input" ? (
         <div className="flex flex-wrap gap-1.5" aria-label="Saved pickup addresses">
           {savedAddresses.map((address) => (
             <button
@@ -445,6 +447,22 @@ export function AddressAutocomplete({
           </ul>
         ) : null}
       </div>
+      {savedAddresses.length && savedAddressesPlacement === "after-input" ? (
+        <div className="flex flex-wrap gap-1.5" aria-label="Saved pickup addresses">
+          {savedAddresses.map((address) => (
+            <button
+              key={address.id}
+              type="button"
+              onClick={() => selectSavedAddress(address)}
+              className="inline-flex items-center gap-1 rounded-full border bg-secondary px-2.5 py-1 text-[11px] hover:border-primary/40"
+            >
+              <MapPin className="h-3 w-3 text-primary" />
+              {address.label}
+              {address.is_default ? " · Default" : ""}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <p id={statusId} className="sr-only" aria-live="polite">
         {loading
           ? "Loading address suggestions"

@@ -109,10 +109,7 @@ export function PublicTripEstimator({ isAuthenticated }: { isAuthenticated: bool
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-950/10 sm:p-7">
       <div className="flex flex-col gap-2 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-700">
-            Free trip estimate
-          </p>
-          <h2 className="mt-1 text-2xl font-black tracking-tight text-blue-950 sm:text-3xl">
+          <h2 className="text-2xl font-black tracking-tight text-blue-950 sm:text-3xl">
             Where would you like to go?
           </h2>
           <p className="mt-1 text-sm text-slate-600">
@@ -135,7 +132,7 @@ export function PublicTripEstimator({ isAuthenticated }: { isAuthenticated: bool
                 type="button"
                 onClick={() => setService(code)}
                 aria-pressed={selected}
-                className={`min-h-28 rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${selected ? "border-blue-600 bg-blue-50 shadow-sm" : "border-slate-200 hover:border-blue-300 hover:bg-slate-50"}`}
+                className={`grid min-h-28 grid-rows-[1.5rem_auto_1fr] rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${selected ? "border-blue-600 bg-blue-50 shadow-sm" : "border-slate-200 hover:border-blue-300 hover:bg-slate-50"}`}
               >
                 <Icon className={`h-6 w-6 ${selected ? "text-blue-700" : "text-slate-500"}`} />
                 <span className="mt-3 block font-black text-blue-950">{name}</span>
@@ -154,6 +151,7 @@ export function PublicTripEstimator({ isAuthenticated }: { isAuthenticated: bool
           onChange={setPickup}
           placeholder="Search pickup address"
           enableCurrentLocation
+          savedAddressesPlacement="after-input"
         />
         <AddressAutocomplete
           id="public-estimate-destination"
