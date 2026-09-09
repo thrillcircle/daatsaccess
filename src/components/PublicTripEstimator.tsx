@@ -106,6 +106,7 @@ function PublicTripEstimatorForm({ isAuthenticated }: { isAuthenticated: boolean
     estimate: pricingEstimate,
     loading: pricingLoading,
     error: pricingError,
+    retry: retryPricing,
   } = usePublicTransportPricingEstimate({
     distanceKm,
     effectiveAt:
@@ -242,7 +243,10 @@ function PublicTripEstimatorForm({ isAuthenticated }: { isAuthenticated: boolean
               </div>
               <button
                 type="button"
-                onClick={retry}
+                onClick={() => {
+                  if (error) retry();
+                  if (pricingError) retryPricing();
+                }}
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/30 px-4 font-bold"
               >
                 <RotateCcw className="h-4 w-4" /> Retry
