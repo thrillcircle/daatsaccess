@@ -36,7 +36,6 @@ export function usePublicTransportPricingEstimate({
   /** Monotonic request id — only the newest response may write state. */
   const seqRef = useRef(0);
 
-
   useEffect(() => {
     if (distanceKm == null || distanceKm < 0) {
       seqRef.current += 1;
