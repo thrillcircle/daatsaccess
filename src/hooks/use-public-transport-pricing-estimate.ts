@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   asPassengerEstimate,
   pricingDb,
@@ -32,6 +32,10 @@ export function usePublicTransportPricingEstimate({
   const [estimate, setEstimate] = useState<PassengerEstimate | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  /** Monotonic request id — only the newest response may write state. */
+  const seqRef = useRef(0);
+
 
   useEffect(() => {
     if (distanceKm == null || distanceKm < 0) {
