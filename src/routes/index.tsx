@@ -833,9 +833,18 @@ function Landing() {
           </div>
           <div className="flex flex-col gap-3 pt-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <span>
-              © {new Date().getFullYear()} Disability Accessible Accommodation and Travel (Pty) Ltd.
-              All rights reserved.
+              Copyright © {new Date().getFullYear()} Disability Accessible Accommodation and Travel
+              (Pty) Ltd — Powered By{" "}
+              <a
+                href="https://www.skarsity.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-blue-700"
+              >
+                www.skarsity.com
+              </a>
             </span>
+
             <span>DAATS Access • Accessible transport that moves with you.</span>
           </div>
         </div>
