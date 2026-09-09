@@ -150,7 +150,7 @@ function PublicTripEstimatorForm({ isAuthenticated }: { isAuthenticated: boolean
             Where would you like to go?
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            Explore services and see an indicative transport price before creating an account.
+            See an indicative transport price first, then sign in or create an account to book.
           </p>
         </div>
         <span className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-bold text-emerald-800">
