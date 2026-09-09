@@ -62,19 +62,19 @@ export async function computeBrowserRoute(input: {
   destLng: number;
 }): Promise<{ distanceKm: number; durationMin: number }> {
   const maps = await loadGoogleMaps();
-  const { DirectionsService, TravelMode } = (await maps.maps.importLibrary(
-    "routes",
-  )) as google.maps.RoutesLibrary;
-  const result = await new DirectionsService().route({
+  const { Route } = (await maps.maps.importLibrary("routes")) as google.maps.RoutesLibrary;
+  const result = await Route.computeRoutes({
     origin: { lat: input.originLat, lng: input.originLng },
     destination: { lat: input.destLat, lng: input.destLng },
-    travelMode: TravelMode.DRIVING,
+    travelMode: "DRIVING",
+    routingPreference: "TRAFFIC_UNAWARE",
     region: "za",
+    fields: ["distanceMeters", "durationMillis"],
   });
-  const leg = result.routes[0]?.legs[0];
-  if (!leg?.distance?.value) throw new Error("No driving route found");
+  const route = result.routes?.[0];
+  if (route?.distanceMeters == null) throw new Error("No driving route found");
   return {
-    distanceKm: Math.round((leg.distance.value / 1000) * 100) / 100,
-    durationMin: Math.round((leg.duration?.value ?? 0) / 60),
+    distanceKm: Math.round((route.distanceMeters / 1000) * 100) / 100,
+    durationMin: Math.round((route.durationMillis ?? 0) / 60_000),
   };
 }

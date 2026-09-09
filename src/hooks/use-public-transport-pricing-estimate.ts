@@ -46,27 +46,40 @@ export function usePublicTransportPricingEstimate({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    void publicPricingRpc("public_transport_pricing_estimate", {
-      p_distance_km: distanceKm,
-      p_effective_at: effectiveAt ?? undefined,
-    }).then(({ data, error: estimateError }) => {
-      if (cancelled) return;
-      if (estimateError) {
-        setEstimate(null);
-        setError(estimateError.message);
-      } else {
-        const next = asPassengerEstimate(data);
-        setEstimate(next);
-        setError(next ? null : "The pricing service returned an invalid estimate");
-        if (next) {
-          priceCache.set(cacheKey, {
-            estimate: next,
-            expiresAt: Date.now() + PRICE_CACHE_TTL_MS,
-          });
+    void Promise.resolve(
+      publicPricingRpc("public_transport_pricing_estimate", {
+        p_distance_km: distanceKm,
+        p_effective_at: effectiveAt ?? undefined,
+      }),
+    )
+      .then(({ data, error: estimateError }) => {
+        if (cancelled) return;
+        if (estimateError) {
+          setEstimate(null);
+          setError(estimateError.message);
+        } else {
+          const next = asPassengerEstimate(data);
+          setEstimate(next);
+          setError(next ? null : "The pricing service returned an invalid estimate");
+          if (next) {
+            priceCache.set(cacheKey, {
+              estimate: next,
+              expiresAt: Date.now() + PRICE_CACHE_TTL_MS,
+            });
+          }
         }
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      })
+      .catch((estimateError: unknown) => {
+        if (cancelled) return;
+        setEstimate(null);
+        setError(
+          estimateError instanceof Error
+            ? estimateError.message
+            : "Could not calculate the trip price",
+        );
+        setLoading(false);
+      });
 
     return () => {
       cancelled = true;
