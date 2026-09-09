@@ -51,17 +51,24 @@ export function usePublicTransportPricingEstimate({
     }
     if (cached) priceCache.delete(cacheKey);
 
-    let cancelled = false;
+    const seq = ++seqRef.current;
+    const isCurrent = () => seqRef.current === seq;
     setLoading(true);
     setError(null);
-    void Promise.resolve(
-      publicPricingRpc("public_transport_pricing_estimate", {
-        p_distance_km: distanceKm,
-        p_effective_at: effectiveAt ?? undefined,
-      }),
-    )
-      .then(({ data, error: estimateError }) => {
-        if (cancelled) return;
+
+    // Everything runs inside the async closure so a synchronous throw from the
+    // client becomes an inline, retryable error instead of unmounting the
+    // calculator through the error boundary.
+    void (async () => {
+      try {
+        const { data, error: estimateError } = await publicPricingRpc(
+          "public_transport_pricing_estimate",
+          {
+            p_distance_km: distanceKm,
+            p_effective_at: effectiveAt ?? undefined,
+          },
+        );
+        if (!isCurrent()) return;
         if (estimateError) {
           setEstimate(null);
           setError(estimateError.message);
@@ -76,23 +83,24 @@ export function usePublicTransportPricingEstimate({
             });
           }
         }
-        setLoading(false);
-      })
-      .catch((estimateError: unknown) => {
-        if (cancelled) return;
+      } catch (estimateError: unknown) {
+        if (!isCurrent()) return;
         setEstimate(null);
         setError(
           estimateError instanceof Error
             ? estimateError.message
             : "Could not calculate the trip price",
         );
-        setLoading(false);
-      });
+      } finally {
+        if (isCurrent()) setLoading(false);
+      }
+    })();
+  }, [distanceKm, effectiveAt, attempt]);
 
-    return () => {
-      cancelled = true;
-    };
+  const retry = useCallback(() => {
+    if (distanceKm != null) priceCache.delete(`${distanceKm.toFixed(2)}|${effectiveAt ?? "now"}`);
+    setAttempt((value) => value + 1);
   }, [distanceKm, effectiveAt]);
 
-  return { estimate, loading, error };
+  return { estimate, loading, error, retry };
 }
