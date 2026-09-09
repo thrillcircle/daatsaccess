@@ -183,7 +183,8 @@ function Landing() {
     let mounted = true;
     void supabase.auth
       .getSession()
-      .then(({ data }) => mounted && setIsAuthenticated(Boolean(data.session)));
+      .then(({ data }) => mounted && setIsAuthenticated(Boolean(data.session)))
+      .catch((error: unknown) => console.error("Could not restore the homepage session", error));
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => mounted && setIsAuthenticated(Boolean(session)),
     );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Component, useState, type ErrorInfo, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Accessibility,
@@ -49,13 +49,49 @@ const services = [
   },
 ] as const;
 
+class PublicTripEstimatorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("Homepage trip estimator failed", error, info);
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-950/10 sm:p-8">
+          <h2 className="text-2xl font-black tracking-tight text-blue-950">
+            The trip calculator needs to restart
+          </h2>
+          <p className="mt-2 text-sm text-slate-600">
+            The rest of the page is still available. Restart the calculator and try your route
+            again.
+          </p>
+          <button
+            type="button"
+            onClick={() => this.setState({ failed: false })}
+            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-700 px-5 font-extrabold text-white hover:bg-blue-800"
+          >
+            <RotateCcw className="h-4 w-4" /> Restart calculator
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function minimumTravelTime() {
   const date = new Date(Date.now() + 60 * 60 * 1000);
   const offset = date.getTimezoneOffset();
   return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
 }
 
-export function PublicTripEstimator({ isAuthenticated }: { isAuthenticated: boolean }) {
+function PublicTripEstimatorForm({ isAuthenticated }: { isAuthenticated: boolean }) {
   const navigate = useNavigate();
   const [service, setService] = useState<PublicServiceCode>("transport");
   const [pickup, setPickup] = useState<AddressPick | null>(null);
@@ -251,5 +287,13 @@ export function PublicTripEstimator({ isAuthenticated }: { isAuthenticated: bool
         after-hours travel and specialised assistance may change the final amount.
       </p>
     </div>
+  );
+}
+
+export function PublicTripEstimator({ isAuthenticated }: { isAuthenticated: boolean }) {
+  return (
+    <PublicTripEstimatorBoundary>
+      <PublicTripEstimatorForm isAuthenticated={isAuthenticated} />
+    </PublicTripEstimatorBoundary>
   );
 }
