@@ -27,6 +27,9 @@ type ComputeRouteFn = (opts: {
   data: { originLat: number; originLng: number; destLat: number; destLng: number };
 }) => Promise<RouteEstimate>;
 
+const ROUTE_CACHE_TTL_MS = 5 * 60_000;
+const routeCache = new Map<string, { result: RouteEstimate; expiresAt: number }>();
+
 /**
  * Computes the driving route for a pickup/destination pair exactly once per
  * distinct coordinate pair.
@@ -77,6 +80,18 @@ export function useRouteEstimate(
     const seq = ++seqRef.current;
     const isCurrent = () => seqRef.current === seq;
 
+    if (!computeRouteFn) {
+      const cached = routeCache.get(pairKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        setDistanceKm(cached.result.distanceKm);
+        setDurationMin(cached.result.durationMin);
+        setEstimating(false);
+        setError(null);
+        return;
+      }
+      if (cached) routeCache.delete(pairKey);
+    }
+
     setEstimating(true);
     setError(null);
 
@@ -84,13 +99,22 @@ export function useRouteEstimate(
       try {
         const routeInput = { originLat, originLng, destLat, destLng };
         let result: RouteEstimate;
-        try {
+        if (computeRouteFn) {
           result = await runRef.current({ data: routeInput });
-        } catch (serverError) {
-          if (computeRouteFn) throw serverError;
-          result = await computeBrowserRoute(routeInput);
+        } else {
+          try {
+            result = await computeBrowserRoute(routeInput);
+          } catch {
+            result = await runRef.current({ data: routeInput });
+          }
         }
         if (!isCurrent()) return;
+        if (!computeRouteFn) {
+          routeCache.set(pairKey, {
+            result,
+            expiresAt: Date.now() + ROUTE_CACHE_TTL_MS,
+          });
+        }
         setDistanceKm(result.distanceKm);
         setDurationMin(result.durationMin);
         setError(null);
