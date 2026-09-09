@@ -305,7 +305,7 @@ function Landing() {
           onFocusCapture={() => setPaused(true)}
           onBlurCapture={() => setPaused(false)}
         >
-          <div className="relative min-h-[700px] sm:min-h-[740px] lg:min-h-[760px]">
+          <div className="relative min-h-[640px] sm:min-h-[680px] lg:min-h-[700px]">
             {slides.map(([image, alt], index) => (
               <img
                 key={image}
@@ -318,7 +318,7 @@ function Landing() {
             ))}
             <div className="absolute inset-0 bg-gradient-to-r from-slate-950/92 via-slate-950/68 to-slate-950/20" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent" />
-            <div className="relative mx-auto flex min-h-[700px] max-w-7xl items-center px-4 pb-40 pt-12 sm:min-h-[740px] sm:px-6 lg:min-h-[760px] lg:px-8 lg:pb-44">
+            <div className="relative mx-auto flex min-h-[640px] max-w-7xl items-center px-4 pb-24 pt-12 sm:min-h-[680px] sm:px-6 lg:min-h-[700px] lg:px-8">
               <div className="max-w-3xl text-white" aria-live="polite">
                 <p className="mb-5 text-xs font-extrabold uppercase tracking-[0.24em] text-blue-200 sm:text-sm">
                   {active[2]}
@@ -376,7 +376,7 @@ function Landing() {
               <ChevronRight className="h-6 w-6" />
             </button>
             <div
-              className="absolute bottom-32 left-1/2 z-20 flex -translate-x-1/2 gap-2"
+              className="absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 gap-2"
               aria-label="Choose hero image"
             >
               {slides.map(([image], index) => (
@@ -391,8 +391,14 @@ function Landing() {
               ))}
             </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 z-10 translate-y-[46%] px-4 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-7xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl lg:p-6">
+        </section>
+
+        <section
+          className="relative z-20 bg-slate-50 px-4 sm:px-6 lg:px-8"
+          aria-label="Start a booking"
+        >
+          <div className="mx-auto max-w-7xl -translate-y-8 sm:-translate-y-10">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-950/10 lg:p-6">
               <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_.72fr_auto] lg:items-end">
                 <div>
                   <p className="text-xl font-black text-blue-950">Where would you like to go?</p>
@@ -430,7 +436,10 @@ function Landing() {
           </div>
         </section>
 
-        <section id="services" className="scroll-mt-24 bg-slate-50 pb-20 pt-40 sm:pt-44 lg:pb-28">
+        <section
+          id="services"
+          className="scroll-mt-24 bg-slate-50 pb-20 pt-8 sm:pt-10 lg:pb-28 lg:pt-12"
+        >
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
               <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-700">
