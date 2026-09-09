@@ -39,6 +39,7 @@ export function usePublicTransportPricingEstimate({
 
   useEffect(() => {
     if (distanceKm == null || distanceKm < 0) {
+      seqRef.current += 1;
       setEstimate(null);
       setError(null);
       setLoading(false);
@@ -48,6 +49,7 @@ export function usePublicTransportPricingEstimate({
     const cacheKey = `${distanceKm.toFixed(2)}|${effectiveAt ?? "now"}`;
     const cached = priceCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
+      seqRef.current += 1;
       setEstimate(cached.estimate);
       setError(null);
       setLoading(false);
