@@ -177,7 +177,6 @@ function Landing() {
   const navigate = useNavigate();
   const [slide, setSlide] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [paused, setPaused] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
@@ -197,16 +196,15 @@ function Landing() {
   useEffect(() => {
     if (
       typeof window === "undefined" ||
-      paused ||
       window.matchMedia("(prefers-reduced-motion: reduce)").matches
     )
       return;
     const timer = window.setInterval(
       () => setSlide((current) => (current + 1) % slides.length),
-      6500,
+      5000,
     );
     return () => window.clearInterval(timer);
-  }, [paused]);
+  }, []);
 
   const openAccess = () => navigate({ to: isAuthenticated ? "/app" : "/auth" });
   const signIn = () =>
@@ -299,10 +297,6 @@ function Landing() {
           className="relative isolate overflow-hidden bg-slate-950"
           aria-roledescription="carousel"
           aria-label="DAATS Access services"
-          onMouseEnter={() => setPaused(true)}
-          onMouseLeave={() => setPaused(false)}
-          onFocusCapture={() => setPaused(true)}
-          onBlurCapture={() => setPaused(false)}
         >
           <div className="relative min-h-[640px] sm:min-h-[680px] lg:min-h-[700px]">
             {slides.map(([image, alt], index) => (
